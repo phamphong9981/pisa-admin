@@ -2,6 +2,7 @@
 
 // React Imports
 import { useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 
 // MUI Imports
 import {
@@ -120,6 +121,9 @@ const ClassesList = () => {
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(10)
   const [searchTerm, setSearchTerm] = useState('')
+  
+  // Router
+  const router = useRouter()
 
   // Filter data based on search term
   const filteredData = useMemo(() => {
@@ -186,7 +190,18 @@ const ClassesList = () => {
               {paginatedData.map((classItem) => (
                 <TableRow key={classItem.id} hover>
                   <TableCell>
-                    <Typography variant="body2" fontWeight={500}>
+                    <Typography 
+                      variant="body2" 
+                      fontWeight={500}
+                      sx={{ 
+                        cursor: 'pointer',
+                        color: 'primary.main',
+                        '&:hover': {
+                          textDecoration: 'underline'
+                        }
+                      }}
+                      onClick={() => router.push(`/classes/${classItem.id}`)}
+                    >
                       {classItem.name}
                     </Typography>
                   </TableCell>
@@ -233,7 +248,11 @@ const ClassesList = () => {
                   <TableCell align="center">
                     <Box display="flex" gap={1} justifyContent="center">
                       <Tooltip title="Xem chi tiết">
-                        <IconButton size="small" color="primary">
+                        <IconButton 
+                          size="small" 
+                          color="primary"
+                          onClick={() => router.push(`/classes/${classItem.id}`)}
+                        >
                           <i className="ri-eye-line" />
                         </IconButton>
                       </Tooltip>
