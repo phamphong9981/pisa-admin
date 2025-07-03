@@ -24,6 +24,7 @@ import {
 } from '@mui/material'
 import { styled } from '@mui/material/styles'
 import type { ClassData } from '@/types/classes'
+import { useClass } from '@/hook/useClass'
 
 // Sample detailed data
 const SAMPLE_CLASS_DETAIL: ClassData = {
@@ -105,6 +106,51 @@ interface ClassDetailProps {
 
 const ClassDetail = ({ classId }: ClassDetailProps) => {
   const router = useRouter()
+  const { data: classData, isLoading, error } = useClass(classId)
+  
+  if (isLoading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+        <Typography>Đang tải thông tin lớp học...</Typography>
+      </Box>
+    )
+  }
+  console.log(classData)
+  if (error) {
+    return (
+      <Box>
+        <Typography variant="h5" color="error" gutterBottom>
+          Lỗi khi tải dữ liệu
+        </Typography>
+        <Typography color="text.secondary">
+          {error.message}
+        </Typography>
+        <Button 
+          variant="contained" 
+          onClick={() => router.push('/classes')}
+          sx={{ mt: 2 }}
+        >
+          Quay lại danh sách lớp
+        </Button>
+      </Box>
+    )
+  }
+
+  if (!classData) {
+    return (
+      <Box>
+        <Typography variant="h5" gutterBottom>
+          Không tìm thấy lớp học
+        </Typography>
+        <Button 
+          variant="contained" 
+          onClick={() => router.push('/classes')}
+        >
+          Quay lại danh sách lớp
+        </Button>
+      </Box>
+    )
+  }
   
   return (
     <Box>
@@ -123,13 +169,138 @@ const ClassDetail = ({ classId }: ClassDetailProps) => {
           Quay lại
         </Button>
       </Box>
-      
-      <Card>
+
+      {/* Thông tin cơ bản lớp học */}
+      <StyledCard>
+        <CardHeader 
+          title={
+            <Box display="flex" alignItems="center" gap={2}>
+              <Typography variant="h5">{classData.name}</Typography>
+              <Chip 
+                label={getClassTypeLabel(classData.classType)} 
+                color={getClassTypeColor(classData.classType) as any}
+                size="small"
+              />
+            </Box>
+          }
+        />
         <CardContent>
-          <Typography>Đây là trang chi tiết lớp học với ID: {classId}</Typography>
-          <Typography>Tính năng đang được phát triển...</Typography>
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={6}>
+              <Box mb={2}>
+                <Typography variant="body2" color="text.secondary">Giáo viên</Typography>
+                <Typography variant="body1" fontWeight={500}>{classData.teacherName}</Typography>
+              </Box>
+              <Box mb={2}>
+                <Typography variant="body2" color="text.secondary">Tổng số học sinh</Typography>
+                <Typography variant="body1" fontWeight={500}>{classData.totalStudent} học sinh</Typography>
+              </Box>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Box mb={2}>
+                <Typography variant="body2" color="text.secondary">Số buổi học/tuần</Typography>
+                <Typography variant="body1" fontWeight={500}>{classData.totalLessonPerWeek} buổi</Typography>
+              </Box>
+              <Box mb={2}>
+                <Typography variant="body2" color="text.secondary">Loại lớp</Typography>
+                <Typography variant="body1" fontWeight={500}>{classData.classType}</Typography>
+              </Box>
+            </Grid>
+          </Grid>
         </CardContent>
-      </Card>
+      </StyledCard>
+
+      {/* Danh sách học sinh */}
+      <StyledCard>
+        <CardHeader 
+          title={
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Typography variant="h6">
+                Danh sách học sinh ({classData.students.length})
+              </Typography>
+            </Box>
+          }
+        />
+        <CardContent>
+          {classData.students.length === 0 ? (
+            <Box textAlign="center" py={4}>
+              <Typography color="text.secondary">
+                Chưa có học sinh nào trong lớp này
+              </Typography>
+            </Box>
+          ) : (
+            <TableContainer component={Paper} variant="outlined">
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <StyledTableCell>Học sinh</StyledTableCell>
+                    <StyledTableCell>Tên đăng nhập</StyledTableCell>
+                    <StyledTableCell>Số điện thoại</StyledTableCell>
+                    <StyledTableCell>Email</StyledTableCell>
+                    <StyledTableCell align="center">Số buổi đã học</StyledTableCell>
+                    <StyledTableCell align="center">Thao tác</StyledTableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {classData.students.map((student) => (
+                    <TableRow key={student.profileId} hover>
+                      <TableCell>
+                        <Box display="flex" alignItems="center" gap={2}>
+                          <Avatar sx={{ bgcolor: 'primary.main' }}>
+                            {getInitials(student.fullName)}
+                          </Avatar>
+                          <Box>
+                            <Typography variant="body2" fontWeight={500}>
+                              {student.fullName}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              ID: {student.profileId.slice(0, 8)}...
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">
+                          {student.username}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">
+                          {student.phoneNumber}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">
+                          {student.email}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Chip 
+                          label={`${student.lessons.length} buổi`}
+                          size="small"
+                          color={student.lessons.length > 0 ? 'success' : 'default'}
+                        />
+                      </TableCell>
+                      <TableCell align="center">
+                        <Tooltip title="Xem chi tiết">
+                          <IconButton size="small" color="primary">
+                            <i className="ri-eye-line" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Chỉnh sửa">
+                          <IconButton size="small" color="info">
+                            <i className="ri-edit-line" />
+                          </IconButton>
+                        </Tooltip>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </CardContent>
+      </StyledCard>
     </Box>
   )
 }
