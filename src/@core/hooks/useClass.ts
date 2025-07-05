@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query'
+import { ClassType } from '@/types/classes'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 // Interface cho Class data
 interface ClassInfo {
@@ -19,6 +20,30 @@ interface ClassInfo {
     }[]
 }
 
+interface ClassListResponse {
+    id: string,
+    name: string,
+    totalStudent: number,
+    totalLessonPerWeek: number,
+    classType: string,
+    teacherId: string,
+    createdAt: string,
+    updatedAt: string
+}
+
+interface CreateClassDto {
+    name: string
+    total_lesson_per_week: number
+    class_type: ClassType
+    teacher_id: string
+}
+
+// Function để gọi API lấy danh sách class
+const fetchClassList = async (): Promise<ClassListResponse[]> => {
+    const { data } = await axios.get("http://localhost:8080/classes");
+    return data.data;
+}
+
 // Function để gọi API lấy thông tin class
 const fetchClassInfo = async (id: string): Promise<ClassInfo> => {
     if (!id) {
@@ -29,6 +54,23 @@ const fetchClassInfo = async (id: string): Promise<ClassInfo> => {
     // Thêm một chút delay để thấy trạng thái loading
     await new Promise((resolve) => setTimeout(resolve, 500));
     return data.data;
+}
+
+const createClass = async (classInfo: CreateClassDto) => {
+    console.log(classInfo);
+    const { data } = await axios.post("http://localhost:8080/classes", classInfo);
+    return data.data;
+}
+
+export const useClassList = () => {
+    return useQuery<ClassListResponse[], Error>({
+        queryKey: ['classes'],
+        queryFn: fetchClassList,
+        staleTime: 5 * 60 * 1000,
+        gcTime: 10 * 60 * 1000,
+        retry: 3,
+        retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    })
 }
 
 // Custom hook để lấy thông tin class
@@ -65,4 +107,20 @@ export const useClassWithOptions = (
     })
 }
 
-export type { ClassInfo }
+// Hook để tạo class mới
+export const useCreateClass = () => {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: createClass,
+        onSuccess: () => {
+            // Invalidate và refetch classes list
+            queryClient.invalidateQueries({ queryKey: ['classes'] })
+        },
+        onError: (error) => {
+            console.error('Error creating class:', error)
+        }
+    })
+}
+
+export type { ClassInfo, CreateClassDto, ClassListResponse }

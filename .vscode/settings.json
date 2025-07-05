@@ -47,5 +47,8 @@
   "typescript.tsdk": "node_modules/typescript/lib",
   "cSpell.words": [
     "iconify"
-  ]
+  ],
+  "[typescript]": {
+    "editor.defaultFormatter": "vscode.typescript-language-features"
+  }
 }

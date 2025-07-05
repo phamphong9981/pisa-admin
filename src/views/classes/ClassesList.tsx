@@ -22,56 +22,14 @@ import {
   TextField,
   InputAdornment,
   IconButton,
-  Tooltip
+  Tooltip,
+  Button
 } from '@mui/material'
 import { styled } from '@mui/material/styles'
 
 // Type Imports
 import type { ClassData } from '@/types/classes'
-
-// Sample Data (trong thực tế sẽ fetch từ API)
-const SAMPLE_CLASSES: ClassData[] = [
-  {
-    id: "26192527-b229-4491-898c-71d3f3cc5917",
-    name: "FastTrack LISTENING 02",
-    totalStudent: 0,
-    totalLessonPerWeek: 1,
-    classType: "FT_listening",
-    teacherId: "98f18f71-328b-4dfe-9a64-f482730fe56d",
-    createdAt: "2025-06-27T13:53:50.548Z",
-    updatedAt: "2025-06-27T13:53:50.548Z"
-  },
-  {
-    id: "894bfe42-5223-4efe-b826-6b0f7127ac79",
-    name: "FastTrack LISTENING 01",
-    totalStudent: 1,
-    totalLessonPerWeek: 1,
-    classType: "FT_listening",
-    teacherId: null,
-    createdAt: "2025-06-19T07:07:08.008Z",
-    updatedAt: "2025-06-28T07:18:55.060Z"
-  },
-  {
-    id: "5d3f64bf-f1a4-44d4-aa88-82d161a4751d",
-    name: "FastTrack WRINGTING 01",
-    totalStudent: 2,
-    totalLessonPerWeek: 2,
-    classType: "FT_writing",
-    teacherId: "98f18f71-328b-4dfe-9a64-f482730fe56d",
-    createdAt: "2025-06-19T07:06:43.749Z",
-    updatedAt: "2025-06-25T17:18:31.266Z"
-  },
-  {
-    id: "1a1d6afa-47e7-4b86-bf02-29bb645c2e38",
-    name: "FastTrack READING 01",
-    totalStudent: 2,
-    totalLessonPerWeek: 2,
-    classType: "FT_reading",
-    teacherId: "98f18f71-328b-4dfe-9a64-f482730fe56d",
-    createdAt: "2025-06-18T06:35:00.228Z",
-    updatedAt: "2025-06-27T14:00:10.800Z"
-  }
-]
+import { useClassList } from '@/@core/hooks/useClass'
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   fontWeight: 500,
@@ -121,20 +79,20 @@ const ClassesList = () => {
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(10)
   const [searchTerm, setSearchTerm] = useState('')
-  
+  const { data: classes, isLoading, error } = useClassList()
   // Router
   const router = useRouter()
-
   // Filter data based on search term
   const filteredData = useMemo(() => {
-    if (!searchTerm) return SAMPLE_CLASSES
+    if (!classes) return []
     
-    return SAMPLE_CLASSES.filter(classItem =>
+    return classes.filter(classItem =>
       classItem.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       getClassTypeLabel(classItem.classType).toLowerCase().includes(searchTerm.toLowerCase())
     )
   }, [searchTerm])
-
+  console.log(filteredData);
+  
   // Paginate data
   const paginatedData = useMemo(() => {
     const startIndex = page * rowsPerPage
@@ -150,26 +108,44 @@ const ClassesList = () => {
     setPage(0)
   }
 
+  if (isLoading) {
+    return <div>Loading...</div>
+  }
+
+  if (error) {
+    return <div>Error: {error.message}</div>
+  }
+
   return (
     <Card>
       <CardHeader
         title="Danh sách lớp học"
         subheader="Quản lý các lớp học tại trung tâm"
         action={
-          <TextField
-            size="small"
-            placeholder="Tìm kiếm lớp học..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <i className="ri-search-line" />
-                </InputAdornment>
-              )
-            }}
-            sx={{ minWidth: 300 }}
-          />
+          <Box display="flex" gap={2} alignItems="center">
+            <Button
+              variant="contained"
+              startIcon={<i className="ri-add-line" />}
+              onClick={() => router.push('/classes/create')}
+              sx={{ minWidth: 'auto' }}
+            >
+              Tạo lớp học mới
+            </Button>
+            <TextField
+              size="small"
+              placeholder="Tìm kiếm lớp học..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <i className="ri-search-line" />
+                  </InputAdornment>
+                )
+              }}
+              sx={{ minWidth: 300 }}
+            />
+          </Box>
         }
       />
       <CardContent>

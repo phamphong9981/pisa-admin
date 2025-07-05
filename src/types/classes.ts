@@ -23,4 +23,15 @@ export interface ClassData {
 export interface ClassesResponse {
     data: ClassData[]
     total: number
-} 
+}
+
+export enum ClassType {
+    FT_LISTENING = 'FT_listening',
+    FT_SPEAKING = 'FT_speaking',
+    FT_WRITING = 'FT_writing',
+    FT_READING = 'FT_reading',
+    LISTENING = 'listening',
+    SPEAKING = 'speaking',
+    WRITING = 'writing',
+    READING = 'reading',
+}
