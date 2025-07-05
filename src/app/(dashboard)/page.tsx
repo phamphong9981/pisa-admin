@@ -1,5 +1,3 @@
-export const dynamic = 'force-static'
-
 // MUI Imports
 import Grid from '@mui/material/Grid'
 
