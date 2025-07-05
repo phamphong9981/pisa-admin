@@ -208,13 +208,22 @@ const ClassDetail = ({ classId }: ClassDetailProps) => {
             ID: {classId}
           </Typography>
         </Box>
-        <Button 
-          variant="outlined" 
-          startIcon={<i className="ri-arrow-left-line" />}
-          onClick={() => router.push('/classes')}
-        >
-          Quay lại
-        </Button>
+        <Box display="flex" gap={2}>
+          <Button 
+            variant="contained" 
+            startIcon={<i className="ri-edit-line" />}
+            onClick={() => router.push(`/classes/${classId}/edit`)}
+          >
+            Chỉnh sửa
+          </Button>
+          <Button 
+            variant="outlined" 
+            startIcon={<i className="ri-arrow-left-line" />}
+            onClick={() => router.push('/classes')}
+          >
+            Quay lại
+          </Button>
+        </Box>
       </Box>
 
       {/* Thông tin cơ bản lớp học */}

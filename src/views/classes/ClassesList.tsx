@@ -271,11 +271,15 @@ const ClassesList = () => {
                           <i className="ri-eye-line" />
                         </IconButton>
                       </Tooltip>
-                      <Tooltip title="Chỉnh sửa">
-                        <IconButton size="small" color="secondary">
-                          <i className="ri-edit-line" />
-                        </IconButton>
-                      </Tooltip>
+                                              <Tooltip title="Chỉnh sửa">
+                          <IconButton 
+                            size="small" 
+                            color="secondary"
+                            onClick={() => router.push(`/classes/${classItem.id}/edit`)}
+                          >
+                            <i className="ri-edit-line" />
+                          </IconButton>
+                        </Tooltip>
                       <Tooltip title="Xóa">
                         <IconButton size="small" color="error" onClick={() => handleDelete(classItem.id)}>
                           <i className="ri-delete-bin-line" />

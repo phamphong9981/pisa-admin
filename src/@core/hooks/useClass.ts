@@ -38,6 +38,13 @@ interface CreateClassDto {
     teacher_id: string
 }
 
+interface UpdateClassDto {
+    name?: string
+    total_lesson_per_week?: number
+    class_type?: ClassType
+    teacher_id?: string
+}
+
 // Function để gọi API lấy danh sách class
 const fetchClassList = async (): Promise<ClassListResponse[]> => {
     const { data } = await axios.get("http://localhost:8080/classes");
@@ -59,6 +66,11 @@ const fetchClassInfo = async (id: string): Promise<ClassInfo> => {
 const createClass = async (classInfo: CreateClassDto) => {
     console.log(classInfo);
     const { data } = await axios.post("http://localhost:8080/classes", classInfo);
+    return data.data;
+}
+
+const updateClass = async (id: string, classInfo: UpdateClassDto) => {
+    const { data } = await axios.put("http://localhost:8080/classes/" + id, classInfo);
     return data.data;
 }
 
@@ -143,4 +155,20 @@ export const useDeleteClass = () => {
     })
 }
 
-export type { ClassInfo, CreateClassDto, ClassListResponse }
+export const useUpdateClass = () => {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: ({ id, classInfo }: { id: string, classInfo: UpdateClassDto }) => updateClass(id, classInfo),
+        onSuccess: () => {
+            // Invalidate và refetch classes list
+            queryClient.invalidateQueries({ queryKey: ['classes'] })
+            queryClient.invalidateQueries({ queryKey: ['class'] })
+        },
+        onError: (error) => {
+            console.error('Error updating class:', error)
+        }
+    })
+}
+
+export type { ClassInfo, CreateClassDto, UpdateClassDto, ClassListResponse }
