@@ -87,6 +87,14 @@ const registerStudentToClass = async (classId: string, username: string) => {
     return data.data;
 }
 
+const unregisterStudentFromClass = async (classId: string, username: string) => {
+    const { data } = await axios.post("http://localhost:8080/classes/unregister-class-for-user", {
+        class_id: classId,
+        username: username
+    });
+    return data.data;
+}
+
 export const useClassList = () => {
     return useQuery<ClassListResponse[], Error>({
         queryKey: ['classes'],
@@ -110,6 +118,22 @@ export const useRegisterStudentToClass = () => {
         },
         onError: (error) => {
             console.error('Error registering student to class:', error)
+        }
+    })
+}
+
+export const useUnregisterStudentFromClass = () => {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: ({ classId, username }: { classId: string, username: string }) => unregisterStudentFromClass(classId, username),
+        onSuccess: () => {
+            // Invalidate và refetch classes list
+            // queryClient.invalidateQueries({ queryKey: ['classes'] })
+            queryClient.invalidateQueries({ queryKey: ['class'] })
+        },
+        onError: (error) => {
+            console.error('Error unregistering student from class:', error)
         }
     })
 }

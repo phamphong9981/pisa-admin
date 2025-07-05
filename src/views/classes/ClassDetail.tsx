@@ -25,11 +25,17 @@ import {
   AccordionSummary,
   AccordionDetails,
   Badge,
-  Alert
+  Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  CircularProgress,
+  Snackbar
 } from '@mui/material'
 import { styled } from '@mui/material/styles'
 import type { ClassData } from '@/types/classes'
-import { useClass } from '@/@core/hooks/useClass'
+import { useClass, useUnregisterStudentFromClass } from '@/@core/hooks/useClass'
 import { useClassSchedule } from '@/@core/hooks/useSchedule'
 import RegisterStudentForm from './RegisterStudentForm'
 
@@ -115,6 +121,17 @@ const ClassDetail = ({ classId }: ClassDetailProps) => {
   const router = useRouter()
   const { data: classData, isLoading, error } = useClass(classId)
   const { data: scheduleData, isLoading: isScheduleLoading, error: scheduleError } = useClassSchedule(classId)
+  const unregisterMutation = useUnregisterStudentFromClass()
+  
+  // States for unregister functionality
+  const [selectedStudentToUnregister, setSelectedStudentToUnregister] = useState<{
+    profileId: string
+    username: string
+    fullName: string
+  } | null>(null)
+  const [showUnregisterDialog, setShowUnregisterDialog] = useState(false)
+  const [unregisterSuccess, setUnregisterSuccess] = useState('')
+  const [unregisterError, setUnregisterError] = useState('')
   
   if (isLoading || isScheduleLoading) {
     return (
@@ -198,6 +215,42 @@ const ClassDetail = ({ classId }: ClassDetailProps) => {
       hour: '2-digit',
       minute: '2-digit'
     })
+  }
+
+  // Unregister handlers
+  const handleUnregisterClick = (student: typeof classData.students[0]) => {
+    setSelectedStudentToUnregister({
+      profileId: student.profileId,
+      username: student.username,
+      fullName: student.fullName
+    })
+    setShowUnregisterDialog(true)
+    setUnregisterError('')
+    setUnregisterSuccess('')
+  }
+
+  const handleConfirmUnregister = async () => {
+    if (!selectedStudentToUnregister) return
+
+    try {
+      await unregisterMutation.mutateAsync({
+        classId,
+        username: selectedStudentToUnregister.username
+      })
+      
+      setUnregisterSuccess(`Đã hủy đăng ký học sinh ${selectedStudentToUnregister.fullName} khỏi lớp ${classData?.name}`)
+      setShowUnregisterDialog(false)
+      setSelectedStudentToUnregister(null)
+      setUnregisterError('')
+    } catch (error: any) {
+      setUnregisterError(error.response?.data?.message || 'Có lỗi xảy ra khi hủy đăng ký học sinh')
+      setShowUnregisterDialog(false)
+    }
+  }
+
+  const handleCancelUnregister = () => {
+    setShowUnregisterDialog(false)
+    setSelectedStudentToUnregister(null)
   }
   
   return (
@@ -347,6 +400,16 @@ const ClassDetail = ({ classId }: ClassDetailProps) => {
                         <Tooltip title="Chỉnh sửa">
                           <IconButton size="small" color="info">
                             <i className="ri-edit-line" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Hủy đăng ký">
+                          <IconButton 
+                            size="small" 
+                            color="error"
+                            onClick={() => handleUnregisterClick(student)}
+                            disabled={unregisterMutation.isPending}
+                          >
+                            <i className="ri-user-unfollow-line" />
                           </IconButton>
                         </Tooltip>
                       </TableCell>
@@ -664,6 +727,94 @@ const ClassDetail = ({ classId }: ClassDetailProps) => {
           }))}
         />
       </StyledCard>
+
+      {/* Unregister Confirmation Dialog */}
+      <Dialog open={showUnregisterDialog} onClose={handleCancelUnregister} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          <Box display="flex" alignItems="center" gap={1}>
+            <i className="ri-alert-line text-warning" />
+            Xác nhận hủy đăng ký
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          {selectedStudentToUnregister && (
+            <Box>
+              <Typography variant="body1" gutterBottom>
+                Bạn có chắc chắn muốn hủy đăng ký học sinh sau khỏi lớp <strong>{classData?.name}</strong>?
+              </Typography>
+              <Box mt={2} p={2} sx={{ bgcolor: 'error.50', borderRadius: 1, border: '1px solid', borderColor: 'error.200' }}>
+                <Box display="flex" alignItems="center" gap={2} mb={1}>
+                  <Avatar sx={{ bgcolor: 'error.main', width: 40, height: 40 }}>
+                    {getInitials(selectedStudentToUnregister.fullName)}
+                  </Avatar>
+                  <Box>
+                    <Typography variant="h6">{selectedStudentToUnregister.fullName}</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      @{selectedStudentToUnregister.username}
+                    </Typography>
+                  </Box>
+                </Box>
+                <Typography variant="body2" color="text.secondary">
+                  ID: {selectedStudentToUnregister.profileId}
+                </Typography>
+              </Box>
+              <Alert severity="warning" sx={{ mt: 2 }}>
+                <Typography variant="body2">
+                  <strong>Lưu ý:</strong> Hành động này không thể hoàn tác. Học sinh sẽ bị xóa khỏi tất cả các buổi học trong lớp.
+                </Typography>
+              </Alert>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelUnregister} color="inherit">
+            Hủy
+          </Button>
+          <Button
+            onClick={handleConfirmUnregister}
+            variant="contained"
+            color="error"
+            disabled={unregisterMutation.isPending}
+            startIcon={unregisterMutation.isPending ? <CircularProgress size={16} /> : <i className="ri-user-unfollow-line" />}
+          >
+            {unregisterMutation.isPending ? 'Đang hủy đăng ký...' : 'Xác nhận hủy'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Success Snackbar */}
+      <Snackbar
+        open={!!unregisterSuccess}
+        autoHideDuration={6000}
+        onClose={() => setUnregisterSuccess('')}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={() => setUnregisterSuccess('')} 
+          severity="success" 
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {unregisterSuccess}
+        </Alert>
+      </Snackbar>
+
+      {/* Error Snackbar */}
+      <Snackbar
+        open={!!unregisterError}
+        autoHideDuration={6000}
+        onClose={() => setUnregisterError('')}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={() => setUnregisterError('')} 
+          severity="error" 
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {unregisterError}
+        </Alert>
+      </Snackbar>
     </Box>
   )
 }
