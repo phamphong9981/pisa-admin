@@ -10,7 +10,7 @@ const Layout = ({ children }: ChildrenType) => {
   const direction = 'ltr'
 
   return (
-    <Providers direction={direction}>
+    <Providers direction={direction} mode={undefined} settingsCookie={undefined}>
       <BlankLayout>{children}</BlankLayout>
     </Providers>
   )
