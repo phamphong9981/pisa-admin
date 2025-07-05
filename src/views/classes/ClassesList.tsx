@@ -30,6 +30,7 @@ import { styled } from '@mui/material/styles'
 // Type Imports
 import type { ClassData } from '@/types/classes'
 import { useClassList } from '@/@core/hooks/useClass'
+import { useTeacherList } from '@/@core/hooks/useTeacher'
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   fontWeight: 500,
@@ -80,18 +81,28 @@ const ClassesList = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10)
   const [searchTerm, setSearchTerm] = useState('')
   const { data: classes, isLoading, error } = useClassList()
+  const { data: teachers, isLoading: isTeachersLoading } = useTeacherList()
   // Router
   const router = useRouter()
+
+  // Hàm tìm teacher theo ID
+  const getTeacherById = (teacherId: string | null) => {
+    if (!teacherId || !teachers) return null
+    return teachers.find(teacher => teacher.id === teacherId)
+  }
   // Filter data based on search term
   const filteredData = useMemo(() => {
     if (!classes) return []
     
-    return classes.filter(classItem =>
-      classItem.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      getClassTypeLabel(classItem.classType).toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  }, [searchTerm])
-  console.log(filteredData);
+    return classes.filter(classItem => {
+      const teacher = getTeacherById(classItem.teacherId)
+      const teacherName = teacher?.name || ''
+      
+      return classItem.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        getClassTypeLabel(classItem.classType).toLowerCase().includes(searchTerm.toLowerCase()) ||
+        teacherName.toLowerCase().includes(searchTerm.toLowerCase())
+         })
+   }, [searchTerm, classes, teachers])
   
   // Paginate data
   const paginatedData = useMemo(() => {
@@ -108,12 +119,20 @@ const ClassesList = () => {
     setPage(0)
   }
 
-  if (isLoading) {
-    return <div>Loading...</div>
+  if (isLoading || isTeachersLoading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+        <Typography>Đang tải dữ liệu...</Typography>
+      </Box>
+    )
   }
 
   if (error) {
-    return <div>Error: {error.message}</div>
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+        <Typography color="error">Lỗi: {error.message}</Typography>
+      </Box>
+    )
   }
 
   return (
@@ -200,21 +219,36 @@ const ClassesList = () => {
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    {classItem.teacherId ? (
-                      <Chip
-                        label="Đã phân công"
-                        color="success"
-                        size="small"
-                        variant="outlined"
-                      />
-                    ) : (
-                      <Chip
-                        label="Chưa có GV"
-                        color="warning"
-                        size="small"
-                        variant="outlined"
-                      />
-                    )}
+                    {(() => {
+                      const teacher = getTeacherById(classItem.teacherId)
+                      if (teacher) {
+                        return (
+                          <Box display="flex" alignItems="center" gap={1}>
+                            <Chip
+                              label={teacher.name}
+                              color="success"
+                              size="small"
+                              variant="outlined"
+                              sx={{ fontWeight: 500 }}
+                            />
+                            {teacher.skills.length > 0 && (
+                              <Typography variant="caption" color="text.secondary">
+                                ({teacher.skills.join(', ')})
+                              </Typography>
+                            )}
+                          </Box>
+                        )
+                      } else {
+                        return (
+                          <Chip
+                            label="Chưa có GV"
+                            color="warning"
+                            size="small"
+                            variant="outlined"
+                          />
+                        )
+                      }
+                    })()}
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2">

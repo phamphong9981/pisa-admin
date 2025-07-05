@@ -21,6 +21,7 @@ import {
 import { styled } from '@mui/material/styles'
 import { ClassType } from '@/types/classes'
 import { useCreateClass, CreateClassDto } from '@/@core/hooks/useClass'
+import { useTeacherList } from '@/@core/hooks/useTeacher'
 
 const StyledCard = styled(Card)(({ theme }) => ({
   marginBottom: theme.spacing(3)
@@ -29,6 +30,7 @@ const StyledCard = styled(Card)(({ theme }) => ({
 const CreateClassForm = () => {
   const router = useRouter()
   const createClassMutation = useCreateClass()
+  const { data: teachers, isLoading: isTeachersLoading, error: teachersError } = useTeacherList()
   
   const [formData, setFormData] = useState<CreateClassDto>({
     name: '',
@@ -91,6 +93,14 @@ const CreateClassForm = () => {
     }
   }
 
+  if (isTeachersLoading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+        <Typography>Đang tải danh sách giáo viên...</Typography>
+      </Box>
+    )
+  }
+
   return (
     <Box>
       <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
@@ -112,6 +122,11 @@ const CreateClassForm = () => {
       <StyledCard>
         <CardHeader title="Thông tin lớp học" />
         <CardContent>
+          {teachersError && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              Không thể tải danh sách giáo viên. Vui lòng thử lại sau.
+            </Alert>
+          )}
           <form onSubmit={handleSubmit}>
             <Grid container spacing={3}>
               <Grid item xs={12} md={6}>
@@ -155,14 +170,36 @@ const CreateClassForm = () => {
               </Grid>
               
               <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="ID Giáo viên"
-                  value={formData.teacher_id}
-                  onChange={(e) => handleChange('teacher_id', e.target.value)}
-                  required
-                  placeholder="Nhập ID giáo viên"
-                />
+                <FormControl fullWidth required>
+                  <InputLabel>Giáo viên</InputLabel>
+                  <Select
+                    value={formData.teacher_id}
+                    onChange={(e) => handleChange('teacher_id', e.target.value)}
+                    label="Giáo viên"
+                    disabled={!teachers || teachers.length === 0}
+                  >
+                    {teachers && teachers.length > 0 ? (
+                      teachers.map((teacher) => (
+                        <MenuItem key={teacher.id} value={teacher.id}>
+                          <Box display="flex" flexDirection="column" alignItems="flex-start">
+                            <Typography variant="body2" fontWeight={500}>
+                              {teacher.name}
+                            </Typography>
+                            {teacher.skills.length > 0 && (
+                              <Typography variant="caption" color="text.secondary">
+                                Kỹ năng: {teacher.skills.join(', ')}
+                              </Typography>
+                            )}
+                          </Box>
+                        </MenuItem>
+                      ))
+                    ) : (
+                      <MenuItem disabled>
+                        {teachersError ? 'Lỗi tải danh sách giáo viên' : 'Không có giáo viên nào'}
+                      </MenuItem>
+                    )}
+                  </Select>
+                </FormControl>
               </Grid>
               
               <Grid item xs={12}>
