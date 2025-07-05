@@ -47,7 +47,7 @@ interface UpdateClassDto {
 
 // Function để gọi API lấy danh sách class
 const fetchClassList = async (): Promise<ClassListResponse[]> => {
-    const { data } = await axios.get("http://localhost:8080/classes");
+    const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/classes`);
     return data.data;
 }
 
@@ -57,7 +57,7 @@ const fetchClassInfo = async (id: string): Promise<ClassInfo> => {
         throw new Error('Class ID is required')
     }
 
-    const { data } = await axios.get("http://localhost:8080/classes/" + id);
+    const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/classes/${id}`);
     // Thêm một chút delay để thấy trạng thái loading
     await new Promise((resolve) => setTimeout(resolve, 500));
     return data.data;
@@ -65,22 +65,22 @@ const fetchClassInfo = async (id: string): Promise<ClassInfo> => {
 
 const createClass = async (classInfo: CreateClassDto) => {
     console.log(classInfo);
-    const { data } = await axios.post("http://localhost:8080/classes", classInfo);
+    const { data } = await axios.post(`${process.env.NEXT_PUBLIC_BASE_API}/classes`, classInfo);
     return data.data;
 }
 
 const updateClass = async (id: string, classInfo: UpdateClassDto) => {
-    const { data } = await axios.put("http://localhost:8080/classes/" + id, classInfo);
+    const { data } = await axios.put(`${process.env.NEXT_PUBLIC_BASE_API}/classes/${id}`, classInfo);
     return data.data;
 }
 
 const deleteClass = async (id: string) => {
-    const { data } = await axios.delete("http://localhost:8080/classes/" + id);
+    const { data } = await axios.delete(`${process.env.NEXT_PUBLIC_BASE_API}/classes/${id}`);
     return data.data;
 }
 
 const registerStudentToClass = async (classId: string, username: string) => {
-    const { data } = await axios.post("http://localhost:8080/classes/register-class-for-user", {
+    const { data } = await axios.post(`${process.env.NEXT_PUBLIC_BASE_API}/classes/register-class-for-user`, {
         class_id: classId,
         username: username
     });
@@ -88,7 +88,7 @@ const registerStudentToClass = async (classId: string, username: string) => {
 }
 
 const unregisterStudentFromClass = async (classId: string, username: string) => {
-    const { data } = await axios.post("http://localhost:8080/classes/unregister-class-for-user", {
+    const { data } = await axios.post(`${process.env.NEXT_PUBLIC_BASE_API}/classes/unregister-class-for-user`, {
         class_id: classId,
         username: username
     });

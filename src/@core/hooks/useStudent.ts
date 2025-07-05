@@ -31,7 +31,7 @@ interface ListUsersResponseDto {
 }
 
 const fetchStudentList = async (search: string): Promise<ListUsersResponseDto> => {
-    const { data } = await axios.get("http://localhost:8080/user/", {
+    const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/user/`, {
         params: {
             search,
         }

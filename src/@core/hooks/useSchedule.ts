@@ -34,7 +34,7 @@ const fetchClassScheduleInfo = async (id: string): Promise<ClassScheduleDto> => 
         throw new Error('Class ID is required')
     }
 
-    const { data } = await axios.get("http://localhost:8080/schedule/class/" + id);
+    const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/schedule/class/${id}`);
     // Thêm một chút delay để thấy trạng thái loading
     // await new Promise((resolve) => setTimeout(resolve, 500));
     return data.data.classSchedule;
