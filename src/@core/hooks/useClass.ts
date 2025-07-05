@@ -79,14 +79,38 @@ const deleteClass = async (id: string) => {
     return data.data;
 }
 
+const registerStudentToClass = async (classId: string, username: string) => {
+    const { data } = await axios.post("http://localhost:8080/classes/register-class-for-user", {
+        class_id: classId,
+        username: username
+    });
+    return data.data;
+}
+
 export const useClassList = () => {
     return useQuery<ClassListResponse[], Error>({
         queryKey: ['classes'],
         queryFn: fetchClassList,
         staleTime: 5 * 60 * 1000,
         gcTime: 10 * 60 * 1000,
-        retry: 3,
-        retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+        retry: 1,
+        retryDelay: (attemptIndex) => Math.min(1000 * 1 ** attemptIndex, 30000),
+    })
+}
+
+export const useRegisterStudentToClass = () => {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: ({ classId, username }: { classId: string, username: string }) => registerStudentToClass(classId, username),
+        onSuccess: () => {
+            // Invalidate và refetch classes list
+            // queryClient.invalidateQueries({ queryKey: ['classes'] })
+            queryClient.invalidateQueries({ queryKey: ['class'] })
+        },
+        onError: (error) => {
+            console.error('Error registering student to class:', error)
+        }
     })
 }
 
@@ -98,8 +122,8 @@ export const useClass = (id: string) => {
         enabled: !!id, // Chỉ chạy query khi có id
         staleTime: 5 * 60 * 1000, // 5 phút
         gcTime: 10 * 60 * 1000, // 10 phút
-        retry: 3,
-        retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+        retry: 1,
+        retryDelay: (attemptIndex) => Math.min(1000 * 1 ** attemptIndex, 30000),
     })
 }
 
@@ -119,8 +143,8 @@ export const useClassWithOptions = (
         refetchOnWindowFocus: options?.refetchOnWindowFocus ?? true,
         staleTime: options?.staleTime ?? 5 * 60 * 1000,
         gcTime: 10 * 60 * 1000,
-        retry: 3,
-        retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+        retry: 1,
+        retryDelay: (attemptIndex) => Math.min(1000 * 1 ** attemptIndex, 30000),
     })
 }
 

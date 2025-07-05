@@ -31,6 +31,7 @@ import { styled } from '@mui/material/styles'
 import type { ClassData } from '@/types/classes'
 import { useClass } from '@/@core/hooks/useClass'
 import { useClassSchedule } from '@/@core/hooks/useSchedule'
+import RegisterStudentForm from './RegisterStudentForm'
 
 // Sample detailed data
 const SAMPLE_CLASS_DETAIL: ClassData = {
@@ -649,6 +650,19 @@ const ClassDetail = ({ classId }: ClassDetailProps) => {
             </Box>
           )}
         </CardContent>
+      </StyledCard>
+
+      {/* Register Student Form */}
+      <StyledCard>
+        <RegisterStudentForm 
+          classId={classId}
+          className={classData.name}
+          currentStudents={classData.students.map(s => ({
+            profileId: s.profileId,
+            username: s.username,
+            fullName: s.fullName
+          }))}
+        />
       </StyledCard>
     </Box>
   )
