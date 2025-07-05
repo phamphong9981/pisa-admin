@@ -1,5 +1,9 @@
 "use client"; // Provider phải là một Client Component
 // Type Imports
+import { useState } from 'react'
+
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+
 import type { ChildrenType, Direction } from '@core/types'
 
 // Context Imports
@@ -11,8 +15,6 @@ import ThemeProvider from '@components/theme'
 import UpgradeToProButton from '@components/upgrade-to-pro-button'
 
 // Util Imports
-import { useState } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 type Props = ChildrenType & {
   direction: Direction

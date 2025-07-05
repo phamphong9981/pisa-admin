@@ -1,6 +1,8 @@
-import { ClassType } from '@/types/classes'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
+
+import type { ClassType } from '@/types/classes'
+
 // Interface cho Class data
 interface ClassInfo {
     id: string
@@ -48,6 +50,7 @@ interface UpdateClassDto {
 // Function để gọi API lấy danh sách class
 const fetchClassList = async (): Promise<ClassListResponse[]> => {
     const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/classes`);
+
     return data.data;
 }
 
@@ -58,25 +61,34 @@ const fetchClassInfo = async (id: string): Promise<ClassInfo> => {
     }
 
     const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/classes/${id}`);
+
+
     // Thêm một chút delay để thấy trạng thái loading
     await new Promise((resolve) => setTimeout(resolve, 500));
+    
     return data.data;
 }
 
 const createClass = async (classInfo: CreateClassDto) => {
     console.log(classInfo);
     const { data } = await axios.post(`${process.env.NEXT_PUBLIC_BASE_API}/classes`, classInfo);
-    return data.data;
+
+    
+return data.data;
 }
 
 const updateClass = async (id: string, classInfo: UpdateClassDto) => {
     const { data } = await axios.put(`${process.env.NEXT_PUBLIC_BASE_API}/classes/${id}`, classInfo);
-    return data.data;
+
+    
+return data.data;
 }
 
 const deleteClass = async (id: string) => {
     const { data } = await axios.delete(`${process.env.NEXT_PUBLIC_BASE_API}/classes/${id}`);
-    return data.data;
+
+    
+return data.data;
 }
 
 const registerStudentToClass = async (classId: string, username: string) => {
@@ -84,7 +96,9 @@ const registerStudentToClass = async (classId: string, username: string) => {
         class_id: classId,
         username: username
     });
-    return data.data;
+
+    
+return data.data;
 }
 
 const unregisterStudentFromClass = async (classId: string, username: string) => {
@@ -92,7 +106,9 @@ const unregisterStudentFromClass = async (classId: string, username: string) => 
         class_id: classId,
         username: username
     });
-    return data.data;
+
+    
+return data.data;
 }
 
 export const useClassList = () => {
@@ -219,4 +235,5 @@ export const useUpdateClass = () => {
     })
 }
 
-export type { ClassInfo, CreateClassDto, UpdateClassDto, ClassListResponse }
+export type { ClassInfo, ClassListResponse, CreateClassDto, UpdateClassDto }
+

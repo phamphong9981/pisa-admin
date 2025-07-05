@@ -1,34 +1,34 @@
 'use client'
 
 // React Imports
-import { useState, useMemo } from 'react'
+import { useMemo, useState } from 'react'
+
 import { useRouter } from 'next/navigation'
 
 // MUI Imports
 import {
+  Box,
+  Button,
   Card,
-  CardHeader,
   CardContent,
+  CardHeader,
+  Chip,
+  IconButton,
+  InputAdornment,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
-  TableRow,
   TablePagination,
-  Chip,
-  Typography,
-  Box,
+  TableRow,
   TextField,
-  InputAdornment,
-  IconButton,
   Tooltip,
-  Button
+  Typography
 } from '@mui/material'
 import { styled } from '@mui/material/styles'
 
 // Type Imports
-import type { ClassData } from '@/types/classes'
 import { useClassList, useDeleteClass } from '@/@core/hooks/useClass'
 import { useTeacherList } from '@/@core/hooks/useTeacher'
 
@@ -83,14 +83,18 @@ const ClassesList = () => {
   const { data: classes, isLoading, error } = useClassList()
   const { data: teachers, isLoading: isTeachersLoading } = useTeacherList()
   const deleteClassMutation = useDeleteClass()
+
   // Router
   const router = useRouter()
 
   // Hàm tìm teacher theo ID
   const getTeacherById = (teacherId: string | null) => {
     if (!teacherId || !teachers) return null
-    return teachers.find(teacher => teacher.id === teacherId)
+    
+return teachers.find(teacher => teacher.id === teacherId)
   }
+
+
   // Filter data based on search term
   const filteredData = useMemo(() => {
     if (!classes) return []
@@ -108,7 +112,9 @@ const ClassesList = () => {
   // Paginate data
   const paginatedData = useMemo(() => {
     const startIndex = page * rowsPerPage
-    return filteredData.slice(startIndex, startIndex + rowsPerPage)
+
+    
+return filteredData.slice(startIndex, startIndex + rowsPerPage)
   }, [filteredData, page, rowsPerPage])
 
   const handleChangePage = (event: unknown, newPage: number) => {
@@ -226,6 +232,7 @@ const ClassesList = () => {
                   <TableCell>
                     {(() => {
                       const teacher = getTeacherById(classItem.teacherId)
+
                       if (teacher) {
                         return (
                           <Box display="flex" alignItems="center" gap={1}>

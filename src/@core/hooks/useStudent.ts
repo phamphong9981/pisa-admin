@@ -36,7 +36,9 @@ const fetchStudentList = async (search: string): Promise<ListUsersResponseDto> =
             search,
         }
     });
-    return data.data;
+
+    
+return data.data;
 }
 
 export const useStudentList = (search: string) => {

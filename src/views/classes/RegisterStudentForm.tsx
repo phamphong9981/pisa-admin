@@ -1,35 +1,37 @@
 'use client'
 
 import { useState } from 'react'
+
+
 import {
+  Alert,
+  Avatar,
   Box,
-  Card,
-  CardHeader,
-  CardContent,
-  TextField,
   Button,
-  Typography,
+  Card,
+  CardContent,
+  CardHeader,
+  Chip,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  Paper,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
-  Avatar,
-  Chip,
-  Alert,
-  CircularProgress,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
+  TextField,
   Tooltip,
-  IconButton
+  Typography
 } from '@mui/material'
-import { useStudentList } from '@/@core/hooks/useStudent'
+
 import { useRegisterStudentToClass } from '@/@core/hooks/useClass'
-import { useRouter } from 'next/navigation'
+import { useStudentList } from '@/@core/hooks/useStudent'
 
 interface RegisterStudentFormProps {
   classId: string
@@ -43,6 +45,7 @@ interface RegisterStudentFormProps {
 
 const RegisterStudentForm = ({ classId, className, currentStudents }: RegisterStudentFormProps) => {
   const [searchTerm, setSearchTerm] = useState('')
+
   const [selectedStudent, setSelectedStudent] = useState<{
     id: string
     username: string
@@ -51,6 +54,7 @@ const RegisterStudentForm = ({ classId, className, currentStudents }: RegisterSt
     phone: string
     ieltsPoint: string
   } | null>(null)
+
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
@@ -77,7 +81,8 @@ const RegisterStudentForm = ({ classId, className, currentStudents }: RegisterSt
     
     if (isAlreadyRegistered) {
       setErrorMessage('Học sinh này đã có trong lớp học')
-      return
+      
+return
     }
 
     setSelectedStudent({

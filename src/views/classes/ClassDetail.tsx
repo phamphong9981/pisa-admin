@@ -1,74 +1,46 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+
 import { useRouter } from 'next/navigation'
+
 import {
-  Card,
-  CardHeader,
-  CardContent,
-  Grid,
-  Typography,
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+  Alert,
+  Avatar,
+  Badge,
   Box,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
   Chip,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Grid,
+  IconButton,
+  Paper,
+  Snackbar,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Button,
-  Avatar,
-  IconButton,
   Tooltip,
-  Paper,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  Badge,
-  Alert,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  CircularProgress,
-  Snackbar
+  Typography
 } from '@mui/material'
 import { styled } from '@mui/material/styles'
-import type { ClassData } from '@/types/classes'
+
 import { useClass, useUnregisterStudentFromClass } from '@/@core/hooks/useClass'
 import { useClassSchedule } from '@/@core/hooks/useSchedule'
 import RegisterStudentForm from './RegisterStudentForm'
 
-// Sample detailed data
-const SAMPLE_CLASS_DETAIL: ClassData = {
-  id: "5d3f64bf-f1a4-44d4-aa88-82d161a4751d",
-  name: "FastTrack WRITING 01",
-  totalStudent: 2,
-  totalLessonPerWeek: 2,
-  classType: "FT_writing",
-  teacherId: "98f18f71-328b-4dfe-9a64-f482730fe56d",
-  teacherName: "Tran Huy",
-  createdAt: "2025-06-19T07:06:43.749Z",
-  updatedAt: "2025-06-25T17:18:31.266Z",
-  students: [
-    {
-      profileId: "e5573d93-5152-4e3b-bbb0-b7c9591d79ed",
-      username: "cvhoang",
-      fullName: "CV Hoang",
-      phoneNumber: "0936616785",
-      email: "chuhoang@gmail.com",
-      lessons: [1, 2]
-    },
-    {
-      profileId: "04d5f068-9ce6-41a9-bfd3-d112e87b4ba1",
-      username: "phamphong",
-      fullName: "Pham Phong",
-      phoneNumber: "0936616785",
-      email: "phamphong9981@gmail.com",
-      lessons: [1, 2]
-    }
-  ]
-}
 
 const StyledCard = styled(Card)(({ theme }) => ({
   marginBottom: theme.spacing(3)
@@ -99,16 +71,6 @@ const getClassTypeLabel = (classType: string) => {
   }
 }
 
-const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString('vi-VN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
-
 const getInitials = (name: string) => {
   return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)
 }
@@ -129,6 +91,7 @@ const ClassDetail = ({ classId }: ClassDetailProps) => {
     username: string
     fullName: string
   } | null>(null)
+
   const [showUnregisterDialog, setShowUnregisterDialog] = useState(false)
   const [unregisterSuccess, setUnregisterSuccess] = useState('')
   const [unregisterError, setUnregisterError] = useState('')
@@ -183,7 +146,9 @@ const ClassDetail = ({ classId }: ClassDetailProps) => {
   // Hàm format thời gian từ timestamp
   const formatScheduleTime = (timestamp: number) => {
     const date = new Date(timestamp)
-    return date.toLocaleString('vi-VN', {
+
+    
+return date.toLocaleString('vi-VN', {
       weekday: 'long',
       year: 'numeric',
       month: '2-digit',
@@ -192,31 +157,7 @@ const ClassDetail = ({ classId }: ClassDetailProps) => {
       minute: '2-digit'
     })
   }
-
-  // Hàm format danh sách thời gian bận
-  const formatBusySchedule = (busySchedule: number[]) => {
-    return busySchedule.map(timestamp => {
-      const date = new Date(timestamp)
-      return date.toLocaleString('vi-VN', {
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-      })
-    }).join(', ')
-  }
-
-  // Hàm format ngắn gọn cho chip
-  const formatBusyChip = (timestamp: number) => {
-    const date = new Date(timestamp)
-    return date.toLocaleString('vi-VN', {
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
-
+  
   // Unregister handlers
   const handleUnregisterClick = (student: typeof classData.students[0]) => {
     setSelectedStudentToUnregister({

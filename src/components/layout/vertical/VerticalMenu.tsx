@@ -1,5 +1,4 @@
 // MUI Imports
-import Chip from '@mui/material/Chip'
 import { useTheme } from '@mui/material/styles'
 
 // Third-party Imports
@@ -9,7 +8,7 @@ import PerfectScrollbar from 'react-perfect-scrollbar'
 import type { VerticalMenuContextProps } from '@menu/components/vertical-menu/Menu'
 
 // Component Imports
-import { Menu, SubMenu, MenuItem, MenuSection } from '@menu/vertical-menu'
+import { Menu, MenuItem } from '@menu/vertical-menu'
 
 // Hook Imports
 import useVerticalNav from '@menu/hooks/useVerticalNav'

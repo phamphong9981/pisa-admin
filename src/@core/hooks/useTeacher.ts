@@ -13,7 +13,9 @@ export interface TeacherListResponse {
 // Function để gọi API lấy danh sách teacher
 const fetchTeacherList = async (): Promise<TeacherListResponse[]> => {
     const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/teachers`);
-    return data.data;
+
+    
+return data.data;
 }
 
 export const useTeacherList = () => {

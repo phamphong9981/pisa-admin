@@ -1,7 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+
 import { useRouter } from 'next/navigation'
+
 import {
   Card,
   CardHeader,
@@ -19,8 +21,10 @@ import {
   Snackbar
 } from '@mui/material'
 import { styled } from '@mui/material/styles'
+
 import { ClassType } from '@/types/classes'
-import { useCreateClass, CreateClassDto } from '@/@core/hooks/useClass'
+import type { CreateClassDto } from '@/@core/hooks/useClass';
+import { useCreateClass } from '@/@core/hooks/useClass'
 import { useTeacherList } from '@/@core/hooks/useTeacher'
 
 const StyledCard = styled(Card)(({ theme }) => ({
