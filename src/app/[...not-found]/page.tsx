@@ -12,7 +12,7 @@ const NotFoundPage = () => {
   const mode = getServerMode()
 
   return (
-    <Providers direction={direction}>
+    <Providers direction={direction} mode={undefined} settingsCookie={undefined}>
       <BlankLayout>
         <NotFound mode={mode} />
       </BlankLayout>
