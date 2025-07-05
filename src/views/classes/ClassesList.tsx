@@ -29,7 +29,7 @@ import { styled } from '@mui/material/styles'
 
 // Type Imports
 import type { ClassData } from '@/types/classes'
-import { useClassList } from '@/@core/hooks/useClass'
+import { useClassList, useDeleteClass } from '@/@core/hooks/useClass'
 import { useTeacherList } from '@/@core/hooks/useTeacher'
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
@@ -82,6 +82,7 @@ const ClassesList = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const { data: classes, isLoading, error } = useClassList()
   const { data: teachers, isLoading: isTeachersLoading } = useTeacherList()
+  const deleteClassMutation = useDeleteClass()
   // Router
   const router = useRouter()
 
@@ -117,6 +118,10 @@ const ClassesList = () => {
   const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
     setRowsPerPage(parseInt(event.target.value, 10))
     setPage(0)
+  }
+
+  const handleDelete = (id: string) => {
+    deleteClassMutation.mutate(id)
   }
 
   if (isLoading || isTeachersLoading) {
@@ -272,7 +277,7 @@ const ClassesList = () => {
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Xóa">
-                        <IconButton size="small" color="error">
+                        <IconButton size="small" color="error" onClick={() => handleDelete(classItem.id)}>
                           <i className="ri-delete-bin-line" />
                         </IconButton>
                       </Tooltip>

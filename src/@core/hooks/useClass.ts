@@ -62,6 +62,11 @@ const createClass = async (classInfo: CreateClassDto) => {
     return data.data;
 }
 
+const deleteClass = async (id: string) => {
+    const { data } = await axios.delete("http://localhost:8080/classes/" + id);
+    return data.data;
+}
+
 export const useClassList = () => {
     return useQuery<ClassListResponse[], Error>({
         queryKey: ['classes'],
@@ -119,6 +124,21 @@ export const useCreateClass = () => {
         },
         onError: (error) => {
             console.error('Error creating class:', error)
+        }
+    })
+}
+
+export const useDeleteClass = () => {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: deleteClass,
+        onSuccess: () => {
+            // Invalidate và refetch classes list
+            queryClient.invalidateQueries({ queryKey: ['classes'] })
+        },
+        onError: (error) => {
+            console.error('Error deleting class:', error)
         }
     })
 }
