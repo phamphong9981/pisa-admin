@@ -1,3 +1,5 @@
+'use client'
+
 // Component Imports
 import Providers from '@components/Providers'
 import BlankLayout from '@layouts/BlankLayout'
@@ -12,7 +14,7 @@ const NotFoundPage = () => {
   const mode = getServerMode()
 
   return (
-    <Providers direction={direction} mode={undefined} settingsCookie={undefined}>
+    <Providers direction={direction}>
       <BlankLayout>
         <NotFound mode={mode} />
       </BlankLayout>

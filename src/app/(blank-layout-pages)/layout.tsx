@@ -1,3 +1,5 @@
+'use client'
+
 // Type Imports
 import type { ChildrenType } from '@core/types'
 
@@ -10,7 +12,7 @@ const Layout = ({ children }: ChildrenType) => {
   const direction = 'ltr'
 
   return (
-    <Providers direction={direction} mode={undefined} settingsCookie={undefined}>
+    <Providers direction={direction}>
       <BlankLayout>{children}</BlankLayout>
     </Providers>
   )
