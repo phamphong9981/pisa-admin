@@ -11,7 +11,8 @@
     "lint:fix": "next lint --fix",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\"",
     "build:icons": "tsx src/assets/iconify-icons/bundle-icons-css.ts",
-    "postinstall": "npm run build:icons"
+    "postinstall": "npm run build:icons",
+    "pages:build": "npx @cloudflare/next-on-pages"
   },
   "dependencies": {
     "@emotion/cache": "^11.11.0",
@@ -32,6 +33,7 @@
     "server-only": "^0.0.1"
   },
   "devDependencies": {
+    "@cloudflare/next-on-pages": "^1.13.12",
     "@iconify/json": "^2.2.218",
     "@iconify/tools": "^4.0.4",
     "@iconify/types": "^2.0.0",
