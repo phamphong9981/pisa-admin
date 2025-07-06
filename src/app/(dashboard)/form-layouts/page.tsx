@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 // MUI Imports
 import Grid from '@mui/material/Grid'
 

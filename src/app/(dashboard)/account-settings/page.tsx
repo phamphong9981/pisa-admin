@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 // React Imports
 import type { ReactElement } from 'react'
 

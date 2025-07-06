@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 // Component Imports
 import UnderMaintenance from '@views/pages/misc/UnderMaintenance'
 

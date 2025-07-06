@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 // Next Imports
 import type { Metadata } from 'next'
 

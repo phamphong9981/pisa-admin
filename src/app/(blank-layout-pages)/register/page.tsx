@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 // Component Imports
 import Register from '@views/Register'
 
