@@ -26,16 +26,6 @@ import { styled } from '@mui/material/styles'
 // Hooks
 import { useTeacherList } from '@/@core/hooks/useTeacher'
 
-// Styled Components
-const StyledTableCell = styled(TableCell)(({ theme }) => ({
-  fontWeight: 500,
-  fontSize: '0.875rem',
-  padding: theme.spacing(1),
-  border: `1px solid ${theme.palette.divider}`,
-  textAlign: 'center',
-  minWidth: '120px'
-}))
-
 const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
   fontWeight: 600,
   fontSize: '0.875rem',
@@ -77,6 +67,7 @@ const ScheduleCell = styled(TableCell, {
 
 // Constants
 const DAYS = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật']
+
 const TIME_SLOTS = [
   '8:00-10:00',
   '10:00-12:00', 
@@ -95,7 +86,7 @@ const TeachersSchedule = () => {
     const slots: { day: string; time: string; slot: number }[] = []
     let slotIndex = 0
     
-    DAYS.forEach((day, dayIndex) => {
+    DAYS.forEach((day) => {
       TIME_SLOTS.forEach((time) => {
         slots.push({
           day,
