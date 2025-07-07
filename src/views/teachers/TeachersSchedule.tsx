@@ -32,15 +32,6 @@ import { styled } from '@mui/material/styles'
 import { useTeacherList } from '@/@core/hooks/useTeacher'
 import useExport from '@/@core/hooks/useExport'
 
-// Styled Components
-const StyledTableCell = styled(TableCell)(({ theme }) => ({
-  fontWeight: 500,
-  fontSize: '0.875rem',
-  padding: theme.spacing(1),
-  border: `1px solid ${theme.palette.divider}`,
-  textAlign: 'center',
-  minWidth: '120px'
-}))
 
 const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
   fontWeight: 600,
@@ -83,6 +74,7 @@ const ScheduleCell = styled(TableCell, {
 
 // Constants
 const DAYS = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật']
+
 const TIME_SLOTS = [
   '8:00-10:00',
   '10:00-12:00', 
@@ -99,6 +91,7 @@ const TeachersSchedule = () => {
   
   // States for export menu
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
+
   const [notification, setNotification] = useState<{
     open: boolean
     message: string
@@ -147,6 +140,7 @@ const TeachersSchedule = () => {
     if (!teachers) return
     
     const result = exportToExcel(teachers)
+
     setNotification({
       open: true,
       message: result.message,
@@ -159,6 +153,7 @@ const TeachersSchedule = () => {
     if (!teachers) return
     
     const result = exportToCSV(teachers)
+
     setNotification({
       open: true,
       message: result.message,
@@ -171,6 +166,7 @@ const TeachersSchedule = () => {
     if (!teachers) return
     
     const result = exportSummary(teachers)
+
     setNotification({
       open: true,
       message: result.message,

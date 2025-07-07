@@ -1,9 +1,11 @@
 import { saveAs } from 'file-saver'
 import * as XLSX from 'xlsx'
+
 import type { TeacherListResponse } from './useTeacher'
 
 // Constants
 const DAYS = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật']
+
 const TIME_SLOTS = [
     '8:00-10:00',
     '10:00-12:00',
@@ -26,6 +28,7 @@ export const useExport = () => {
 
         // Tạo header row
         const headerRow: ExportData = { 'Khung giờ': 'Giáo viên →' }
+
         teachers.forEach(teacher => {
             headerRow[teacher.name] = `${teacher.skills.join(', ')}`
         })
@@ -33,6 +36,7 @@ export const useExport = () => {
 
         // Tạo dữ liệu cho từng khung giờ
         let slotIndex = 0
+
         DAYS.forEach((day) => {
             TIME_SLOTS.forEach((time) => {
                 const row: ExportData = {
@@ -41,6 +45,7 @@ export const useExport = () => {
 
                 teachers.forEach(teacher => {
                     const isBusy = teacher.registeredBusySchedule.includes(slotIndex)
+
                     row[teacher.name] = isBusy ? 'BẬN' : 'RẢNH'
                 })
 
@@ -51,6 +56,7 @@ export const useExport = () => {
 
         // Thêm summary row
         const summaryHeader: ExportData = { 'Khung giờ': '--- THỐNG KÊ ---' }
+
         teachers.forEach(teacher => {
             summaryHeader[teacher.name] = ''
         })
@@ -58,9 +64,11 @@ export const useExport = () => {
 
         const freeRow: ExportData = { 'Khung giờ': 'Số khung RẢNH' }
         const busyRow: ExportData = { 'Khung giờ': 'Số khung BẬN' }
+
         teachers.forEach(teacher => {
             const busySlots = teacher.registeredBusySchedule.length
             const freeSlots = 42 - busySlots
+
             freeRow[teacher.name] = freeSlots
             busyRow[teacher.name] = busySlots
         })
@@ -83,12 +91,15 @@ export const useExport = () => {
                 { wch: 20 }, // Khung giờ column
                 ...teachers.map(() => ({ wch: 15 })) // Teacher columns
             ]
+
             worksheet['!cols'] = colWidths
 
             // Style cho header row
             const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1')
+
             for (let C = range.s.c; C <= range.e.c; ++C) {
                 const address = XLSX.utils.encode_cell({ r: 0, c: C })
+
                 if (!worksheet[address]) continue
                 worksheet[address].s = {
                     font: { bold: true },
@@ -98,21 +109,25 @@ export const useExport = () => {
 
             // Tạo workbook
             const workbook = XLSX.utils.book_new()
+
             XLSX.utils.book_append_sheet(workbook, worksheet, 'Lịch rảnh giáo viên')
 
             // Export file
             const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
+
             const blob = new Blob([excelBuffer], {
                 type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             })
 
             const currentDate = new Date().toISOString().slice(0, 10)
+
             saveAs(blob, `${filename}-${currentDate}.xlsx`)
 
             return { success: true, message: 'Xuất file Excel thành công!' }
         } catch (error) {
             console.error('Export to Excel error:', error)
-            return { success: false, message: 'Lỗi khi xuất file Excel!' }
+            
+return { success: false, message: 'Lỗi khi xuất file Excel!' }
         }
     }
 
@@ -127,12 +142,14 @@ export const useExport = () => {
             // Create and download file
             const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' })
             const currentDate = new Date().toISOString().slice(0, 10)
+
             saveAs(blob, `${filename}-${currentDate}.csv`)
 
             return { success: true, message: 'Xuất file CSV thành công!' }
         } catch (error) {
             console.error('Export to CSV error:', error)
-            return { success: false, message: 'Lỗi khi xuất file CSV!' }
+            
+return { success: false, message: 'Lỗi khi xuất file CSV!' }
         }
     }
 
@@ -147,15 +164,20 @@ export const useExport = () => {
         const csvContent = [
             // Headers
             headers.join(','),
+
             // Data rows
             ...data.map(row =>
                 headers.map(header => {
                     const value = row[header]
+
+
                     // Escape commas and quotes in CSV
                     if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
                         return `"${value.replace(/"/g, '""')}"`
                     }
-                    return value
+
+                    
+return value
                 }).join(',')
             )
         ].join('\n')
@@ -192,21 +214,25 @@ export const useExport = () => {
 
             // Create workbook
             const workbook = XLSX.utils.book_new()
+
             XLSX.utils.book_append_sheet(workbook, worksheet, 'Thống kê giáo viên')
 
             // Export
             const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
+
             const blob = new Blob([excelBuffer], {
                 type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             })
 
             const currentDate = new Date().toISOString().slice(0, 10)
+
             saveAs(blob, `${filename}-${currentDate}.xlsx`)
 
             return { success: true, message: 'Xuất thống kê thành công!' }
         } catch (error) {
             console.error('Export summary error:', error)
-            return { success: false, message: 'Lỗi khi xuất thống kê!' }
+            
+return { success: false, message: 'Lỗi khi xuất thống kê!' }
         }
     }
 
