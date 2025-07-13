@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 
 import type { ClassType } from '@/types/classes'
-import { TeacherListResponse } from './useTeacher'
+import type { TeacherListResponse } from './useTeacher'
 
 // Interface cho Class data
 interface ClassInfo {
@@ -38,7 +38,8 @@ interface CreateClassDto {
     name: string
     total_lesson_per_week: number
     class_type: ClassType
-    teacher_id: string
+    teacher_id: string,
+    course_id: string
 }
 
 interface UpdateClassDto {

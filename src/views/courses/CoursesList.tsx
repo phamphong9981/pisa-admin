@@ -2,16 +2,21 @@
 
 // React Imports
 import { useMemo, useState } from 'react'
+
 import { useRouter } from 'next/navigation'
 
 // MUI Imports
 import {
+  Avatar,
+  Badge,
   Box,
   Button,
   Card,
   CardContent,
   CardHeader,
   Chip,
+  Dialog,
+  DialogContent,
   IconButton,
   InputAdornment,
   Table,
@@ -23,15 +28,15 @@ import {
   TableRow,
   TextField,
   Tooltip,
-  Typography,
-  Avatar,
-  Badge
+  Typography
 } from '@mui/material'
 import { styled } from '@mui/material/styles'
 
 // Hook Imports
 import { useCourseList } from '@/@core/hooks/useCourse'
-import { useTeacherList } from '@/@core/hooks/useTeacher'
+
+// Component Imports
+import CreateCourseForm from './CreateCourseForm'
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   fontWeight: 500,
@@ -53,7 +58,7 @@ const getCourseTypeColor = (courseType: string) => {
   }
 }
 
-const getCourseTypeLabel = (courseType: string) => {
+const getDisplayCourseTypeLabel = (courseType: string) => {
   switch (courseType) {
     case 'FT_listening':
       return 'Nghe'
@@ -77,8 +82,9 @@ const CoursesList = () => {
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(10)
   const [searchTerm, setSearchTerm] = useState('')
+  const [openCreateDialog, setOpenCreateDialog] = useState(false)
+  
   const { data: courses, isLoading, error } = useCourseList()
-  const { data: teachers, isLoading: isTeachersLoading } = useTeacherList()
 
   // Router
   const router = useRouter()
@@ -91,7 +97,7 @@ const CoursesList = () => {
       const teacherName = course.teacher?.name || ''
       
       return course.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        getCourseTypeLabel(course.type).toLowerCase().includes(searchTerm.toLowerCase()) ||
+        getDisplayCourseTypeLabel(course.type).toLowerCase().includes(searchTerm.toLowerCase()) ||
         teacherName.toLowerCase().includes(searchTerm.toLowerCase())
     })
   }, [searchTerm, courses])
@@ -99,6 +105,7 @@ const CoursesList = () => {
   // Paginate data
   const paginatedData = useMemo(() => {
     const startIndex = page * rowsPerPage
+
     return filteredData.slice(startIndex, startIndex + rowsPerPage)
   }, [filteredData, page, rowsPerPage])
 
@@ -111,7 +118,7 @@ const CoursesList = () => {
     setPage(0)
   }
 
-  if (isLoading || isTeachersLoading) {
+  if (isLoading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
         <Typography>Đang tải dữ liệu...</Typography>
@@ -128,136 +135,150 @@ const CoursesList = () => {
   }
 
   return (
-    <Card>
-      <CardHeader
-        title="Danh sách khóa học"
-        subheader="Quản lý các khóa học tại trung tâm"
-        action={
-          <Box display="flex" gap={2} alignItems="center">
-            <Button
-              variant="contained"
-              startIcon={<i className="ri-add-line" />}
-              onClick={() => router.push('/courses/create')}
-              sx={{ minWidth: 'auto' }}
-            >
-              Tạo khóa học mới
-            </Button>
-            <TextField
-              size="small"
-              placeholder="Tìm kiếm khóa học..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <i className="ri-search-line" />
-                  </InputAdornment>
-                )
-              }}
-              sx={{ minWidth: 300 }}
-            />
-          </Box>
-        }
-      />
-      <CardContent>
-        <TableContainer>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <StyledTableCell>Khóa học</StyledTableCell>
-                <StyledTableCell>Loại khóa</StyledTableCell>
-                <StyledTableCell align="center">Số lớp</StyledTableCell>
-                <StyledTableCell>Giáo viên</StyledTableCell>
-                <StyledTableCell align="center">Thao tác</StyledTableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {paginatedData.map((course) => (
-                <TableRow key={course.name} hover onClick={() => router.push(`/courses/${encodeURIComponent(course.id)}`)}>
-                  <TableCell>
-                    <Box display="flex" alignItems="center" gap={2}>
-                      <Avatar sx={{ bgcolor: 'primary.main' }}>
-                        {getInitials(course.name)}
-                      </Avatar>
-                      <Box>
-                        <Typography variant="body2" fontWeight={500}>
-                          {course.name}
+    <>
+      <Card>
+        <CardHeader
+          title="Quản lý khóa học"
+          subheader="Quản lý các khóa học tại trung tâm"
+          action={
+            <Box display="flex" gap={2} alignItems="center">
+              <Button
+                variant="contained"
+                startIcon={<i className="ri-add-line" />}
+                onClick={() => setOpenCreateDialog(true)}
+                sx={{ minWidth: 'auto' }}
+              >
+                Tạo khóa học mới
+              </Button>
+              <TextField
+                size="small"
+                placeholder="Tìm kiếm khóa học..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <i className="ri-search-line" />
+                    </InputAdornment>
+                  )
+                }}
+                sx={{ minWidth: 300 }}
+              />
+            </Box>
+          }
+        />
+        <CardContent>
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <StyledTableCell>Khóa học</StyledTableCell>
+                  <StyledTableCell>Loại khóa</StyledTableCell>
+                  <StyledTableCell align="center">Số lớp</StyledTableCell>
+                  <StyledTableCell>Giáo viên</StyledTableCell>
+                  <StyledTableCell align="center">Thao tác</StyledTableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {paginatedData.map((course) => (
+                  <TableRow key={course.name} hover onClick={() => router.push(`/courses/${encodeURIComponent(course.id)}`)}>
+                    <TableCell>
+                      <Box display="flex" alignItems="center" gap={2}>
+                        <Avatar sx={{ bgcolor: 'primary.main' }}>
+                          {getInitials(course.name)}
+                        </Avatar>
+                        <Box>
+                          <Typography variant="body2" fontWeight={500}>
+                            {course.name}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {course.classes.length} lớp học
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </TableCell>
+                    <TableCell>
+                      <Chip 
+                        label={getDisplayCourseTypeLabel(course.type)} 
+                        color={getCourseTypeColor(course.type) as any}
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell align="center">
+                      <Badge badgeContent={course.classes.length} color="primary">
+                        <Typography variant="body2">
+                          {course.classes.length} lớp
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {course.classes.length} lớp học
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <Avatar sx={{ width: 24, height: 24, fontSize: '0.75rem' }}>
+                          {getInitials(course.teacher?.name || '')}
+                        </Avatar>
+                        <Typography variant="body2">
+                          {course.teacher?.name || 'Chưa phân công'}
                         </Typography>
                       </Box>
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Chip 
-                      label={getCourseTypeLabel(course.type)} 
-                      color={getCourseTypeColor(course.type) as any}
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell align="center">
-                    <Badge badgeContent={course.classes.length} color="primary">
-                      <Typography variant="body2">
-                        {course.classes.length} lớp
-                      </Typography>
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Box display="flex" alignItems="center" gap={1}>
-                      <Avatar sx={{ width: 24, height: 24, fontSize: '0.75rem' }}>
-                        {getInitials(course.teacher?.name || '')}
-                      </Avatar>
-                      <Typography variant="body2">
-                        {course.teacher?.name || 'Chưa phân công'}
-                      </Typography>
-                    </Box>
-                  </TableCell>
-                  <TableCell align="center">
-                    <Box display="flex" gap={1} justifyContent="center">
-                      <Tooltip title="Xem chi tiết khóa học">
-                        <IconButton 
-                          size="small" 
-                          color="primary"
-                          onClick={() => router.push(`/courses/${encodeURIComponent(course.id)}`)}
-                        >
-                          <i className="ri-eye-line" />
-                        </IconButton>
-                      </Tooltip>
-                      {/* <Tooltip title="Xem lịch học">
-                        <IconButton 
-                          size="small" 
-                          color="info"
-                          onClick={() => router.push(`/courses/${encodeURIComponent(course.id)}/schedule`)}
-                        >
-                          <i className="ri-calendar-line" />
-                        </IconButton>
-                      </Tooltip> */}
-                      {/* <Tooltip title="Chỉnh sửa">
-                        <IconButton size="small" color="warning">
-                          <i className="ri-edit-line" />
-                        </IconButton>
-                      </Tooltip> */}
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-        
-        <TablePagination
-          component="div"
-          count={filteredData.length}
-          page={page}
-          onPageChange={handleChangePage}
-          rowsPerPage={rowsPerPage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-          labelRowsPerPage="Số hàng mỗi trang:"
-          labelDisplayedRows={({ from, to, count }) => `${from}-${to} trong ${count}`}
-        />
-      </CardContent>
-    </Card>
+                    </TableCell>
+                    <TableCell align="center">
+                      <Box display="flex" gap={1} justifyContent="center">
+                        <Tooltip title="Xem chi tiết khóa học">
+                          <IconButton 
+                            size="small" 
+                            color="primary"
+                            onClick={() => router.push(`/courses/${encodeURIComponent(course.id)}`)}
+                          >
+                            <i className="ri-eye-line" />
+                          </IconButton>
+                        </Tooltip>
+                        {/* <Tooltip title="Xem lịch học">
+                          <IconButton 
+                            size="small" 
+                            color="info"
+                            onClick={() => router.push(`/courses/${encodeURIComponent(course.id)}/schedule`)}
+                          >
+                            <i className="ri-calendar-line" />
+                          </IconButton>
+                        </Tooltip> */}
+                        {/* <Tooltip title="Chỉnh sửa">
+                          <IconButton size="small" color="warning">
+                            <i className="ri-edit-line" />
+                          </IconButton>
+                        </Tooltip> */}
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          
+          <TablePagination
+            component="div"
+            count={filteredData.length}
+            page={page}
+            onPageChange={handleChangePage}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            labelRowsPerPage="Số hàng mỗi trang:"
+            labelDisplayedRows={({ from, to, count }) => `${from}-${to} trong ${count}`}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Create Course Dialog */}
+      <Dialog
+        open={openCreateDialog}
+        onClose={() => setOpenCreateDialog(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogContent>
+          <CreateCourseForm onSuccess={() => setOpenCreateDialog(false)} />
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 

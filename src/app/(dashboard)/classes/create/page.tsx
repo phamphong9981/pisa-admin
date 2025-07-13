@@ -1,18 +1,15 @@
-export const runtime = 'edge';
+'use client'
 
-// Next Imports
-import type { Metadata } from 'next'
+import { useSearchParams } from 'next/navigation'
 
 // Component Imports
 import CreateClassForm from '@views/classes/CreateClassForm'
 
-export const metadata: Metadata = {
-  title: 'Tạo lớp học mới',
-  description: 'Tạo lớp học mới tại trung tâm'
-}
-
 const CreateClassPage = () => {
-  return <CreateClassForm />
+  const searchParams = useSearchParams()
+  const courseId = searchParams.get('course')
+
+  return <CreateClassForm courseId={courseId || undefined} />
 }
 
 export default CreateClassPage 

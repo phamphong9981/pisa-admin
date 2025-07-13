@@ -7,7 +7,7 @@ import type { Metadata } from 'next'
 import CoursesList from '@views/courses/CoursesList'
 
 export const metadata: Metadata = {
-  title: 'Danh sách khóa học',
+  title: 'Quản lý khóa học',
   description: 'Quản lý danh sách các khóa học tại trung tâm'
 }
 

@@ -31,7 +31,11 @@ const StyledCard = styled(Card)(({ theme }) => ({
   marginBottom: theme.spacing(3)
 }))
 
-const CreateClassForm = () => {
+interface CreateClassFormProps {
+  courseId?: string
+}
+
+const CreateClassForm = ({ courseId }: CreateClassFormProps) => {
   const router = useRouter()
   const createClassMutation = useCreateClass()
   const { data: teachers, isLoading: isTeachersLoading, error: teachersError } = useTeacherList()
@@ -40,7 +44,8 @@ const CreateClassForm = () => {
     name: '',
     total_lesson_per_week: 1,
     class_type: ClassType.FT_LISTENING,
-    teacher_id: ''
+    teacher_id: '',
+    course_id: courseId || ''
   })
   
   const [openSnackbar, setOpenSnackbar] = useState(false)
@@ -68,12 +73,13 @@ const CreateClassForm = () => {
         name: '',
         total_lesson_per_week: 1,
         class_type: ClassType.FT_LISTENING,
-        teacher_id: ''
+        teacher_id: '',
+        course_id: courseId || ''
       })
       
-      // Redirect sau 2 giây
+      // Quay lại trang trước sau 2 giây
       setTimeout(() => {
-        router.push('/classes')
+        router.back()
       }, 2000)
       
     } catch (error) {
@@ -117,7 +123,7 @@ const CreateClassForm = () => {
         <Button 
           variant="outlined" 
           startIcon={<i className="ri-arrow-left-line" />}
-          onClick={() => router.push('/classes')}
+          onClick={() => router.back()}
         >
           Quay lại
         </Button>
@@ -210,7 +216,7 @@ const CreateClassForm = () => {
                 <Box display="flex" gap={2} justifyContent="flex-end">
                   <Button
                     variant="outlined"
-                    onClick={() => router.push('/classes')}
+                    onClick={() => router.back()}
                     disabled={createClassMutation.isPending}
                   >
                     Hủy

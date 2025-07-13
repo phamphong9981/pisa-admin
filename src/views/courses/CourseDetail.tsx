@@ -1,5 +1,7 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
+
 import {
   Avatar,
   Badge,
@@ -21,8 +23,8 @@ import {
   Tooltip,
   Typography
 } from '@mui/material'
+
 import { styled } from '@mui/material/styles'
-import { useRouter } from 'next/navigation'
 
 import { useCourseInfo } from '@/@core/hooks/useCourse'
 
@@ -87,6 +89,7 @@ const CourseDetail = ({ courseName }: CourseDetailProps) => {
   const router = useRouter()
   const { data: course, isLoading: isLoadingCourses, error: coursesError } = useCourseInfo(courseName)
   const classes = course?.classes
+
   // Lấy danh sách lớp học của khóa học này
   if (isLoadingCourses) {
     return (
@@ -217,7 +220,7 @@ const CourseDetail = ({ courseName }: CourseDetailProps) => {
                 variant="contained"
                 size="small"
                 startIcon={<i className="ri-add-line" />}
-                onClick={() => router.push(`/classes/create?course=${encodeURIComponent(courseName)}`)}
+                onClick={() => router.push(`/classes/create?course=${encodeURIComponent(course.id)}`)}
               >
                 Thêm lớp học
               </Button>
