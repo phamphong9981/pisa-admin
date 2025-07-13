@@ -3,6 +3,8 @@
 // React Imports
 import { useMemo, useState } from 'react'
 
+import { useRouter } from 'next/navigation'
+
 // MUI Imports
 import {
   Box,
@@ -17,7 +19,6 @@ import {
   TableHead,
   TableRow,
   Typography,
-  useTheme,
   IconButton,
   Tooltip,
   Button,
@@ -30,6 +31,7 @@ import { styled } from '@mui/material/styles'
 
 // Hooks
 import { useTeacherList } from '@/@core/hooks/useTeacher'
+import { SCHEDULE_TIME, useGetAllSchedule } from '@/@core/hooks/useSchedule'
 import useExport from '@/@core/hooks/useExport'
 
 
@@ -37,7 +39,8 @@ const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
   fontWeight: 600,
   fontSize: '0.875rem',
   padding: theme.spacing(1.5),
-  backgroundColor: theme.palette.grey[100],
+  backgroundColor: '#f5f5f5',
+  color: '#424242',
   border: `1px solid ${theme.palette.divider}`,
   textAlign: 'center',
   position: 'sticky',
@@ -49,7 +52,8 @@ const StyledTimeCell = styled(TableCell)(({ theme }) => ({
   fontWeight: 600,
   fontSize: '0.75rem',
   padding: theme.spacing(1),
-  backgroundColor: theme.palette.grey[50],
+  backgroundColor: '#fafafa',
+  color: '#424242',
   border: `1px solid ${theme.palette.divider}`,
   textAlign: 'center',
   minWidth: '100px',
@@ -59,34 +63,76 @@ const StyledTimeCell = styled(TableCell)(({ theme }) => ({
 }))
 
 const ScheduleCell = styled(TableCell, {
-  shouldForwardProp: (prop) => prop !== 'isBusy'
-})<{ isBusy?: boolean }>(({ theme, isBusy }) => ({
+  shouldForwardProp: (prop) => prop !== 'isBusy' && prop !== 'isTeaching'
+})<{ isBusy?: boolean; isTeaching?: boolean }>(({ theme, isBusy, isTeaching }) => ({
   padding: theme.spacing(0.5),
   border: `1px solid ${theme.palette.divider}`,
   textAlign: 'center',
-  cursor: 'pointer',
-  backgroundColor: isBusy ? theme.palette.error.light : theme.palette.success.light,
+  cursor: isTeaching ? 'pointer' : 'default',
+  minWidth: '120px',
+  minHeight: '60px',
+  backgroundColor: isTeaching 
+    ? '#e3f2fd' // Light blue for teaching
+    : isBusy 
+      ? '#ffebee' // Light red for busy
+      : '#f1f8e9', // Light green for free
   '&:hover': {
-    backgroundColor: isBusy ? theme.palette.error.main : theme.palette.success.main,
+    backgroundColor: isTeaching 
+      ? '#bbdefb' // Darker blue on hover
+      : isBusy 
+        ? '#ffcdd2' // Darker red on hover
+        : '#dcedc8', // Darker green on hover
   },
-  transition: 'background-color 0.2s ease'
+  transition: 'background-color 0.2s ease',
+  position: 'relative'
 }))
 
-// Constants
-const DAYS = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật']
+const TeachingInfo = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  gap: theme.spacing(0.5),
+  padding: theme.spacing(0.5),
+  '& .class-name': {
+    fontSize: '0.75rem',
+    fontWeight: 600,
+    color: '#1976d2',
+    textAlign: 'center',
+    lineHeight: 1.2,
+    maxWidth: '100%',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap'
+  },
+  '& .lesson-info': {
+    fontSize: '0.65rem',
+    color: '#666',
+    backgroundColor: '#fff',
+    padding: '2px 6px',
+    borderRadius: '8px',
+    border: '1px solid #e0e0e0'
+  }
+}))
 
-const TIME_SLOTS = [
-  '8:00-10:00',
-  '10:00-12:00', 
-  '13:00-15:00',
-  '15:00-17:00',
-  '18:00-20:00',
-  '20:00-22:00'
-]
+
+const getDayInVietnamese = (englishDay: string) => {
+  const dayMap: { [key: string]: string } = {
+    'Monday': 'Thứ 2',
+    'Tuesday': 'Thứ 3', 
+    'Wednesday': 'Thứ 4',
+    'Thursday': 'Thứ 5',
+    'Friday': 'Thứ 6',
+    'Saturday': 'Thứ 7',
+    'Sunday': 'Chủ nhật'
+  }
+
+  return dayMap[englishDay] || englishDay
+}
 
 const TeachersSchedule = () => {
-  const theme = useTheme()
+  const router = useRouter()
   const { data: teachers, isLoading, error } = useTeacherList()
+  const { data: schedules, isLoading: isSchedulesLoading } = useGetAllSchedule()
   const { exportToExcel, exportToCSV, exportSummary } = useExport()
   
   // States for export menu
@@ -105,16 +151,16 @@ const TeachersSchedule = () => {
   // Generate time slots for all 7 days
   const allTimeSlots = useMemo(() => {
     const slots: { day: string; time: string; slot: number }[] = []
-    let slotIndex = 0
     
-    DAYS.forEach((day) => {
-      TIME_SLOTS.forEach((time) => {
-        slots.push({
-          day,
-          time,
-          slot: slotIndex
-        })
-        slotIndex++
+    SCHEDULE_TIME.forEach((timeSlot, index) => {
+      const parts = timeSlot.split(' ')
+      const time = parts[0] // "8:00-10:00"
+      const englishDay = parts[1] // "Monday"
+      
+      slots.push({
+        day: getDayInVietnamese(englishDay),
+        time: time,
+        slot: index
       })
     })
     
@@ -124,6 +170,24 @@ const TeachersSchedule = () => {
   // Check if teacher is busy at specific slot
   const isTeacherBusy = (teacherSchedule: number[], slotIndex: number) => {
     return teacherSchedule.includes(slotIndex)
+  }
+
+  // Check if teacher is teaching at specific slot
+  const isTeacherTeaching = (teacherId: string, slotIndex: number) => {
+    if (!schedules) return false
+
+    return schedules.some(schedule => 
+      schedule.teacher_id === teacherId && schedule.schedule_time === slotIndex + 1
+    )
+  }
+
+  // Get teaching info for a teacher at specific slot
+  const getTeachingInfo = (teacherId: string, slotIndex: number) => {
+    if (!schedules) return null
+
+    return schedules.find(schedule => 
+      schedule.teacher_id === teacherId && schedule.schedule_time === slotIndex + 1
+    )
   }
 
   // Handle export menu
@@ -179,7 +243,12 @@ const TeachersSchedule = () => {
     setNotification(prev => ({ ...prev, open: false }))
   }
 
-  if (isLoading) {
+  // Handle click on teaching cell
+  const handleTeachingCellClick = (classId: string) => {
+    router.push(`/classes/${classId}`)
+  }
+
+  if (isLoading || isSchedulesLoading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
         <Typography>Đang tải dữ liệu giáo viên...</Typography>
@@ -208,12 +277,29 @@ const TeachersSchedule = () => {
               <Chip 
                 size="small" 
                 label="Rảnh" 
-                sx={{ backgroundColor: theme.palette.success.light }}
+                sx={{ 
+                  backgroundColor: '#f1f8e9',
+                  color: '#2e7d32',
+                  border: '1px solid #c8e6c9'
+                }}
               />
               <Chip 
                 size="small" 
                 label="Bận" 
-                sx={{ backgroundColor: theme.palette.error.light }}
+                sx={{ 
+                  backgroundColor: '#ffebee',
+                  color: '#c62828',
+                  border: '1px solid #ffcdd2'
+                }}
+              />
+              <Chip 
+                size="small" 
+                label="Đang dạy" 
+                sx={{ 
+                  backgroundColor: '#e3f2fd',
+                  color: '#1976d2',
+                  border: '1px solid #bbdefb'
+                }}
               />
               
               {/* Export Button */}
@@ -257,12 +343,24 @@ const TeachersSchedule = () => {
           }
         />
         <CardContent>
-          <TableContainer sx={{ maxHeight: '70vh', overflow: 'auto' }}>
+          <TableContainer sx={{ 
+            maxHeight: '70vh', 
+            overflow: 'auto',
+            border: '1px solid #e0e0e0',
+            borderRadius: '8px'
+          }}>
             <Table stickyHeader>
               <TableHead>
                 <TableRow>
                   <StyledHeaderCell sx={{ minWidth: '150px' }}>
-                    Khung giờ
+                    <Box>
+                      <Typography variant="body2" fontWeight={600}>
+                        Khung giờ
+                      </Typography>
+                      <Typography variant="caption" color="textSecondary">
+                        Theo tuần
+                      </Typography>
+                    </Box>
                   </StyledHeaderCell>
                   {teachers?.map((teacher) => (
                     <StyledHeaderCell key={teacher.id}>
@@ -291,28 +389,47 @@ const TeachersSchedule = () => {
                         </Typography>
                       </Box>
                     </StyledTimeCell>
-                    {teachers?.map((teacher) => (
-                      <ScheduleCell
-                        key={`${teacher.id}-${slot.slot}`}
-                        isBusy={isTeacherBusy(teacher.registeredBusySchedule, slot.slot)}
-                      >
-                        <Tooltip 
-                          title={
-                            isTeacherBusy(teacher.registeredBusySchedule, slot.slot) 
-                              ? `${teacher.name} bận vào ${slot.day} ${slot.time}`
-                              : `${teacher.name} rảnh vào ${slot.day} ${slot.time}`
-                          }
+                    {teachers?.map((teacher) => {
+                      const isBusy = isTeacherBusy(teacher.registeredBusySchedule, slot.slot)
+                      const isTeaching = isTeacherTeaching(teacher.id, slot.slot)
+                      const teachingInfo = getTeachingInfo(teacher.id, slot.slot)
+                      
+                      return (
+                        <ScheduleCell
+                          key={`${teacher.id}-${slot.slot}`}
+                          isBusy={isBusy}
+                          isTeaching={isTeaching}
+                          onClick={isTeaching && teachingInfo ? () => handleTeachingCellClick(teachingInfo.class_id) : undefined}
                         >
-                          <IconButton size="small">
-                            {isTeacherBusy(teacher.registeredBusySchedule, slot.slot) ? (
-                              <i className="ri-close-line" style={{ color: theme.palette.error.main }} />
-                            ) : (
-                              <i className="ri-check-line" style={{ color: theme.palette.success.main }} />
-                            )}
-                          </IconButton>
-                        </Tooltip>
-                      </ScheduleCell>
-                    ))}
+                          {isTeaching && teachingInfo ? (
+                            <TeachingInfo>
+                              <Box className="class-name" title={teachingInfo.class_name}>
+                                {teachingInfo.class_name}
+                              </Box>
+                              <Box className="lesson-info">
+                                Buổi {teachingInfo.lesson}
+                              </Box>
+                            </TeachingInfo>
+                          ) : (
+                            <Tooltip 
+                              title={
+                                isBusy 
+                                  ? `${teacher.name} bận vào ${slot.day} ${slot.time}`
+                                  : `${teacher.name} rảnh vào ${slot.day} ${slot.time}`
+                              }
+                            >
+                              <IconButton size="small">
+                                {isBusy ? (
+                                  <i className="ri-close-line" style={{ color: '#c62828', fontSize: '18px' }} />
+                                ) : (
+                                  <i className="ri-check-line" style={{ color: '#2e7d32', fontSize: '18px' }} />
+                                )}
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                        </ScheduleCell>
+                      )
+                    })}
                   </TableRow>
                 ))}
               </TableBody>
@@ -327,7 +444,9 @@ const TeachersSchedule = () => {
             <Box display="flex" gap={2} flexWrap="wrap">
               {teachers?.map((teacher) => {
                 const busySlots = teacher.registeredBusySchedule.length
-                const freeSlots = 42 - busySlots
+                const teachingSlots = schedules?.filter(s => s.teacher_id === teacher.id).length || 0
+                const totalSlots = SCHEDULE_TIME.length
+                const freeSlots = totalSlots - busySlots - teachingSlots
                 
                 return (
                   <Card key={teacher.id} variant="outlined" sx={{ minWidth: 200 }}>
@@ -336,11 +455,16 @@ const TeachersSchedule = () => {
                         {teacher.name}
                       </Typography>
                       <Box display="flex" justifyContent="space-between" mt={1}>
-                        <Typography variant="body2" color="success.main">
-                          Rảnh: {freeSlots}/42
+                        <Typography variant="body2" sx={{ color: '#2e7d32' }}>
+                          Rảnh: {freeSlots}/{totalSlots}
                         </Typography>
-                        <Typography variant="body2" color="error.main">
-                          Bận: {busySlots}/42
+                        <Typography variant="body2" sx={{ color: '#c62828' }}>
+                          Bận: {busySlots}/{totalSlots}
+                        </Typography>
+                      </Box>
+                      <Box display="flex" justifyContent="space-between" mt={0.5}>
+                        <Typography variant="body2" sx={{ color: '#1976d2' }}>
+                          Đang dạy: {teachingSlots}/{totalSlots}
                         </Typography>
                       </Box>
                       <Box display="flex" gap={0.5} mt={1}>

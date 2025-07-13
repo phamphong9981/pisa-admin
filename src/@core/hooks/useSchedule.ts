@@ -110,7 +110,7 @@ const updateLessonSchedule = async (classId: string, lesson: number, scheduleTim
         class_id: classId,
         lesson
     });
-    
+
     return data.data;
 }
 
@@ -125,5 +125,32 @@ export const useUpdateLessonSchedule = () => {
         onError: (error) => {
             console.error('Error updating lesson schedule:', error)
         }
+    })
+}
+
+interface allScheduleResponse {
+    schedule_time: number
+    teacher_id: string
+    class_name: string
+    class_type: string
+    teacher_name: string
+    class_id: string
+    lesson: number
+}
+
+const getAllSchedule = async (): Promise<allScheduleResponse[]> => {
+    const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/schedules`);
+
+    return data.data;
+}
+
+export const useGetAllSchedule = () => {
+    return useQuery({
+        queryKey: ['schedules'],
+        queryFn: getAllSchedule,
+        staleTime: 5 * 60 * 1000, // 5 phút
+        gcTime: 10 * 60 * 1000, // 10 phút
+        retry: 1,
+        retryDelay: (attemptIndex) => Math.min(1000 * 1 ** attemptIndex, 30000),
     })
 }
