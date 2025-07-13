@@ -76,6 +76,8 @@ const getClassTypeLabel = (classType: string) => {
 }
 
 const getInitials = (name: string) => {
+  console.log(name);
+  
   return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)
 }
 
@@ -104,7 +106,7 @@ const ClassDetail = ({ classId }: ClassDetailProps) => {
 
   // States for lesson editing
   const [showEditLessonDialog, setShowEditLessonDialog] = useState(false)
-  
+
   const [selectedLesson, setSelectedLesson] = useState<{
     lesson: number
     scheduleTime: number
@@ -354,7 +356,7 @@ const ClassDetail = ({ classId }: ClassDetailProps) => {
                         <TableCell>
                           <Box display="flex" alignItems="center" gap={2}>
                             <Avatar sx={{ bgcolor: 'primary.main' }}>
-                              {getInitials(student.fullName)}
+                              {getInitials(student.fullName || "")}
                             </Avatar>
                             <Box>
                               <Typography variant="body2" fontWeight={500}>
@@ -484,7 +486,7 @@ const ClassDetail = ({ classId }: ClassDetailProps) => {
                           </Typography>
                           <Box display="flex" alignItems="center" gap={1} mt={0.5}>
                             <Avatar sx={{ width: 20, height: 20, fontSize: '0.7rem' }}>
-                              {getInitials(lesson.teacherName)}
+                              {getInitials(lesson.teacherName || "")}
                             </Avatar>
                             <Typography variant="caption" color="text.secondary">
                               GV: {lesson.teacherName}
@@ -548,7 +550,7 @@ const ClassDetail = ({ classId }: ClassDetailProps) => {
                                         <TableCell>
                                           <Box display="flex" alignItems="center" gap={2}>
                                             <Avatar sx={{ bgcolor: 'success.main', width: 32, height: 32 }}>
-                                              {getInitials(student.fullname)}
+                                              {getInitials(student.fullname || "")}
                                             </Avatar>
                                             <Box>
                                               <Typography variant="body2" fontWeight={500}>
@@ -612,7 +614,7 @@ const ClassDetail = ({ classId }: ClassDetailProps) => {
                                         <TableCell>
                                           <Box display="flex" alignItems="center" gap={2}>
                                             <Avatar sx={{ bgcolor: 'warning.main', width: 32, height: 32 }}>
-                                              {getInitials(student.fullname)}
+                                              {getInitials(student.fullname || "")}
                                             </Avatar>
                                             <Box>
                                               <Typography variant="body2" fontWeight={500}>
@@ -806,7 +808,7 @@ const ClassDetail = ({ classId }: ClassDetailProps) => {
                           <MenuItem key={teacher.id} value={teacher.id}>
                             <Box display="flex" alignItems="center" gap={2}>
                               <Avatar sx={{ width: 32, height: 32 }}>
-                                {getInitials(teacher.name)}
+                                {getInitials(teacher.name|| "")}
                               </Avatar>
                               <Box>
                                 <Typography variant="body2" fontWeight={500}>
@@ -866,7 +868,7 @@ const ClassDetail = ({ classId }: ClassDetailProps) => {
                 <Box mt={2} p={2} sx={{ bgcolor: 'error.50', borderRadius: 1, border: '1px solid', borderColor: 'error.200' }}>
                   <Box display="flex" alignItems="center" gap={2} mb={1}>
                     <Avatar sx={{ bgcolor: 'error.main', width: 40, height: 40 }}>
-                      {getInitials(selectedStudentToUnregister.fullName)}
+                      {getInitials(selectedStudentToUnregister.fullName || "")}
                     </Avatar>
                     <Box>
                       <Typography variant="h6">{selectedStudentToUnregister.fullName}</Typography>
