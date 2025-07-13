@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 
 import type { ClassType } from '@/types/classes'
+import { TeacherListResponse } from './useTeacher'
 
 // Interface cho Class data
 interface ClassInfo {
@@ -22,13 +23,13 @@ interface ClassInfo {
     }[]
 }
 
-interface ClassListResponse {
+export interface ClassListResponse {
     id: string,
     name: string,
     totalStudent: number,
     totalLessonPerWeek: number,
     classType: string,
-    teacherId: string,
+    teacher: TeacherListResponse,
     createdAt: string,
     updatedAt: string
 }
@@ -65,7 +66,7 @@ const fetchClassInfo = async (id: string): Promise<ClassInfo> => {
 
     // Thêm một chút delay để thấy trạng thái loading
     await new Promise((resolve) => setTimeout(resolve, 500));
-    
+
     return data.data;
 }
 
@@ -73,22 +74,22 @@ const createClass = async (classInfo: CreateClassDto) => {
     console.log(classInfo);
     const { data } = await axios.post(`${process.env.NEXT_PUBLIC_BASE_API}/classes`, classInfo);
 
-    
-return data.data;
+
+    return data.data;
 }
 
 const updateClass = async (id: string, classInfo: UpdateClassDto) => {
     const { data } = await axios.put(`${process.env.NEXT_PUBLIC_BASE_API}/classes/${id}`, classInfo);
 
-    
-return data.data;
+
+    return data.data;
 }
 
 const deleteClass = async (id: string) => {
     const { data } = await axios.delete(`${process.env.NEXT_PUBLIC_BASE_API}/classes/${id}`);
 
-    
-return data.data;
+
+    return data.data;
 }
 
 const registerStudentToClass = async (classId: string, username: string) => {
@@ -97,8 +98,8 @@ const registerStudentToClass = async (classId: string, username: string) => {
         username: username
     });
 
-    
-return data.data;
+
+    return data.data;
 }
 
 const unregisterStudentFromClass = async (classId: string, username: string) => {
@@ -107,8 +108,8 @@ const unregisterStudentFromClass = async (classId: string, username: string) => 
         username: username
     });
 
-    
-return data.data;
+
+    return data.data;
 }
 
 export const useClassList = () => {
@@ -235,5 +236,5 @@ export const useUpdateClass = () => {
     })
 }
 
-export type { ClassInfo, ClassListResponse, CreateClassDto, UpdateClassDto }
+export type { ClassInfo, CreateClassDto, UpdateClassDto }
 
