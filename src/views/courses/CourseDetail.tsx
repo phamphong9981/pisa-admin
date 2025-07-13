@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 import {
@@ -21,12 +22,15 @@ import {
   TableHead,
   TableRow,
   Tooltip,
-  Typography
+  Typography,
+  Dialog,
+  DialogContent
 } from '@mui/material'
 
 import { styled } from '@mui/material/styles'
 
 import { useCourseInfo } from '@/@core/hooks/useCourse'
+import CreateClassForm from '@/views/classes/CreateClassForm'
 
 const StyledCard = styled(Card)(({ theme }) => ({
   marginBottom: theme.spacing(3)
@@ -87,6 +91,7 @@ interface CourseDetailProps {
 
 const CourseDetail = ({ courseName }: CourseDetailProps) => {
   const router = useRouter()
+  const [openCreateClassDialog, setOpenCreateClassDialog] = useState(false)
   const { data: course, isLoading: isLoadingCourses, error: coursesError } = useCourseInfo(courseName)
   const classes = course?.classes
 
@@ -136,200 +141,217 @@ const CourseDetail = ({ courseName }: CourseDetailProps) => {
   }
   
   return (
-    <Box>
-      <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
-        <Box>
-          <Typography variant="h4" gutterBottom>Chi tiết khóa học</Typography>
-          <Typography variant="body2" color="text.secondary">
-            Khóa học: {courseName}
-          </Typography>
+    <>
+      <Box>
+        <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
+          <Box>
+            <Typography variant="h4" gutterBottom>Chi tiết khóa học</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Khóa học: {courseName}
+            </Typography>
+          </Box>
+          <Button 
+            variant="outlined" 
+            startIcon={<i className="ri-arrow-left-line" />}
+            onClick={() => router.push('/courses')}
+          >
+            Quay lại
+          </Button>
         </Box>
-        <Button 
-          variant="outlined" 
-          startIcon={<i className="ri-arrow-left-line" />}
-          onClick={() => router.push('/courses')}
-        >
-          Quay lại
-        </Button>
-      </Box>
 
-      {/* Thông tin cơ bản khóa học */}
-      <StyledCard>
-        <CardHeader 
-          title={
-            <Box display="flex" alignItems="center" gap={2}>
-              <Avatar sx={{ bgcolor: 'primary.main', width: 56, height: 56 }}>
-                {getInitials(course.name)}
-              </Avatar>
-              <Box>
-                <Typography variant="h5">{course.name}</Typography>
-                <Chip 
-                  label={getCourseTypeLabel(course.type)} 
-                  color={getCourseTypeColor(course.type) as any}
-                  size="small"
-                />
+        {/* Thông tin cơ bản khóa học */}
+        <StyledCard>
+          <CardHeader 
+            title={
+              <Box display="flex" alignItems="center" gap={2}>
+                <Avatar sx={{ bgcolor: 'primary.main', width: 56, height: 56 }}>
+                  {getInitials(course.name)}
+                </Avatar>
+                <Box>
+                  <Typography variant="h5">{course.name}</Typography>
+                  <Chip 
+                    label={getCourseTypeLabel(course.type)} 
+                    color={getCourseTypeColor(course.type) as any}
+                    size="small"
+                  />
+                </Box>
               </Box>
-            </Box>
-          }
-        />
-        <CardContent>
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
-              <Box mb={2}>
-                <Typography variant="body2" color="text.secondary">Giáo viên phụ trách</Typography>
-                <Typography variant="body1" fontWeight={500}>
-                  {course.teacher?.name || 'Chưa phân công'}
-                </Typography>
-              </Box>
-              <Box mb={2}>
-                <Typography variant="body2" color="text.secondary">Loại khóa học</Typography>
-                <Typography variant="body1" fontWeight={500}>
-                  {getCourseTypeLabel(course.type)}
-                </Typography>
-              </Box>
+            }
+          />
+          <CardContent>
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <Box mb={2}>
+                  <Typography variant="body2" color="text.secondary">Giáo viên phụ trách</Typography>
+                  <Typography variant="body1" fontWeight={500}>
+                    {course.teacher?.name || 'Chưa phân công'}
+                  </Typography>
+                </Box>
+                <Box mb={2}>
+                  <Typography variant="body2" color="text.secondary">Loại khóa học</Typography>
+                  <Typography variant="body1" fontWeight={500}>
+                    {getCourseTypeLabel(course.type)}
+                  </Typography>
+                </Box>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Box mb={2}>
+                  <Typography variant="body2" color="text.secondary">Tổng số lớp</Typography>
+                  <Typography variant="body1" fontWeight={500}>
+                    {course.classes.length} lớp học
+                  </Typography>
+                </Box>
+                <Box mb={2}>
+                  <Typography variant="body2" color="text.secondary">Trạng thái</Typography>
+                  <Chip 
+                    label="Đang hoạt động" 
+                    color="success" 
+                    size="small"
+                  />
+                </Box>
+              </Grid>
             </Grid>
-            <Grid item xs={12} md={6}>
-              <Box mb={2}>
-                <Typography variant="body2" color="text.secondary">Tổng số lớp</Typography>
-                <Typography variant="body1" fontWeight={500}>
-                  {course.classes.length} lớp học
-                </Typography>
-              </Box>
-              <Box mb={2}>
-                <Typography variant="body2" color="text.secondary">Trạng thái</Typography>
-                <Chip 
-                  label="Đang hoạt động" 
-                  color="success" 
-                  size="small"
-                />
-              </Box>
-            </Grid>
-          </Grid>
-        </CardContent>
-      </StyledCard>
+          </CardContent>
+        </StyledCard>
 
-      {/* Danh sách lớp học */}
-      <StyledCard>
-        <CardHeader 
-          title={
-            <Box display="flex" alignItems="center" justifyContent="space-between">
-              <Typography variant="h6">
-                Danh sách lớp học ({classes?.length || 0})
-              </Typography>
-              <Button
-                variant="contained"
-                size="small"
-                startIcon={<i className="ri-add-line" />}
-                onClick={() => router.push(`/classes/create?course=${encodeURIComponent(course.id)}`)}
-              >
-                Thêm lớp học
-              </Button>
-            </Box>
-          }
-        />
-        <CardContent>
-          {!classes || classes.length === 0 ? (
-            <Box textAlign="center" py={4}>
-              <Typography color="text.secondary">
-                Chưa có lớp học nào trong khóa học này
-              </Typography>
-            </Box>
-          ) : (
-            <TableContainer component={Paper} variant="outlined">
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <StyledTableCell>Lớp học</StyledTableCell>
-                    <StyledTableCell>Loại lớp</StyledTableCell>
-                    <StyledTableCell align="center">Số học sinh</StyledTableCell>
-                    <StyledTableCell align="center">Buổi/tuần</StyledTableCell>
-                    <StyledTableCell>Giáo viên</StyledTableCell>
-                    <StyledTableCell align="center">Thao tác</StyledTableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {classes.map((classItem) => (
-                    <TableRow key={classItem.id} hover onClick={() => router.push(`/classes/${classItem.id}`)}>
-                      <TableCell>
-                        <Box display="flex" alignItems="center" gap={2}>
-                          <Avatar sx={{ bgcolor: 'secondary.main' }}>
-                            {getInitials(classItem.name)}
-                          </Avatar>
-                          <Box>
-                            <Typography variant="body2" fontWeight={500}>
-                              {classItem.name}
+        {/* Danh sách lớp học */}
+        <StyledCard>
+          <CardHeader 
+            title={
+              <Box display="flex" alignItems="center" justifyContent="space-between">
+                <Typography variant="h6">
+                  Danh sách lớp học ({classes?.length || 0})
+                </Typography>
+                <Button
+                  variant="contained"
+                  size="small"
+                  startIcon={<i className="ri-add-line" />}
+                  onClick={() => setOpenCreateClassDialog(true)}
+                >
+                  Thêm lớp học
+                </Button>
+              </Box>
+            }
+          />
+          <CardContent>
+            {!classes || classes.length === 0 ? (
+              <Box textAlign="center" py={4}>
+                <Typography color="text.secondary">
+                  Chưa có lớp học nào trong khóa học này
+                </Typography>
+              </Box>
+            ) : (
+              <TableContainer component={Paper} variant="outlined">
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <StyledTableCell>Lớp học</StyledTableCell>
+                      <StyledTableCell>Loại lớp</StyledTableCell>
+                      <StyledTableCell align="center">Số học sinh</StyledTableCell>
+                      <StyledTableCell align="center">Buổi/tuần</StyledTableCell>
+                      <StyledTableCell>Giáo viên</StyledTableCell>
+                      <StyledTableCell align="center">Thao tác</StyledTableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {classes.map((classItem) => (
+                      <TableRow key={classItem.id} hover onClick={() => router.push(`/classes/${classItem.id}`)}>
+                        <TableCell>
+                          <Box display="flex" alignItems="center" gap={2}>
+                            <Avatar sx={{ bgcolor: 'secondary.main' }}>
+                              {getInitials(classItem.name)}
+                            </Avatar>
+                            <Box>
+                              <Typography variant="body2" fontWeight={500}>
+                                {classItem.name}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                ID: {classItem.id.slice(0, 8)}...
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={getClassTypeLabel(classItem.classType)} 
+                            color={getClassTypeColor(classItem.classType) as any}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell align="center">
+                          <Badge badgeContent={classItem.totalStudent} color="primary">
+                            <Typography variant="body2">
+                              {classItem.totalStudent} học sinh
                             </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              ID: {classItem.id.slice(0, 8)}...
+                          </Badge>
+                        </TableCell>
+                        <TableCell align="center">
+                          <Typography variant="body2">
+                            {classItem.totalLessonPerWeek} buổi
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Box display="flex" alignItems="center" gap={1}>
+                            <Avatar sx={{ width: 24, height: 24, fontSize: '0.75rem' }}>
+                              {getInitials(classItem.teacher?.name || '')}
+                            </Avatar>
+                            <Typography variant="body2">
+                              {classItem.teacher?.name || 'Chưa phân công'}
                             </Typography>
                           </Box>
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={getClassTypeLabel(classItem.classType)} 
-                          color={getClassTypeColor(classItem.classType) as any}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell align="center">
-                        <Badge badgeContent={classItem.totalStudent} color="primary">
-                          <Typography variant="body2">
-                            {classItem.totalStudent} học sinh
-                          </Typography>
-                        </Badge>
-                      </TableCell>
-                      <TableCell align="center">
-                        <Typography variant="body2">
-                          {classItem.totalLessonPerWeek} buổi
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <Avatar sx={{ width: 24, height: 24, fontSize: '0.75rem' }}>
-                            {getInitials(classItem.teacher?.name || '')}
-                          </Avatar>
-                          <Typography variant="body2">
-                            {classItem.teacher?.name || 'Chưa phân công'}
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                      <TableCell align="center">
-                        <Box display="flex" gap={1} justifyContent="center">
-                          <Tooltip title="Xem chi tiết lớp">
-                            <IconButton 
-                              size="small" 
-                              color="primary"
-                              onClick={() => router.push(`/classes/${classItem.id}`)}
-                            >
-                              <i className="ri-eye-line" />
-                            </IconButton>
-                          </Tooltip>
-                          {/* <Tooltip title="Xem lịch học">
-                            <IconButton 
-                              size="small" 
-                              color="info"
-                              onClick={() => router.push(`/classes/${classItem.id}/schedule`)}
-                            >
-                              <i className="ri-calendar-line" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Chỉnh sửa">
-                            <IconButton size="small" color="warning">
-                              <i className="ri-edit-line" />
-                            </IconButton>
-                          </Tooltip> */}
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
-        </CardContent>
-      </StyledCard>
-    </Box>
+                        </TableCell>
+                        <TableCell align="center">
+                          <Box display="flex" gap={1} justifyContent="center">
+                            <Tooltip title="Xem chi tiết lớp">
+                              <IconButton 
+                                size="small" 
+                                color="primary"
+                                onClick={() => router.push(`/classes/${classItem.id}`)}
+                              >
+                                <i className="ri-eye-line" />
+                              </IconButton>
+                            </Tooltip>
+                            {/* <Tooltip title="Xem lịch học">
+                              <IconButton 
+                                size="small" 
+                                color="info"
+                                onClick={() => router.push(`/classes/${classItem.id}/schedule`)}
+                              >
+                                <i className="ri-calendar-line" />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Chỉnh sửa">
+                              <IconButton size="small" color="warning">
+                                <i className="ri-edit-line" />
+                              </IconButton>
+                            </Tooltip> */}
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </CardContent>
+        </StyledCard>
+      </Box>
+
+      {/* Create Class Dialog */}
+      <Dialog
+        open={openCreateClassDialog}
+        onClose={() => setOpenCreateClassDialog(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogContent>
+          <CreateClassForm 
+            courseId={course.id} 
+            onSuccess={() => setOpenCreateClassDialog(false)} 
+          />
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 
