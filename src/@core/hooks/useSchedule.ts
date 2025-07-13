@@ -1,6 +1,51 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+
 import axios from 'axios'
 
+export const SCHEDULE_TIME = [
+    "8:00-10:00 Monday",
+    "10:00-12:00 Monday",
+    "14:00-16:00 Monday",
+    "16:00-18:00 Monday",
+    "18:00-20:00 Monday",
+    "20:00-22:00 Monday",
+    "8:00-10:00 Tuesday",
+    "10:00-12:00 Tuesday",
+    "14:00-16:00 Tuesday",
+    "16:00-18:00 Tuesday",
+    "18:00-20:00 Tuesday",
+    "20:00-22:00 Tuesday",
+    "8:00-10:00 Wednesday",
+    "10:00-12:00 Wednesday",
+    "14:00-16:00 Wednesday",
+    "16:00-18:00 Wednesday",
+    "18:00-20:00 Wednesday",
+    "20:00-22:00 Wednesday",
+    "8:00-10:00 Thursday",
+    "10:00-12:00 Thursday",
+    "14:00-16:00 Thursday",
+    "16:00-18:00 Thursday",
+    "18:00-20:00 Thursday",
+    "20:00-22:00 Thursday",
+    "8:00-10:00 Friday",
+    "10:00-12:00 Friday",
+    "14:00-16:00 Friday",
+    "16:00-18:00 Friday",
+    "18:00-20:00 Friday",
+    "20:00-22:00 Friday",
+    "8:00-10:00 Saturday",
+    "10:00-12:00 Saturday",
+    "14:00-16:00 Saturday",
+    "16:00-18:00 Saturday",
+    "18:00-20:00 Saturday",
+    "20:00-22:00 Saturday",
+    "8:00-10:00 Sunday",
+    "10:00-12:00 Sunday",
+    "14:00-16:00 Sunday",
+    "16:00-18:00 Sunday",
+    "18:00-20:00 Sunday",
+    "20:00-22:00 Sunday",
+]
 export interface ClassScheduleDto {
     classId: string
     className: string
@@ -26,6 +71,8 @@ export interface ClassScheduleDto {
         totalStudents: number
         attendingCount: number
         absentCount: number
+        teacherName: string
+        teacherId: string
     }[]
 }
 
@@ -53,5 +100,30 @@ export const useClassSchedule = (id: string) => {
         gcTime: 10 * 60 * 1000, // 10 phút
         retry: 1,
         retryDelay: (attemptIndex) => Math.min(1000 * 1 ** attemptIndex, 30000),
+    })
+}
+
+const updateLessonSchedule = async (classId: string, lesson: number, scheduleTime?: number, teacherId?: string) => {
+    const { data } = await axios.put(`${process.env.NEXT_PUBLIC_BASE_API}/schedule`, {
+        schedule_time: scheduleTime,
+        teacher_id: teacherId,
+        class_id: classId,
+        lesson
+    });
+    
+    return data.data;
+}
+
+export const useUpdateLessonSchedule = () => {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: ({ classId, lesson, scheduleTime, teacherId }: { classId: string, lesson: number, scheduleTime?: number, teacherId?: string }) => updateLessonSchedule(classId, lesson, scheduleTime, teacherId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['class-schedule'] })
+        },
+        onError: (error) => {
+            console.error('Error updating lesson schedule:', error)
+        }
     })
 }
