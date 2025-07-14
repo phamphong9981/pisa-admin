@@ -28,7 +28,7 @@ import {
 } from '@mui/material'
 import { styled } from '@mui/material/styles'
 
-import { useUnscheduleList } from '@/@core/hooks/useSchedule'
+import { useUnscheduleList, SCHEDULE_TIME } from '@/@core/hooks/useSchedule'
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   fontWeight: 500,
@@ -78,8 +78,6 @@ const UnscheduledStudents = () => {
   const [searchTerm, setSearchTerm] = useState('')
 
   // Filter data based on search term
-  console.log(unscheduledStudents);
-  
   const filteredData = unscheduledStudents?.filter(student => {
     return student.fullname.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -223,37 +221,189 @@ const UnscheduledStudents = () => {
                           <Chip 
                             label={`Buổi ${student.lesson}`}
                             size="small"
-                            color="warning"
-                            variant="outlined"
+                            sx={{
+                              backgroundColor: '#fff8e1',
+                              border: '1px solid #ffcc02',
+                              color: '#f57c00',
+                              fontWeight: 600,
+                              '&:hover': {
+                                backgroundColor: '#ffecb3',
+                                borderColor: '#ffa726'
+                              }
+                            }}
                           />
                       </TableCell>
                       <TableCell align="center">
-                        <Box display="flex" flexWrap="wrap" gap={0.5} justifyContent="center">
+                        <Box display="flex" flexDirection="column" gap={0.5} alignItems="center" sx={{ minWidth: 200 }}>
                           {student.busySchedule.length > 0 ? (
-                            student.busySchedule.slice(0, 3).map((busyTime, index) => (
-                              <Chip
-                                key={index}
-                                label={`Slot ${busyTime}`}
-                                size="small"
-                                variant="outlined"
-                                color="error"
-                                sx={{ fontSize: '0.7rem' }}
-                              />
-                            ))
+                            <>
+                              <Box display="flex" flexWrap="wrap" gap={0.5} justifyContent="center" sx={{ maxWidth: 200 }}>
+                                {student.busySchedule.slice(0, 2).map((busyTime, index) => {
+                                  const scheduleText = SCHEDULE_TIME[busyTime - 1] || `Slot ${busyTime}`
+                                  const [timeRange, day] = scheduleText.split(' ')
+                                  
+                                  return (
+                                    <Tooltip key={index} title={scheduleText} arrow>
+                                      <Chip
+                                        label={
+                                          <Box display="flex" flexDirection="column" alignItems="center" sx={{ py: 0.5 }}>
+                                            <Typography variant="caption" sx={{ fontSize: '0.65rem', fontWeight: 600, color: '#d32f2f' }}>
+                                              {timeRange}
+                                            </Typography>
+                                            <Typography variant="caption" sx={{ fontSize: '0.6rem', color: '#666', fontWeight: 500 }}>
+                                              {day}
+                                            </Typography>
+                                          </Box>
+                                        }
+                                        size="small"
+                                        sx={{ 
+                                          fontSize: '0.7rem',
+                                          height: 'auto',
+                                          minHeight: 32,
+                                          backgroundColor: '#ffebee',
+                                          border: '1px solid #ffcdd2',
+                                          color: '#d32f2f',
+                                          '& .MuiChip-label': {
+                                            padding: '2px 6px'
+                                          },
+                                          '&:hover': {
+                                            backgroundColor: '#fce4ec',
+                                            borderColor: '#f8bbd9'
+                                          }
+                                        }}
+                                      />
+                                    </Tooltip>
+                                  )
+                                })}
+                              </Box>
+                              {student.busySchedule.length > 2 && (
+                                <Tooltip 
+                                  title={
+                                    <Box sx={{ p: 1, maxWidth: 280 }}>
+                                      <Typography 
+                                        variant="subtitle2" 
+                                        sx={{ 
+                                          fontWeight: 600, 
+                                          color: '#fff',
+                                          mb: 1,
+                                          borderBottom: '1px solid rgba(255,255,255,0.2)',
+                                          pb: 0.5
+                                        }}
+                                      >
+                                        Các khung giờ bận khác:
+                                      </Typography>
+                                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                        {student.busySchedule.slice(2).map((busyTime, index) => {
+                                          const scheduleText = SCHEDULE_TIME[busyTime - 1] || `Slot ${busyTime}`
+                                          const [timeRange, day] = scheduleText.split(' ')
+
+                                          return (
+                                            <Box 
+                                              key={index} 
+                                              sx={{ 
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                gap: 1,
+                                                p: 0.5,
+                                                borderRadius: 1,
+                                                backgroundColor: 'rgba(255,255,255,0.1)',
+                                                border: '1px solid rgba(255,255,255,0.2)'
+                                              }}
+                                            >
+                                              <Box 
+                                                sx={{ 
+                                                  width: 8, 
+                                                  height: 8, 
+                                                  borderRadius: '50%', 
+                                                  backgroundColor: '#ff5722',
+                                                  flexShrink: 0
+                                                }} 
+                                              />
+                                              <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                                                <Typography 
+                                                  variant="caption" 
+                                                  sx={{ 
+                                                    fontWeight: 600, 
+                                                    color: '#fff',
+                                                    fontSize: '0.75rem'
+                                                  }}
+                                                >
+                                                  {timeRange}
+                                                </Typography>
+                                                <Typography 
+                                                  variant="caption" 
+                                                  sx={{ 
+                                                    color: 'rgba(255,255,255,0.8)',
+                                                    fontSize: '0.7rem'
+                                                  }}
+                                                >
+                                                  {day}
+                                                </Typography>
+                                              </Box>
+                                            </Box>
+                                          )
+                                        })}
+                                      </Box>
+                                    </Box>
+                                  }
+                                  arrow
+                                  componentsProps={{
+                                    tooltip: {
+                                      sx: {
+                                        backgroundColor: 'rgba(33, 33, 33, 0.95)',
+                                        backdropFilter: 'blur(10px)',
+                                        border: '1px solid rgba(255,255,255,0.1)',
+                                        boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+                                        borderRadius: 2,
+                                        maxWidth: 'none !important'
+                                      }
+                                    },
+                                    arrow: {
+                                      sx: {
+                                        color: 'rgba(33, 33, 33, 0.95)',
+                                        '&::before': {
+                                          border: '1px solid rgba(255,255,255,0.1)',
+                                          backgroundColor: 'rgba(33, 33, 33, 0.95)',
+                                        }
+                                      }
+                                    }
+                                  }}
+                                >
+                                  <Chip
+                                    label={`+${student.busySchedule.length - 2} khung giờ`}
+                                    size="small"
+                                    sx={{ 
+                                      fontSize: '0.65rem',
+                                      cursor: 'pointer',
+                                      backgroundColor: '#fff3e0',
+                                      border: '1px solid #ffcc02',
+                                      color: '#e65100',
+                                      fontWeight: 600,
+                                      '&:hover': {
+                                        backgroundColor: '#ffe0b2',
+                                        borderColor: '#ffb74d',
+                                        transform: 'scale(1.02)'
+                                      }
+                                    }}
+                                  />
+                                </Tooltip>
+                              )}
+                            </>
                           ) : (
                             <Chip
                               label="Không bận"
                               size="small"
-                              color="success"
-                              variant="outlined"
-                            />
-                          )}
-                          {student.busySchedule.length > 3 && (
-                            <Chip
-                              label={`+${student.busySchedule.length - 3}`}
-                              size="small"
-                              variant="outlined"
-                              color="default"
+                              sx={{ 
+                                fontSize: '0.7rem',
+                                fontWeight: 600,
+                                backgroundColor: '#e8f5e8',
+                                border: '1px solid #a5d6a7',
+                                color: '#2e7d32',
+                                '&:hover': {
+                                  backgroundColor: '#c8e6c9',
+                                  borderColor: '#81c784'
+                                }
+                              }}
                             />
                           )}
                         </Box>
