@@ -154,3 +154,36 @@ export const useGetAllSchedule = () => {
         retryDelay: (attemptIndex) => Math.min(1000 * 1 ** attemptIndex, 30000),
     })
 }
+
+
+interface unscheduleQueryResponse {
+    profileLessonClassId: string
+    profileId: string
+    fullname: string
+    email: string
+    phone: string
+    classId: string
+    className: string
+    classType: string
+    lesson: number
+    teacherId: string
+    teacherName: string
+    busySchedule: number[]
+}
+
+const unscheduleList = async (): Promise<unscheduleQueryResponse[]> => {
+    const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/unscheduled-lessons`)
+
+    return data.data?.unscheduledLessons || []
+}
+
+export const useUnscheduleList = () => {
+    return useQuery<unscheduleQueryResponse[], Error>({
+        queryKey: ['unschedule-list'],
+        queryFn: unscheduleList,
+        staleTime: 5 * 60 * 1000, // 5 phút
+        gcTime: 10 * 60 * 1000, // 10 phút
+        retry: 1,
+        retryDelay: (attemptIndex) => Math.min(1000 * 1 ** attemptIndex, 30000),
+    })
+}
