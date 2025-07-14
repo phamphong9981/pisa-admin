@@ -116,7 +116,7 @@ const UnscheduledStudents = () => {
   return (
     <Card>
       <CardHeader
-        title="Quản lý học sinh"
+        title="Quản lý lịch học"
         subheader="Danh sách học sinh có tiết học chưa được sắp xếp lịch"
         action={
           <Box display="flex" gap={2} alignItems="center">
