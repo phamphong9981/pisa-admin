@@ -136,6 +136,10 @@ interface allScheduleResponse {
     teacher_name: string
     class_id: string
     lesson: number
+    is_makeup: boolean
+    fullname?: string
+    email?: string
+    phone?: string
 }
 
 const getAllSchedule = async (): Promise<allScheduleResponse[]> => {
@@ -155,6 +159,22 @@ export const useGetAllSchedule = () => {
     })
 }
 
+const getMakeupSchedule = async (): Promise<allScheduleResponse[]> => {
+    const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/makeup-schedules`)
+
+    return data.data;
+}
+
+export const useGetMakeupSchedule = () => {
+    return useQuery({
+        queryKey: ['makeup-schedules'],
+        queryFn: getMakeupSchedule,
+        staleTime: 5 * 60 * 1000, // 5 phút
+        gcTime: 10 * 60 * 1000, // 10 phút
+        retry: 1,
+        retryDelay: (attemptIndex) => Math.min(1000 * 1 ** attemptIndex, 30000),
+    })
+}
 
 interface unscheduleQueryResponse {
     profileLessonClassId: string
@@ -185,5 +205,31 @@ export const useUnscheduleList = () => {
         gcTime: 10 * 60 * 1000, // 10 phút
         retry: 1,
         retryDelay: (attemptIndex) => Math.min(1000 * 1 ** attemptIndex, 30000),
+    })
+}
+
+const createSchedule = async (profileLessonClassIds: string[], teacherId: string, scheduleTime: number) => {
+    const { data } = await axios.post(`${process.env.NEXT_PUBLIC_BASE_API}/schedule`, {
+        profile_lesson_class_ids: profileLessonClassIds,
+        teacher_id: teacherId,
+        schedule_time: scheduleTime
+    })
+
+    return data.data;
+}
+
+export const useCreateSchedule = () => {
+    const queryClient = useQueryClient()
+    
+    return useMutation({
+        mutationFn: ({ profileLessonClassIds, teacherId, scheduleTime }: { profileLessonClassIds: string[], teacherId: string, scheduleTime: number }) => createSchedule(profileLessonClassIds, teacherId, scheduleTime),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['unschedule-list'] })
+            queryClient.invalidateQueries({ queryKey: ['schedules'] })
+            queryClient.invalidateQueries({ queryKey: ['makeup-schedules'] })
+        },
+        onError: (error) => {
+            console.error('Error creating schedule:', error)
+        }
     })
 }

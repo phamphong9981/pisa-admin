@@ -16,8 +16,7 @@ import {
   Snackbar
 } from '@mui/material'
 
-import { CourseType } from '@/@core/hooks/useCourse'
-import { useCreateCourse } from '@/@core/hooks/useCourse'
+import { CourseType , useCreateCourse } from '@/@core/hooks/useCourse'
 import { useTeacherList } from '@/@core/hooks/useTeacher'
 
 interface CreateCourseFormProps {

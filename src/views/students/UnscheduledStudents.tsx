@@ -284,9 +284,9 @@ const UnscheduledStudents = () => {
                                         variant="subtitle2" 
                                         sx={{ 
                                           fontWeight: 600, 
-                                          color: '#fff',
+                                          color: '#222',
                                           mb: 1,
-                                          borderBottom: '1px solid rgba(255,255,255,0.2)',
+                                          borderBottom: '1px solid #eee',
                                           pb: 0.5
                                         }}
                                       >
@@ -306,8 +306,8 @@ const UnscheduledStudents = () => {
                                                 gap: 1,
                                                 p: 0.5,
                                                 borderRadius: 1,
-                                                backgroundColor: 'rgba(255,255,255,0.1)',
-                                                border: '1px solid rgba(255,255,255,0.2)'
+                                                backgroundColor: '#f9f9f9',
+                                                border: '1px solid #eee'
                                               }}
                                             >
                                               <Box 
@@ -324,7 +324,7 @@ const UnscheduledStudents = () => {
                                                   variant="caption" 
                                                   sx={{ 
                                                     fontWeight: 600, 
-                                                    color: '#fff',
+                                                    color: '#222',
                                                     fontSize: '0.75rem'
                                                   }}
                                                 >
@@ -333,7 +333,7 @@ const UnscheduledStudents = () => {
                                                 <Typography 
                                                   variant="caption" 
                                                   sx={{ 
-                                                    color: 'rgba(255,255,255,0.8)',
+                                                    color: '#666',
                                                     fontSize: '0.7rem'
                                                   }}
                                                 >
@@ -350,20 +350,21 @@ const UnscheduledStudents = () => {
                                   componentsProps={{
                                     tooltip: {
                                       sx: {
-                                        backgroundColor: 'rgba(33, 33, 33, 0.95)',
-                                        backdropFilter: 'blur(10px)',
-                                        border: '1px solid rgba(255,255,255,0.1)',
-                                        boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+                                        backgroundColor: '#fff',
+                                        color: '#222',
+                                        border: '1px solid #eee',
+                                        boxShadow: '0 4px 24px rgba(0,0,0,0.10)',
                                         borderRadius: 2,
-                                        maxWidth: 'none !important'
+                                        maxWidth: 'none !important',
+                                        p: 0
                                       }
                                     },
                                     arrow: {
                                       sx: {
-                                        color: 'rgba(33, 33, 33, 0.95)',
+                                        color: '#fff',
                                         '&::before': {
-                                          border: '1px solid rgba(255,255,255,0.1)',
-                                          backgroundColor: 'rgba(33, 33, 33, 0.95)',
+                                          border: '1px solid #eee',
+                                          backgroundColor: '#fff',
                                         }
                                       }
                                     }

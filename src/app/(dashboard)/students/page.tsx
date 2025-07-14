@@ -4,15 +4,15 @@ export const runtime = 'edge';
 import type { Metadata } from 'next'
 
 // Component Imports
-import UnscheduledStudents from '@views/students/UnscheduledStudents'
+import ScheduleManagement from '@views/students/ScheduleManagement'
 
 export const metadata: Metadata = {
-  title: 'Quản lý học sinh',
-  description: 'Quản lý học sinh có tiết học chưa được sắp xếp lịch'
+  title: 'Quản lý lịch học',
+  description: 'Quản lý lịch học và học sinh chưa được sắp xếp lịch'
 }
 
 const StudentsPage = () => {
-  return <UnscheduledStudents />
+  return <ScheduleManagement />
 }
 
 export default StudentsPage 

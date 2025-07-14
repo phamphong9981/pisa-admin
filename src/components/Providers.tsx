@@ -1,18 +1,17 @@
 "use client"; // Provider phải là một Client Component
 // Type Imports
-import { useState } from 'react'
+import { useState } from 'react';
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-import type { ChildrenType, Direction } from '@core/types'
+import type { ChildrenType, Direction } from '@core/types';
 
 // Context Imports
-import { VerticalNavProvider } from '@menu/contexts/verticalNavContext'
-import { SettingsProvider } from '@core/contexts/settingsContext'
-import ThemeProvider from '@components/theme'
+import ThemeProvider from '@components/theme';
+import { SettingsProvider } from '@core/contexts/settingsContext';
+import { VerticalNavProvider } from '@menu/contexts/verticalNavContext';
 
 // Component Imports
-import UpgradeToProButton from '@components/upgrade-to-pro-button'
 
 // Util Imports
 
@@ -34,7 +33,7 @@ const Providers = (props: Props) => {
           <QueryClientProvider client={queryClient}>
             {children}
           </QueryClientProvider>
-          <UpgradeToProButton />
+          {/* <UpgradeToProButton /> */}
         </ThemeProvider>
       </SettingsProvider>
     </VerticalNavProvider>
