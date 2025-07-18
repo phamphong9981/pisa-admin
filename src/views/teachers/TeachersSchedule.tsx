@@ -34,6 +34,9 @@ import { useTeacherList } from '@/@core/hooks/useTeacher'
 import { SCHEDULE_TIME, useGetAllSchedule } from '@/@core/hooks/useSchedule'
 import useExport from '@/@core/hooks/useExport'
 
+// Components
+import TeachersClassList from './TeachersClassList'
+
 
 const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
   fontWeight: 600,
@@ -268,6 +271,10 @@ const TeachersSchedule = () => {
 
   return (
     <>
+      {/* Danh sách giáo viên và lớp */}
+      <TeachersClassList />
+
+      {/* Lịch rảnh giáo viên */}
       <Card>
         <CardHeader
           title="Lịch rảnh giáo viên"
@@ -369,7 +376,7 @@ const TeachersSchedule = () => {
                           {teacher.name}
                         </Typography>
                         <Typography variant="caption" color="textSecondary">
-                          {teacher.skills.length} kỹ năng
+                          {teacher.skills?.length || 0} kỹ năng
                         </Typography>
                       </Box>
                     </StyledHeaderCell>
