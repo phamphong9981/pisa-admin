@@ -32,7 +32,7 @@ import { styled } from '@mui/material/styles'
 // Hooks
 import { useTeacherList } from '@/@core/hooks/useTeacher'
 import { SCHEDULE_TIME, useGetAllSchedule } from '@/@core/hooks/useSchedule'
-import useExport from '@/@core/hooks/useExport'
+import { useExport } from '@/@core/hooks/useExport'
 
 // Components
 import TeachersClassList from './TeachersClassList'
