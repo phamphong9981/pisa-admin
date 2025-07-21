@@ -7,6 +7,7 @@ import axios from 'axios'
 // Type Imports
 import type { TeacherListResponse } from './useTeacher'
 import type { ClassListResponse } from './useClass'
+import type { Profile } from './useStudent'
 
 interface CourseListResponse {
     id: string,
@@ -42,7 +43,10 @@ interface CourseInfo {
     type: string,
     teacher: TeacherListResponse,
     classes: ClassListResponse[],
-    id: string
+    id: string,
+    profileCourses: {
+        profile: Profile
+    }[]
 }
 
 export const useCourseInfo = (courseId: string) => {
@@ -92,5 +96,50 @@ export const useCreateCourse = () => {
         onError: (error) => {
             console.error('Error creating course:', error)
         }
+    })
+}
+
+
+
+const registerCourse = async (courseId: string, profileIds: string[]) => {
+    const { data } = await axios.post(`${process.env.NEXT_PUBLIC_BASE_API}/courses/register-course`, {
+        profile_ids: profileIds,
+        course_id: courseId
+    });
+
+    return data.data;
+}
+
+export const useRegisterCourse = () => {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: ({ courseId, profileIds }: { courseId: string, profileIds: string[] }) => registerCourse(courseId, profileIds),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['courseInfo'] })
+        },
+        onError: (error) => {
+            console.error('Error registering course:', error)
+        }
+    })
+}
+
+const unregisterCourse = async (courseId: string, profileId: string) => {
+    const { data } = await axios.post(`${process.env.NEXT_PUBLIC_BASE_API}/courses/unregister-course`, {
+        profile_id: profileId,
+        course_id: courseId
+    });
+
+    return data.data;
+}
+
+export const useUnregisterCourse = () => {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: ({ courseId, profileId }: { courseId: string, profileId: string }) => unregisterCourse(courseId, profileId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['courseInfo'] })
+        },
     })
 }

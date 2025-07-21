@@ -1,6 +1,17 @@
 import { useQuery } from "@tanstack/react-query"
 import axios from "axios"
 
+export interface Profile {
+    id: string;
+    fullname: string;
+    email: string;
+    phone: string;
+    image: string;
+    ieltsPoint: string;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
 interface ListUsersResponseDto {
     users: {
         id: string;
@@ -9,16 +20,7 @@ interface ListUsersResponseDto {
         fcmToken?: string;
         createdAt: Date;
         updatedAt: Date;
-        profile: {
-            id: string;
-            fullname: string;
-            email: string;
-            phone: string;
-            image: string;
-            ieltsPoint: string;
-            createdAt: Date;
-            updatedAt: Date;
-        };
+        profile: Profile;
     }[];
     pagination: {
         page: number;
@@ -33,12 +35,12 @@ interface ListUsersResponseDto {
 const fetchStudentList = async (search: string): Promise<ListUsersResponseDto> => {
     const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/user/`, {
         params: {
-            search,
+            type: 'user',
+            search
         }
     });
 
-    
-return data.data;
+    return data.data;
 }
 
 export const useStudentList = (search: string) => {
