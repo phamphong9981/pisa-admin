@@ -100,7 +100,7 @@ const CourseDetail = ({ courseName }: CourseDetailProps) => {
   if (isLoadingCourses) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <Typography>Đang tải thông tin khóa học...</Typography>
+        <Typography>Đang tải thông tin lớp học...</Typography>
       </Box>
     )
   }
@@ -119,7 +119,7 @@ const CourseDetail = ({ courseName }: CourseDetailProps) => {
           onClick={() => router.push('/courses')}
           sx={{ mt: 2 }}
         >
-          Quay lại danh sách khóa học
+          Quay lại danh sách lớp học
         </Button>
       </Box>
     )
@@ -129,13 +129,13 @@ const CourseDetail = ({ courseName }: CourseDetailProps) => {
     return (
       <Box>
         <Typography variant="h5" gutterBottom>
-          Không tìm thấy khóa học
+          Không tìm thấy lớp học
         </Typography>
         <Button 
           variant="contained" 
           onClick={() => router.push('/courses')}
         >
-          Quay lại danh sách khóa học
+          Quay lại danh sách lớp học
         </Button>
       </Box>
     )
@@ -146,9 +146,9 @@ const CourseDetail = ({ courseName }: CourseDetailProps) => {
       <Box>
         <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
           <Box>
-            <Typography variant="h4" gutterBottom>Chi tiết khóa học</Typography>
+            <Typography variant="h4" gutterBottom>Chi tiết lớp học</Typography>
             <Typography variant="body2" color="text.secondary">
-              Khóa học: {courseName}
+              Lớp học: {courseName}
             </Typography>
           </Box>
           <Button 
@@ -189,7 +189,7 @@ const CourseDetail = ({ courseName }: CourseDetailProps) => {
                   </Typography>
                 </Box>
                 <Box mb={2}>
-                  <Typography variant="body2" color="text.secondary">Loại khóa học</Typography>
+                  <Typography variant="body2" color="text.secondary">Loại lớp học</Typography>
                   <Typography variant="body1" fontWeight={500}>
                     {getCourseTypeLabel(course.type)}
                   </Typography>
@@ -197,9 +197,9 @@ const CourseDetail = ({ courseName }: CourseDetailProps) => {
               </Grid>
               <Grid item xs={12} md={6}>
                 <Box mb={2}>
-                  <Typography variant="body2" color="text.secondary">Tổng số lớp</Typography>
+                  <Typography variant="body2" color="text.secondary">Tổng số kỹ năng</Typography>
                   <Typography variant="body1" fontWeight={500}>
-                    {course.classes.length} lớp học
+                    {course.classes.length} kỹ năng
                   </Typography>
                 </Box>
                 <Box mb={2}>
@@ -221,7 +221,7 @@ const CourseDetail = ({ courseName }: CourseDetailProps) => {
             title={
               <Box display="flex" alignItems="center" justifyContent="space-between">
                 <Typography variant="h6">
-                  Danh sách lớp học ({classes?.length || 0})
+                  Danh sách lớp kỹ năng ({classes?.length || 0})
                 </Typography>
                 <Button
                   variant="contained"
@@ -229,7 +229,7 @@ const CourseDetail = ({ courseName }: CourseDetailProps) => {
                   startIcon={<i className="ri-add-line" />}
                   onClick={() => setOpenCreateClassDialog(true)}
                 >
-                  Thêm lớp học
+                  Thêm lớp kỹ năng
                 </Button>
               </Box>
             }
@@ -238,7 +238,7 @@ const CourseDetail = ({ courseName }: CourseDetailProps) => {
             {!classes || classes.length === 0 ? (
               <Box textAlign="center" py={4}>
                 <Typography color="text.secondary">
-                  Chưa có lớp học nào trong khóa học này
+                  Chưa có kỹ năng nào trong lớp học này
                 </Typography>
               </Box>
             ) : (
@@ -246,8 +246,8 @@ const CourseDetail = ({ courseName }: CourseDetailProps) => {
                 <Table>
                   <TableHead>
                     <TableRow>
-                      <StyledTableCell>Lớp học</StyledTableCell>
-                      <StyledTableCell>Loại lớp</StyledTableCell>
+                      <StyledTableCell>Lớp kỹ năng</StyledTableCell>
+                      <StyledTableCell>Loại kỹ năng</StyledTableCell>
                       <StyledTableCell align="center">Số học sinh</StyledTableCell>
                       <StyledTableCell align="center">Buổi/tuần</StyledTableCell>
                       <StyledTableCell>Giáo viên</StyledTableCell>
@@ -303,7 +303,7 @@ const CourseDetail = ({ courseName }: CourseDetailProps) => {
                         </TableCell>
                         <TableCell align="center">
                           <Box display="flex" gap={1} justifyContent="center">
-                            <Tooltip title="Xem chi tiết lớp">
+                            <Tooltip title="Xem chi tiết lớp kỹ năng">
                               <IconButton 
                                 size="small" 
                                 color="primary"

@@ -195,7 +195,7 @@ const ClassDetail = ({ classId }: ClassDetailProps) => {
         username: selectedStudentToUnregister.username
       })
       
-      setUnregisterSuccess(`Đã hủy đăng ký học sinh ${selectedStudentToUnregister.fullName} khỏi lớp ${classData?.name}`)
+      setUnregisterSuccess(`Đã hủy đăng ký học sinh ${selectedStudentToUnregister.fullName} khỏi kỹ năng ${classData?.name}`)
       setShowUnregisterDialog(false)
       setSelectedStudentToUnregister(null)
       setUnregisterError('')
@@ -256,7 +256,7 @@ const ClassDetail = ({ classId }: ClassDetailProps) => {
     <Box>
       <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
           <Box>
-            <Typography variant="h4" gutterBottom>Chi tiết lớp học</Typography>
+            <Typography variant="h4" gutterBottom>Chi tiết lớp kỹ năng</Typography>
             <Typography variant="body2" color="text.secondary">
               ID: {classId}
             </Typography>
@@ -311,7 +311,7 @@ const ClassDetail = ({ classId }: ClassDetailProps) => {
                   <Typography variant="body1" fontWeight={500}>{classData.totalLessonPerWeek} buổi</Typography>
                 </Box>
                 <Box mb={2}>
-                  <Typography variant="body2" color="text.secondary">Loại lớp</Typography>
+                  <Typography variant="body2" color="text.secondary">Loại kỹ năng</Typography>
                   <Typography variant="body1" fontWeight={500}>{classData.classType}</Typography>
                 </Box>
               </Grid>
@@ -523,7 +523,7 @@ const ClassDetail = ({ classId }: ClassDetailProps) => {
                       {lesson.totalStudents === 0 ? (
                         <Box textAlign="center" py={2}>
                           <Typography color="text.secondary">
-                            Chưa có học sinh nào đăng ký buổi học này
+                            Chưa có học sinh nào đăng ký buổi kỹ năng này
                           </Typography>
                         </Box>
                       ) : (
@@ -863,7 +863,7 @@ const ClassDetail = ({ classId }: ClassDetailProps) => {
             {selectedStudentToUnregister && (
               <Box>
                 <Typography variant="body1" gutterBottom>
-                  Bạn có chắc chắn muốn hủy đăng ký học sinh sau khỏi lớp <strong>{classData?.name}</strong>?
+                  Bạn có chắc chắn muốn hủy đăng ký học sinh sau khỏi kỹ năng <strong>{classData?.name}</strong>?
                 </Typography>
                 <Box mt={2} p={2} sx={{ bgcolor: 'error.50', borderRadius: 1, border: '1px solid', borderColor: 'error.200' }}>
                   <Box display="flex" alignItems="center" gap={2} mb={1}>

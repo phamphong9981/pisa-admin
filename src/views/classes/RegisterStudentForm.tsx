@@ -131,7 +131,7 @@ return
         title={
           <Box display="flex" alignItems="center" gap={2}>
             <i className="ri-user-add-line text-xl" />
-            <Typography variant="h6">Đăng ký học sinh vào lớp</Typography>
+            <Typography variant="h6">Đăng ký học sinh vào lớp kỹ năng</Typography>
           </Box>
         }
       />

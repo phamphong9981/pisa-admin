@@ -138,8 +138,8 @@ const CoursesList = () => {
     <>
       <Card>
         <CardHeader
-          title="Quản lý khóa học"
-          subheader="Quản lý các khóa học tại trung tâm"
+          title="Quản lý lớp học"
+          subheader="Quản lý các lớp học tại trung tâm"
           action={
             <Box display="flex" gap={2} alignItems="center">
               <Button
@@ -148,11 +148,11 @@ const CoursesList = () => {
                 onClick={() => setOpenCreateDialog(true)}
                 sx={{ minWidth: 'auto' }}
               >
-                Tạo khóa học mới
+                Tạo lớp học mới
               </Button>
               <TextField
                 size="small"
-                placeholder="Tìm kiếm khóa học..."
+                placeholder="Tìm kiếm lớp học..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 InputProps={{
@@ -172,8 +172,8 @@ const CoursesList = () => {
             <Table>
               <TableHead>
                 <TableRow>
-                  <StyledTableCell>Khóa học</StyledTableCell>
-                  <StyledTableCell>Loại khóa</StyledTableCell>
+                  <StyledTableCell>Lớp học</StyledTableCell>
+                  <StyledTableCell>Loại lớp</StyledTableCell>
                   <StyledTableCell align="center">Số lớp</StyledTableCell>
                   <StyledTableCell>Giáo viên</StyledTableCell>
                   <StyledTableCell align="center">Thao tác</StyledTableCell>
@@ -223,7 +223,7 @@ const CoursesList = () => {
                     </TableCell>
                     <TableCell align="center">
                       <Box display="flex" gap={1} justifyContent="center">
-                        <Tooltip title="Xem chi tiết khóa học">
+                        <Tooltip title="Xem chi tiết lớp học">
                           <IconButton 
                             size="small" 
                             color="primary"
