@@ -174,7 +174,7 @@ const CoursesList = () => {
                 <TableRow>
                   <StyledTableCell>Lớp học</StyledTableCell>
                   <StyledTableCell>Loại lớp</StyledTableCell>
-                  <StyledTableCell align="center">Số lớp</StyledTableCell>
+                  <StyledTableCell align="center">Số kỹ năng</StyledTableCell>
                   <StyledTableCell>Giáo viên</StyledTableCell>
                   <StyledTableCell align="center">Thao tác</StyledTableCell>
                 </TableRow>
@@ -192,7 +192,7 @@ const CoursesList = () => {
                             {course.name}
                           </Typography>
                           <Typography variant="caption" color="text.secondary">
-                            {course.classes.length} lớp học
+                            {course.classes.length} kỹ năng
                           </Typography>
                         </Box>
                       </Box>
@@ -207,7 +207,7 @@ const CoursesList = () => {
                     <TableCell align="center">
                       <Badge badgeContent={course.classes.length} color="primary">
                         <Typography variant="body2">
-                          {course.classes.length} lớp
+                          {course.classes.length} kỹ năng
                         </Typography>
                       </Badge>
                     </TableCell>
