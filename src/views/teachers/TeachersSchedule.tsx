@@ -3,7 +3,7 @@
 // React Imports
 import { useMemo, useState } from 'react'
 
-import { useRouter } from 'next/navigation'
+
 
 // MUI Imports
 import {
@@ -36,6 +36,7 @@ import { useExport } from '@/@core/hooks/useExport'
 
 // Components
 import TeachersClassList from './TeachersClassList'
+import ScheduleDetailPopup from './ScheduleDetailPopup'
 
 
 const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
@@ -133,7 +134,6 @@ const getDayInVietnamese = (englishDay: string) => {
 }
 
 const TeachersSchedule = () => {
-  const router = useRouter()
   const { data: teachers, isLoading, error } = useTeacherList()
   const { data: schedules, isLoading: isSchedulesLoading } = useGetAllSchedule()
   const { exportToExcel, exportToCSV, exportSummary } = useExport()
@@ -149,6 +149,23 @@ const TeachersSchedule = () => {
     open: false,
     message: '',
     severity: 'success'
+  })
+
+  // States for schedule detail popup
+  const [scheduleDetailPopup, setScheduleDetailPopup] = useState<{
+    open: boolean
+    classId: string
+    lesson: number
+    teacherName: string
+    className: string
+    scheduleTime: number
+  }>({
+    open: false,
+    classId: '',
+    lesson: 0,
+    teacherName: '',
+    className: '',
+    scheduleTime: 0
   })
 
   // Generate time slots for all 7 days
@@ -247,8 +264,20 @@ const TeachersSchedule = () => {
   }
 
   // Handle click on teaching cell
-  const handleTeachingCellClick = (classId: string) => {
-    router.push(`/classes/${classId}`)
+  const handleTeachingCellClick = (classId: string, lesson: number, teacherName: string, className: string, scheduleTime: number) => {
+    setScheduleDetailPopup({
+      open: true,
+      classId,
+      lesson,
+      teacherName,
+      className,
+      scheduleTime
+    })
+  }
+
+  // Handle close schedule detail popup
+  const handleCloseScheduleDetailPopup = () => {
+    setScheduleDetailPopup(prev => ({ ...prev, open: false }))
   }
 
   if (isLoading || isSchedulesLoading) {
@@ -406,7 +435,13 @@ const TeachersSchedule = () => {
                           key={`${teacher.id}-${slot.slot}`}
                           isBusy={isBusy}
                           isTeaching={isTeaching}
-                          onClick={isTeaching && teachingInfo ? () => handleTeachingCellClick(teachingInfo.class_id) : undefined}
+                          onClick={isTeaching && teachingInfo ? () => handleTeachingCellClick(
+                            teachingInfo.class_id,
+                            teachingInfo.lesson,
+                            teacher.name,
+                            teachingInfo.class_name,
+                            teachingInfo.schedule_time
+                          ) : undefined}
                         >
                           {isTeaching && teachingInfo ? (
                             <TeachingInfo>
@@ -508,6 +543,17 @@ const TeachersSchedule = () => {
           {notification.message}
         </Alert>
       </Snackbar>
+
+      {/* Schedule Detail Popup */}
+      <ScheduleDetailPopup
+        open={scheduleDetailPopup.open}
+        onClose={handleCloseScheduleDetailPopup}
+        classId={scheduleDetailPopup.classId}
+        lesson={scheduleDetailPopup.lesson}
+        teacherName={scheduleDetailPopup.teacherName}
+        className={scheduleDetailPopup.className}
+        scheduleTime={scheduleDetailPopup.scheduleTime}
+      />
     </>
   )
 }
