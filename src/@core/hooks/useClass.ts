@@ -11,6 +11,7 @@ interface ClassInfo {
     totalStudent: number,
     totalLessonPerWeek: number,
     classType: string,
+    courseId: string,
     teacherId: string,
     teacherName: string,
     students: {

@@ -141,7 +141,7 @@ const ClassDetail = ({ classId }: ClassDetailProps) => {
         </Typography>
         <Button 
           variant="contained" 
-          onClick={() => router.push('/classes')}
+          onClick={() => router.push(`/courses/${classData?.courseId}`)}
           sx={{ mt: 2 }}
         >
           Quay lại danh sách lớp
@@ -156,12 +156,6 @@ const ClassDetail = ({ classId }: ClassDetailProps) => {
         <Typography variant="h5" gutterBottom>
           Không tìm thấy lớp học
         </Typography>
-        <Button 
-          variant="contained" 
-          onClick={() => router.push('/classes')}
-        >
-          Quay lại danh sách lớp
-        </Button>
       </Box>
     )
   }
@@ -272,7 +266,7 @@ const ClassDetail = ({ classId }: ClassDetailProps) => {
             <Button 
               variant="outlined" 
               startIcon={<i className="ri-arrow-left-line" />}
-              onClick={() => router.push('/classes')}
+              onClick={() => router.push(`/courses/${classData.courseId}`)}
             >
               Quay lại
             </Button>
