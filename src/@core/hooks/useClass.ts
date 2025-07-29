@@ -193,14 +193,14 @@ export const useClassWithOptions = (
 }
 
 // Hook để tạo class mới
-export const useCreateClass = () => {
+export const useCreateClass = (courseId: string) => {
     const queryClient = useQueryClient()
 
     return useMutation({
         mutationFn: createClass,
         onSuccess: () => {
             // Invalidate và refetch classes list
-            queryClient.invalidateQueries({ queryKey: ['classes'] })
+            queryClient.invalidateQueries({ queryKey: ['courseInfo', courseId] })
         },
         onError: (error) => {
             console.error('Error creating class:', error)

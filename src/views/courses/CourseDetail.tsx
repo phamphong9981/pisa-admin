@@ -329,7 +329,7 @@ return studentListData.users.filter(student =>
                       <StyledTableCell>Học sinh</StyledTableCell>
                       <StyledTableCell>Email</StyledTableCell>
                       <StyledTableCell>Số điện thoại</StyledTableCell>
-                      <StyledTableCell>IELTS Point</StyledTableCell>
+                      <StyledTableCell>IELTS Band Score</StyledTableCell>
                       <StyledTableCell>Ngày tạo</StyledTableCell>
                       <StyledTableCell align="center">Thao tác</StyledTableCell>
                     </TableRow>

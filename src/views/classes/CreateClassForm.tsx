@@ -27,7 +27,7 @@ interface CreateClassFormProps {
 }
 
 const CreateClassForm = ({ courseId, onSuccess }: CreateClassFormProps) => {
-  const createClassMutation = useCreateClass()
+  const createClassMutation = useCreateClass(courseId||'')
   const { data: teachers, isLoading: isTeachersLoading, error: teachersError } = useTeacherList()
   
   const [formData, setFormData] = useState<CreateClassDto>({
