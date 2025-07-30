@@ -7,32 +7,38 @@ import { useMemo, useState } from 'react'
 
 // MUI Imports
 import {
+  Alert,
   Box,
+  Button,
   Card,
   CardContent,
   CardHeader,
   Chip,
+  FormControl,
+  Grid,
+  IconButton,
+  InputAdornment,
+  InputLabel,
+  Menu,
+  MenuItem,
+  Select,
+  Snackbar,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Typography,
-  IconButton,
+  TextField,
   Tooltip,
-  Button,
-  Menu,
-  MenuItem,
-  Alert,
-  Snackbar
+  Typography
 } from '@mui/material'
 import { styled } from '@mui/material/styles'
 
 // Hooks
-import { useTeacherList } from '@/@core/hooks/useTeacher'
-import { SCHEDULE_TIME, useGetAllSchedule } from '@/@core/hooks/useSchedule'
 import { useExport } from '@/@core/hooks/useExport'
+import { SCHEDULE_TIME, useGetAllSchedule } from '@/@core/hooks/useSchedule'
+import { useTeacherList } from '@/@core/hooks/useTeacher'
 
 // Components
 import ScheduleDetailPopup from './ScheduleDetailPopup'
@@ -150,6 +156,10 @@ const TeachersSchedule = () => {
     severity: 'success'
   })
 
+  // States for filtering
+  const [teacherSearch, setTeacherSearch] = useState('')
+  const [selectedDay, setSelectedDay] = useState<string>('all')
+
   // States for schedule detail popup
   const [scheduleDetailPopup, setScheduleDetailPopup] = useState<{
     open: boolean
@@ -185,6 +195,35 @@ const TeachersSchedule = () => {
     
     return slots
   }, [])
+
+  // Filter teachers based on search term
+  const filteredTeachers = useMemo(() => {
+    if (!teachers) return []
+    
+    if (!teacherSearch.trim()) return teachers
+    
+    return teachers.filter(teacher => 
+      teacher.name.toLowerCase().includes(teacherSearch.toLowerCase()) ||
+      teacher.skills.some(skill => 
+        skill.toLowerCase().includes(teacherSearch.toLowerCase())
+      )
+    )
+  }, [teachers, teacherSearch])
+
+  // Filter time slots based on selected day
+  const filteredTimeSlots = useMemo(() => {
+    if (selectedDay === 'all') return allTimeSlots
+    
+    return allTimeSlots.filter(slot => slot.day === selectedDay)
+  }, [allTimeSlots, selectedDay])
+
+  // Get unique days for filter dropdown
+  const uniqueDays = useMemo(() => {
+    const days = allTimeSlots.map(slot => slot.day)
+
+    
+return ['all', ...Array.from(new Set(days))]
+  }, [allTimeSlots])
 
   // Check if teacher is busy at specific slot
   const isTeacherBusy = (teacherSchedule: number[], slotIndex: number) => {
@@ -375,6 +414,93 @@ const TeachersSchedule = () => {
           }
         />
         <CardContent>
+          {/* Filter Section */}
+          <Box sx={{ mb: 3 }}>
+            <Grid container spacing={2} alignItems="center">
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  placeholder="Tìm kiếm theo tên giáo viên hoặc kỹ năng..."
+                  value={teacherSearch}
+                  onChange={(e) => setTeacherSearch(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <i className="ri-search-line" style={{ color: '#666' }} />
+                      </InputAdornment>
+                    ),
+                    endAdornment: teacherSearch && (
+                      <InputAdornment position="end">
+                        <i 
+                          className="ri-close-line" 
+                          style={{ 
+                            color: '#666', 
+                            cursor: 'pointer',
+                            fontSize: '18px'
+                          }}
+                          onClick={() => setTeacherSearch('')}
+                        />
+                      </InputAdornment>
+                    )
+                  }}
+                  sx={{ 
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: 'white',
+                      '&:hover fieldset': {
+                        borderColor: '#1976d2',
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: '#1976d2',
+                      },
+                    }
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Lọc theo ngày</InputLabel>
+                  <Select
+                    value={selectedDay}
+                    onChange={(e) => setSelectedDay(e.target.value)}
+                    label="Lọc theo ngày"
+                  >
+                    {uniqueDays.map((day) => (
+                      <MenuItem key={day} value={day}>
+                        {day === 'all' ? 'Tất cả các ngày' : day}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
+            
+            {/* Filter Summary */}
+            {(teacherSearch || selectedDay !== 'all') && (
+              <Box sx={{ mt: 2, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
+                <Typography variant="body2" color="text.secondary">
+                  <i className="ri-filter-line" style={{ marginRight: 8 }} />
+                  Đang lọc: 
+                  {teacherSearch && (
+                    <Chip 
+                      label={`Giáo viên: "${teacherSearch}"`} 
+                      size="small" 
+                      sx={{ ml: 1, mr: 1 }}
+                      onDelete={() => setTeacherSearch('')}
+                    />
+                  )}
+                  {selectedDay !== 'all' && (
+                    <Chip 
+                      label={`Ngày: ${selectedDay}`} 
+                      size="small" 
+                      sx={{ ml: 1 }}
+                      onDelete={() => setSelectedDay('all')}
+                    />
+                  )}
+                </Typography>
+              </Box>
+            )}
+          </Box>
+
           <TableContainer sx={{ 
             maxHeight: '70vh', 
             overflow: 'auto',
@@ -390,11 +516,11 @@ const TeachersSchedule = () => {
                         Khung giờ
                       </Typography>
                       <Typography variant="caption" color="textSecondary">
-                        Theo tuần
+                        {selectedDay === 'all' ? 'Theo tuần' : selectedDay}
                       </Typography>
                     </Box>
                   </StyledHeaderCell>
-                  {teachers?.map((teacher) => (
+                  {filteredTeachers.map((teacher) => (
                     <StyledHeaderCell key={teacher.id}>
                       <Box>
                         <Typography variant="body2" fontWeight={600}>
@@ -409,67 +535,83 @@ const TeachersSchedule = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {allTimeSlots.map((slot, index) => (
-                  <TableRow key={index}>
-                    <StyledTimeCell>
-                      <Box>
-                        <Typography variant="body2" fontWeight={600}>
-                          {slot.day}
+                {filteredTimeSlots.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={filteredTeachers.length + 1} align="center" sx={{ py: 4 }}>
+                      <Box display="flex" flexDirection="column" alignItems="center" gap={2}>
+                        <i className="ri-calendar-line" style={{ fontSize: '48px', color: '#ccc' }} />
+                        <Typography variant="h6" color="text.secondary">
+                          Không có dữ liệu phù hợp
                         </Typography>
-                        <Typography variant="caption" color="primary">
-                          {slot.time}
+                        <Typography variant="body2" color="text.secondary">
+                          Thử thay đổi bộ lọc để xem kết quả khác
                         </Typography>
                       </Box>
-                    </StyledTimeCell>
-                    {teachers?.map((teacher) => {
-                      const isBusy = isTeacherBusy(teacher.registeredBusySchedule, slot.slot)
-                      const isTeaching = isTeacherTeaching(teacher.id, slot.slot)
-                      const teachingInfo = getTeachingInfo(teacher.id, slot.slot)
-                      
-                      return (
-                        <ScheduleCell
-                          key={`${teacher.id}-${slot.slot}`}
-                          isBusy={isBusy}
-                          isTeaching={isTeaching}
-                          onClick={isTeaching && teachingInfo ? () => handleTeachingCellClick(
-                            teachingInfo.class_id,
-                            teachingInfo.lesson,
-                            teacher.name,
-                            teachingInfo.class_name,
-                            teachingInfo.schedule_time
-                          ) : undefined}
-                        >
-                          {isTeaching && teachingInfo ? (
-                            <TeachingInfo>
-                              <Box className="class-name" title={teachingInfo.class_name}>
-                                {teachingInfo.class_name}
-                              </Box>
-                              <Box className="lesson-info">
-                                Buổi {teachingInfo.lesson}
-                              </Box>
-                            </TeachingInfo>
-                          ) : (
-                            <Tooltip 
-                              title={
-                                isBusy 
-                                  ? `${teacher.name} bận vào ${slot.day} ${slot.time}`
-                                  : `${teacher.name} rảnh vào ${slot.day} ${slot.time}`
-                              }
-                            >
-                              <IconButton size="small">
-                                {isBusy ? (
-                                  <i className="ri-close-line" style={{ color: '#c62828', fontSize: '18px' }} />
-                                ) : (
-                                  <i className="ri-check-line" style={{ color: '#2e7d32', fontSize: '18px' }} />
-                                )}
-                              </IconButton>
-                            </Tooltip>
-                          )}
-                        </ScheduleCell>
-                      )
-                    })}
+                    </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  filteredTimeSlots.map((slot, index) => (
+                    <TableRow key={index}>
+                      <StyledTimeCell>
+                        <Box>
+                          <Typography variant="body2" fontWeight={600}>
+                            {slot.day}
+                          </Typography>
+                          <Typography variant="caption" color="primary">
+                            {slot.time}
+                          </Typography>
+                        </Box>
+                      </StyledTimeCell>
+                      {filteredTeachers.map((teacher) => {
+                        const isBusy = isTeacherBusy(teacher.registeredBusySchedule, slot.slot)
+                        const isTeaching = isTeacherTeaching(teacher.id, slot.slot)
+                        const teachingInfo = getTeachingInfo(teacher.id, slot.slot)
+                        
+                        return (
+                          <ScheduleCell
+                            key={`${teacher.id}-${slot.slot}`}
+                            isBusy={isBusy}
+                            isTeaching={isTeaching}
+                            onClick={isTeaching && teachingInfo ? () => handleTeachingCellClick(
+                              teachingInfo.class_id,
+                              teachingInfo.lesson,
+                              teacher.name,
+                              teachingInfo.class_name,
+                              teachingInfo.schedule_time
+                            ) : undefined}
+                          >
+                            {isTeaching && teachingInfo ? (
+                              <TeachingInfo>
+                                <Box className="class-name" title={teachingInfo.class_name}>
+                                  {teachingInfo.class_name}
+                                </Box>
+                                <Box className="lesson-info">
+                                  Buổi {teachingInfo.lesson}
+                                </Box>
+                              </TeachingInfo>
+                            ) : (
+                              <Tooltip 
+                                title={
+                                  isBusy 
+                                    ? `${teacher.name} bận vào ${slot.day} ${slot.time}`
+                                    : `${teacher.name} rảnh vào ${slot.day} ${slot.time}`
+                                }
+                              >
+                                <IconButton size="small">
+                                  {isBusy ? (
+                                    <i className="ri-close-line" style={{ color: '#c62828', fontSize: '18px' }} />
+                                  ) : (
+                                    <i className="ri-check-line" style={{ color: '#2e7d32', fontSize: '18px' }} />
+                                  )}
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                          </ScheduleCell>
+                        )
+                      })}
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </TableContainer>
@@ -477,10 +619,10 @@ const TeachersSchedule = () => {
           {/* Summary */}
           <Box mt={3}>
             <Typography variant="h6" gutterBottom>
-              Thống kê
+              Thống kê {filteredTeachers.length !== teachers?.length && `(${filteredTeachers.length}/${teachers?.length} giáo viên)`}
             </Typography>
             <Box display="flex" gap={2} flexWrap="wrap">
-              {teachers?.map((teacher) => {
+              {filteredTeachers.map((teacher) => {
                 const busySlots = teacher.registeredBusySchedule.length
                 const teachingSlots = schedules?.filter(s => s.teacher_id === teacher.id).length || 0
                 const totalSlots = SCHEDULE_TIME.length
