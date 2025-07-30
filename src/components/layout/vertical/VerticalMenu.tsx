@@ -62,10 +62,13 @@ const VerticalMenu = ({ scrollMenu }: { scrollMenu: (container: any, isPerfectSc
       >
         <MenuItem href='/' icon={<i className='ri-dashboard-line' />}>Analytics</MenuItem>
         <MenuItem href='/courses' icon={<i className='ri-book-open-line' />}>Quản lý lớp học</MenuItem>
-        <MenuItem href='/students' icon={<i className='ri-user-3-line' />}>Quản lý lịch học</MenuItem>
-        <SubMenu label='Quản lý giáo viên' icon={<i className='ri-calendar-schedule-line' />}>
-          <MenuItem href='/teachers-info'>Thông tin giáo viên</MenuItem>
-          <MenuItem href='/teachers-schedule'>Lịch giáo viên</MenuItem>
+        <SubMenu label='Quản lý lịch học' icon={<i className='ri-calendar-schedule-line' />}>
+          <MenuItem href='/schedule-overview' icon={<i className='ri-calendar-check-line' />}>Tổng hợp lịch học</MenuItem>
+          <MenuItem href='/unscheduled-students' icon={<i className='ri-user-forbid-line' />}>Danh sách học sinh đang thiếu</MenuItem>
+        </SubMenu>
+        <SubMenu label='Quản lý giáo viên' icon={<i className='ri-user-star-line' />}>
+          <MenuItem href='/teachers-info' icon={<i className='ri-user-settings-line' />}>Thông tin giáo viên</MenuItem>
+          <MenuItem href='/teachers-schedule' icon={<i className='ri-calendar-time-line' />}>Lịch giáo viên</MenuItem>
         </SubMenu>
         {/* <MenuSection label='Apps & Pages'>
           <MenuItem href='/account-settings' icon={<i className='ri-user-settings-line' />}>
