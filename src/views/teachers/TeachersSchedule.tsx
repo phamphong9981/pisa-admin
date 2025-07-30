@@ -35,7 +35,6 @@ import { SCHEDULE_TIME, useGetAllSchedule } from '@/@core/hooks/useSchedule'
 import { useExport } from '@/@core/hooks/useExport'
 
 // Components
-import TeachersClassList from './TeachersClassList'
 import ScheduleDetailPopup from './ScheduleDetailPopup'
 
 
@@ -300,9 +299,6 @@ const TeachersSchedule = () => {
 
   return (
     <>
-      {/* Danh sách giáo viên và lớp */}
-      <TeachersClassList />
-
       {/* Lịch rảnh giáo viên */}
       <Card>
         <CardHeader

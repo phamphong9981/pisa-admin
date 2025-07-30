@@ -738,6 +738,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@iconify/react@npm:^6.0.0":
+  version: 6.0.0
+  resolution: "@iconify/react@npm:6.0.0"
+  dependencies:
+    "@iconify/types": "npm:^2.0.0"
+  peerDependencies:
+    react: ">=16"
+  checksum: 10c0/612cbc56e7b270076ce2c087c260cd53a0325875057202f2032f0a1fb0a88da44aec6cb63aab17530f35effa1f9fd5a86d0ab74ef99123ce30e5c49bca767b67
+  languageName: node
+  linkType: hard
+
 "@iconify/tools@npm:^4.0.4":
   version: 4.1.2
   resolution: "@iconify/tools@npm:4.1.2"
@@ -5570,6 +5581,7 @@ __metadata:
     "@emotion/react": "npm:^11.11.4"
     "@emotion/styled": "npm:^11.11.5"
     "@iconify/json": "npm:^2.2.218"
+    "@iconify/react": "npm:^6.0.0"
     "@iconify/tools": "npm:^4.0.4"
     "@iconify/types": "npm:^2.0.0"
     "@iconify/utils": "npm:^2.1.24"
