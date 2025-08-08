@@ -142,16 +142,21 @@ interface allScheduleResponse {
     phone?: string
 }
 
-const getAllSchedule = async (): Promise<allScheduleResponse[]> => {
-    const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/schedules`);
+const getAllSchedule = async (weekId?: string, courseId?: string): Promise<allScheduleResponse[]> => {
+    const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/schedules`, {
+        params: {
+            weekId: "08a60c9a-b3f8-42f8-8ff8-c7015d4ef3e7",
+            courseId,
+        }
+    });
 
     return data.data;
 }
 
-export const useGetAllSchedule = () => {
+export const useGetAllSchedule = (courseId?: string, weekId?: string) => {
     return useQuery({
-        queryKey: ['schedules'],
-        queryFn: getAllSchedule,
+        queryKey: ['schedules', courseId, weekId],
+        queryFn: () => getAllSchedule(weekId, courseId),
         staleTime: 5 * 60 * 1000, // 5 phút
         gcTime: 10 * 60 * 1000, // 10 phút
         retry: 1,

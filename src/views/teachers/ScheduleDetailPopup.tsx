@@ -256,7 +256,9 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
 
   const getEffectiveReason = (studentId: string, fallbackReason?: string) => {
     const pending = pendingChanges.get(studentId)
-    return pending?.reason ?? fallbackReason
+
+    
+return pending?.reason ?? fallbackReason
   }
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
@@ -288,24 +290,30 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
       setSelectedStatusForReason(newStatus)
       const existingPending = pendingChanges.get(currentStudentId)
       const initialReason = existingPending?.reason ?? student.reason ?? ''
+
       setReasonText(initialReason)
       setShowStatusDialog(false)
       setShowReasonDialog(true)
-      return
+      
+return
     }
 
     // Nếu trạng thái mới giống trạng thái cũ và không có lý do, xóa khỏi pendingChanges
     if (student.rollcallStatus === newStatus) {
       setPendingChanges(prev => {
         const newMap = new Map(prev)
+
         newMap.delete(currentStudentId)
-        return newMap
+        
+return newMap
       })
     } else {
       setPendingChanges(prev => {
         const newMap = new Map(prev)
+
         newMap.set(currentStudentId, { status: newStatus })
-        return newMap
+        
+return newMap
       })
     }
 
@@ -323,14 +331,18 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
     if (existingStatus === selectedStatusForReason && (reasonText.trim() === (existingReason ?? '').trim())) {
       setPendingChanges(prev => {
         const newMap = new Map(prev)
+
         newMap.delete(currentStudentId)
-        return newMap
+        
+return newMap
       })
     } else {
       setPendingChanges(prev => {
         const newMap = new Map(prev)
+
         newMap.set(currentStudentId, { status: selectedStatusForReason, reason: reasonText.trim() || undefined })
-        return newMap
+        
+return newMap
       })
     }
 
@@ -590,7 +602,9 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                           {(() => {
                             const effectiveStatus = getEffectiveStatus(student.profileId, student.rollcallStatus)
                             const effectiveReason = getEffectiveReason(student.profileId, student.reason)
-                            return (
+
+                            
+return (
                               <>
                                 <StatusChip
                                   label={getRollcallStatusText(effectiveStatus)}
@@ -749,7 +763,9 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                         {(() => {
                           const effectiveStatus = getEffectiveStatus(student.profileId, student.rollcallStatus)
                           const effectiveReason = getEffectiveReason(student.profileId, student.reason)
-                          return (
+
+                          
+return (
                             <Box>
                               <StatusChip
                                 label={getRollcallStatusText(effectiveStatus)}
