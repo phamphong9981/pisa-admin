@@ -306,7 +306,8 @@ export const useGetScheduleDetail = (classId: string, lesson: number, weekId: st
 
 const updateRollcallStatus = async (rollcalls: {
     scheduleId: string,
-    rollcallStatus: RollcallStatus
+    rollcallStatus: RollcallStatus,
+    reason?: string
 }[]) => {
     const { data } = await axios.put(`${process.env.NEXT_PUBLIC_BASE_API}/rollcall-schedule`, {
         rollcalls
@@ -321,7 +322,8 @@ export const useUpdateRollcallStatus = () => {
     return useMutation({
         mutationFn: (rollcalls: {
             scheduleId: string,
-            rollcallStatus: RollcallStatus
+            rollcallStatus: RollcallStatus,
+            reason?: string
         }[]) => updateRollcallStatus(rollcalls),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['schedule-detail'] })
