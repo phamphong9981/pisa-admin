@@ -62,6 +62,7 @@ const VerticalMenu = ({ scrollMenu }: { scrollMenu: (container: any, isPerfectSc
       >
         <MenuItem href='/' icon={<i className='ri-dashboard-line' />}>Analytics</MenuItem>
         <MenuItem href='/courses' icon={<i className='ri-book-open-line' />}>Quản lý lớp học</MenuItem>
+        <MenuItem href='/accounting' icon={<i className='ri-calculator-line' />}>Kế toán</MenuItem>
         <SubMenu label='Quản lý lịch học' icon={<i className='ri-calendar-schedule-line' />}>
           <MenuItem href='/schedule-overview' icon={<i className='ri-calendar-check-line' />}>Tổng hợp lịch học</MenuItem>
           <MenuItem href='/unscheduled-students' icon={<i className='ri-user-forbid-line' />}>Danh sách học sinh đang thiếu</MenuItem>

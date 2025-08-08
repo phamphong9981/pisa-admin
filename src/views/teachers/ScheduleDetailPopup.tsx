@@ -29,7 +29,7 @@ import {
 } from '@mui/material'
 import { styled } from '@mui/material/styles'
 
-import { RollcallStatus, SCHEDULE_TIME, useGetScheduleDetail, useUpdateRollcallStatus } from '@/@core/hooks/useSchedule'
+import { RollcallStatus, SCHEDULE_TIME, useGetScheduleDetail, useUpdateRollcallStatus, useUpdateUserSchedule, StudentScheduleDetailDto } from '@/@core/hooks/useSchedule'
 
 const StyledDialog = styled(Dialog)(() => ({
   '& .MuiDialog-paper': {
@@ -233,9 +233,16 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
   const [showReasonDialog, setShowReasonDialog] = React.useState(false)
   const [selectedStatusForReason, setSelectedStatusForReason] = React.useState<RollcallStatus | null>(null)
   const [reasonText, setReasonText] = React.useState('')
+  const [showTimeDialog, setShowTimeDialog] = React.useState(false)
+  const [timeStart, setTimeStart] = React.useState<string>('')
+  const [timeEnd, setTimeEnd] = React.useState<string>('')
+  const [selectedScheduleId, setSelectedScheduleId] = React.useState<string>('')
+  const [selectedStudentName, setSelectedStudentName] = React.useState<string>('')
+  const [showTimeSuccess, setShowTimeSuccess] = React.useState(false)
   
   const { data: scheduleDetail, isLoading, error } = useGetScheduleDetail(classId, lesson, weekId)
   const updateRollcallMutation = useUpdateRollcallStatus()
+  const updateUserScheduleMutation = useUpdateUserSchedule()
 
   const formatScheduleTime = (scheduleTimeIndex: number) => {
     return SCHEDULE_TIME[scheduleTimeIndex - 1] || 'Chưa có lịch'
@@ -387,6 +394,47 @@ return newMap
 
   const handleCancelChanges = () => {
     setPendingChanges(new Map())
+  }
+
+  const toInputTime = (value?: string) => {
+    if (!value) return ''
+    // Normalize values like HH:mm:ss to HH:mm for input type="time"
+    return value.length >= 5 ? value.slice(0, 5) : value
+  }
+
+  const formatTimeRange = (start?: string, end?: string) => {
+    if (!start && !end) return '—'
+    return `${toInputTime(start)} - ${toInputTime(end)}`
+  }
+
+  const handleOpenTimeDialog = (student: StudentScheduleDetailDto) => {
+    if (!student.scheduleId) return
+    setSelectedScheduleId(student.scheduleId)
+    setSelectedStudentName(student.fullname)
+    setTimeStart(toInputTime(student.startTime))
+    setTimeEnd(toInputTime(student.endTime))
+    setShowTimeDialog(true)
+  }
+
+  const handleCloseTimeDialog = () => {
+    setShowTimeDialog(false)
+    setSelectedScheduleId('')
+    setSelectedStudentName('')
+    setTimeStart('')
+    setTimeEnd('')
+  }
+
+  const handleSaveTime = async () => {
+    console.log(selectedScheduleId, timeStart, timeEnd);
+    
+    if (!selectedScheduleId) return
+    try {
+      await updateUserScheduleMutation.mutateAsync({ scheduleId: selectedScheduleId, start_time: timeStart || undefined, end_time: timeEnd || undefined })
+      setShowTimeSuccess(true)
+      handleCloseTimeDialog()
+    } catch (e) {
+      // swallow, error UI can be added later
+    }
   }
 
   if (isLoading) {
@@ -562,6 +610,7 @@ return newMap
                     <StyledTableCell>Email</StyledTableCell>
                     <StyledTableCell>SĐT</StyledTableCell>
                     <StyledTableCell>Trạng thái</StyledTableCell>
+                    <StyledTableCell>Thời gian</StyledTableCell>
                     <StyledTableCell>Giáo viên dạy</StyledTableCell>
                   </TableRow>
                 </TableHead>
@@ -621,6 +670,18 @@ return (
                           })()}
                         </Box>
                       </StudentTableCell>
+                      <StudentTableCell
+                        onClick={() => handleOpenTimeDialog(student)}
+                        sx={{
+                          cursor: student.scheduleId ? 'pointer' : 'default',
+                          '&:hover': student.scheduleId ? { backgroundColor: 'rgba(25, 118, 210, 0.04)' } : undefined,
+                          transition: 'background-color 0.2s ease'
+                        }}
+                      >
+                        <Typography variant="body2" color={student.startTime || student.endTime ? 'text.primary' : 'text.secondary'}>
+                          {formatTimeRange(student.startTime, student.endTime)}
+                        </Typography>
+                      </StudentTableCell>
                       <StudentTableCell>
                         {student.teacherName ? (
                           <Box display="flex" alignItems="center" gap={1}>
@@ -654,6 +715,7 @@ return (
                     <StyledTableCell>Email</StyledTableCell>
                     <StyledTableCell>SĐT</StyledTableCell>
                     <StyledTableCell>Lịch bù</StyledTableCell>
+                    <StyledTableCell>Thời gian</StyledTableCell>
                     <StyledTableCell>Giáo viên dạy</StyledTableCell>
                     <StyledTableCell>Lý do</StyledTableCell>
                   </TableRow>
@@ -695,6 +757,18 @@ return (
                           </Typography>
                         )}
                       </StudentTableCell>
+                      <StudentTableCell
+                        onClick={() => handleOpenTimeDialog(student)}
+                        sx={{
+                          cursor: student.scheduleId ? 'pointer' : 'default',
+                          '&:hover': student.scheduleId ? { backgroundColor: 'rgba(25, 118, 210, 0.04)' } : undefined,
+                          transition: 'background-color 0.2s ease'
+                        }}
+                      >
+                        <Typography variant="body2" color={student.startTime || student.endTime ? 'text.primary' : 'text.secondary'}>
+                          {formatTimeRange(student.startTime, student.endTime)}
+                        </Typography>
+                      </StudentTableCell>
                       <StudentTableCell>
                         {student.teacherName ? (
                           <Box display="flex" alignItems="center" gap={1}>
@@ -733,6 +807,7 @@ return (
                       <StyledTableCell>Email</StyledTableCell>
                       <StyledTableCell>SĐT</StyledTableCell>
                       <StyledTableCell>Trạng thái</StyledTableCell>
+                      <StyledTableCell>Thời gian</StyledTableCell>
                       <StyledTableCell>Lịch bận</StyledTableCell>
                     </TableRow>
                   </TableHead>
@@ -780,6 +855,18 @@ return (
                             </Box>
                           )
                         })()}
+                      </StudentTableCell>
+                      <StudentTableCell
+                        onClick={() => handleOpenTimeDialog(student)}
+                        sx={{
+                          cursor: student.scheduleId ? 'pointer' : 'default',
+                          '&:hover': student.scheduleId ? { backgroundColor: 'rgba(25, 118, 210, 0.04)' } : undefined,
+                          transition: 'background-color 0.2s ease'
+                        }}
+                      >
+                        <Typography variant="body2" color={student.startTime || student.endTime ? 'text.primary' : 'text.secondary'}>
+                          {formatTimeRange(student.startTime, student.endTime)}
+                        </Typography>
                       </StudentTableCell>
                       <StudentTableCell>
                         <Box display="flex" gap={0.5} flexWrap="wrap">
@@ -1023,6 +1110,54 @@ return (
         </DialogActions>
       </Dialog>
 
+      {/* Time Edit Dialog */}
+      <Dialog
+        open={showTimeDialog}
+        onClose={handleCloseTimeDialog}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: { borderRadius: '16px', boxShadow: '0 20px 60px rgba(0, 0, 0, 0.15)' }
+        }}
+      >
+        <DialogTitle>
+          <Box display="flex" alignItems="center" gap={2}>
+            <i className="ri-time-line" style={{ fontSize: '24px', color: '#1976d2' }} />
+            <Typography variant="h6" fontWeight={600}>
+              Chỉnh sửa thời gian {selectedStudentName ? `- ${selectedStudentName}` : ''}
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box display="flex" gap={2} mt={1}>
+            <TextField
+              label="Bắt đầu"
+              type="time"
+              value={timeStart}
+              onChange={(e) => setTimeStart(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              inputProps={{ step: 300 }}
+              fullWidth
+            />
+            <TextField
+              label="Kết thúc"
+              type="time"
+              value={timeEnd}
+              onChange={(e) => setTimeEnd(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              inputProps={{ step: 300 }}
+              fullWidth
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseTimeDialog} variant="outlined">Hủy</Button>
+          <Button onClick={handleSaveTime} variant="contained" disabled={updateUserScheduleMutation.isPending} startIcon={updateUserScheduleMutation.isPending ? <CircularProgress size={16} color="inherit" /> : undefined}>
+            {updateUserScheduleMutation.isPending ? 'Đang lưu...' : 'Lưu'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Success Message */}
       <Snackbar
         open={showSuccessMessage}
@@ -1036,6 +1171,18 @@ return (
           sx={{ width: '100%' }}
         >
           Đã cập nhật trạng thái điểm danh cho {updatedCount} học sinh thành công!
+        </Alert>
+      </Snackbar>
+
+      {/* Time Update Success */}
+      <Snackbar
+        open={showTimeSuccess}
+        autoHideDuration={2500}
+        onClose={() => setShowTimeSuccess(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert onClose={() => setShowTimeSuccess(false)} severity="success" sx={{ width: '100%' }}>
+          Đã cập nhật thời gian học thành công!
         </Alert>
       </Snackbar>
 

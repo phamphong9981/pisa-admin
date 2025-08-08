@@ -128,6 +128,27 @@ export const useUpdateLessonSchedule = () => {
     })
 }
 
+export const updateUserSchedule = async (scheduleId: string, start_time?: string, end_time?: string) => {
+    const { data } = await axios.put(`${process.env.NEXT_PUBLIC_BASE_API}/user-schedule`, {
+        schedule_id: scheduleId,
+        start_time: start_time,
+        end_time: end_time
+    })
+
+    return data.data;
+}
+
+export const useUpdateUserSchedule = () => {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: ({ scheduleId, start_time, end_time }: { scheduleId: string, start_time?: string, end_time?: string }) => updateUserSchedule(scheduleId, start_time, end_time),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['schedule-detail'] })
+        },
+    })
+}
+
 interface allScheduleResponse {
     schedule_time: number
     teacher_id: string
@@ -261,7 +282,9 @@ export interface StudentScheduleDetailDto {
     teacherName?: string
     isMakeup: boolean
     busySchedule: number[]
-    reason?: string
+    reason?: string,
+    startTime?: string,
+    endTime?: string,
 }
 
 export interface ClassScheduleDetailDto {
