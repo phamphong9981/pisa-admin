@@ -29,7 +29,8 @@ import {
 } from '@mui/material'
 import { styled } from '@mui/material/styles'
 
-import { RollcallStatus, SCHEDULE_TIME, useGetScheduleDetail, useUpdateRollcallStatus, useUpdateUserSchedule, StudentScheduleDetailDto } from '@/@core/hooks/useSchedule'
+import type { StudentScheduleDetailDto } from '@/@core/hooks/useSchedule';
+import { RollcallStatus, SCHEDULE_TIME, useGetScheduleDetail, useUpdateRollcallStatus, useUpdateUserSchedule } from '@/@core/hooks/useSchedule'
 
 const StyledDialog = styled(Dialog)(() => ({
   '& .MuiDialog-paper': {
@@ -398,13 +399,15 @@ return newMap
 
   const toInputTime = (value?: string) => {
     if (!value) return ''
+
     // Normalize values like HH:mm:ss to HH:mm for input type="time"
     return value.length >= 5 ? value.slice(0, 5) : value
   }
 
   const formatTimeRange = (start?: string, end?: string) => {
     if (!start && !end) return '—'
-    return `${toInputTime(start)} - ${toInputTime(end)}`
+    
+return `${toInputTime(start)} - ${toInputTime(end)}`
   }
 
   const handleOpenTimeDialog = (student: StudentScheduleDetailDto) => {
@@ -428,6 +431,7 @@ return newMap
     console.log(selectedScheduleId, timeStart, timeEnd);
     
     if (!selectedScheduleId) return
+
     try {
       await updateUserScheduleMutation.mutateAsync({ scheduleId: selectedScheduleId, start_time: timeStart || undefined, end_time: timeEnd || undefined })
       setShowTimeSuccess(true)
