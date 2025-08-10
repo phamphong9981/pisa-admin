@@ -57,6 +57,7 @@ export const useCourseInfo = (courseId: string) => {
 
             return data.data;
         },
+        enabled: !!courseId,
         staleTime: 5 * 60 * 1000,
         gcTime: 10 * 60 * 1000,
         retry: 1,

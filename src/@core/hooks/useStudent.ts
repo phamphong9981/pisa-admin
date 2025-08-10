@@ -10,6 +10,7 @@ export interface Profile {
     ieltsPoint: string;
     createdAt: Date;
     updatedAt: Date;
+    busyScheduleArr: number[];
 }
 
 interface ListUsersResponseDto {
