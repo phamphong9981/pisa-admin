@@ -8,27 +8,27 @@ import { styled } from '@mui/material/styles'
 
 // MUI Imports
 import {
-  Alert,
-  Box,
-  Card,
-  CardContent,
-  CardHeader,
-  Chip,
-  CircularProgress,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
-  Typography
+    Alert,
+    Box,
+    Card,
+    CardContent,
+    CardHeader,
+    Chip,
+    CircularProgress,
+    Paper,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    TextField,
+    Typography
 } from '@mui/material'
 
 // Hooks
-import { SCHEDULE_TIME } from '@/@core/hooks/useSchedule'
 import { useCourseInfo, useCourseList } from '@/@core/hooks/useCourse'
+import { SCHEDULE_TIME, useGetAllSchedule } from '@/@core/hooks/useSchedule'
 
 const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
   fontWeight: 700,
@@ -55,41 +55,143 @@ const GridCell = styled(TableCell)(({ theme }) => ({
   borderRight: `1px solid ${theme.palette.divider}`
 }))
 
+const ClassBox = styled('div')(({ theme }) => ({
+  position: 'relative',
+  borderRadius: 10,
+  overflow: 'hidden',
+  backgroundColor: theme.palette.background.paper,
+  border: `1px solid ${theme.palette.primary.light}`,
+  boxShadow: '0 4px 14px rgba(0,0,0,0.08)',
+  transition: 'all 0.2s ease',
+  marginBottom: theme.spacing(1),
+  '&:hover': {
+    boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+    transform: 'translateY(-2px)'
+  },
+  '&::before': {
+    content: '""',
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    background: theme.palette.primary.main
+  }
+}))
+
+const ClassBoxHeader = styled('div')(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  padding: theme.spacing(1),
+  background: `linear-gradient(135deg, ${theme.palette.primary.light}, ${theme.palette.primary.main})`,
+  color: '#fff',
+  borderBottom: `1px solid ${theme.palette.primary.main}`,
+  fontWeight: 700,
+  fontSize: '0.85rem'
+}))
+
+const ClassBoxBody = styled('div')(({ theme }) => ({
+  padding: theme.spacing(1),
+  backgroundColor: theme.palette.background.paper
+}))
+
+const ClassBoxSubHeader = styled('div')(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  padding: theme.spacing(1),
+  backgroundColor: theme.palette.background.default,
+  borderBottom: `1px solid ${theme.palette.divider}`,
+  color: theme.palette.text.secondary,
+  fontSize: '0.75rem',
+}))
+
 const SchedulePlanner = () => {
   const { data: courses, isLoading: isCoursesLoading, error: coursesError } = useCourseList()
   const [selectedCourseId, setSelectedCourseId] = useState<string>('')
   const { data: courseInfo, isLoading: isCourseInfoLoading, error: courseInfoError } = useCourseInfo(selectedCourseId)
   const [classSearch, setClassSearch] = useState<string>('')
+  const { data: courseSchedules } = useGetAllSchedule(selectedCourseId)
 
   // Parse SCHEDULE_TIME into day + time
   const parsedSlots = useMemo(() => {
     return SCHEDULE_TIME.map((s) => {
       const [time, day] = s.split(' ')
-      return { time, day }
+
+      
+return { time, day }
     })
   }, [])
 
   const days = useMemo(() => {
     const seen = new Set<string>()
     const order: string[] = []
+
     parsedSlots.forEach(p => { if (!seen.has(p.day)) { seen.add(p.day); order.push(p.day) } })
-    return order
+    
+return order
   }, [parsedSlots])
 
   const times = useMemo(() => {
     const seen = new Set<string>()
     const order: string[] = []
+
     parsedSlots.forEach(p => { if (!seen.has(p.time)) { seen.add(p.time); order.push(p.time) } })
-    return order
+    
+return order
   }, [parsedSlots])
 
   const indexFromDayTime = (day: string, time: string) => {
     const idx = parsedSlots.findIndex(p => p.day === day && p.time === time)
-    return idx >= 0 ? idx + 1 : -1
+
+    
+return idx >= 0 ? idx + 1 : -1
   }
+
+  const keyFromSlotIndex = (slotIndex1Based: number) => {
+    const slot = parsedSlots[slotIndex1Based - 1]
+
+    
+return slot ? `${slot.day}|${slot.time}` : ''
+  }
+
+  const schedulesByKey = useMemo(() => {
+    const map: Record<string, any[]> = {}
+    const visibleSchedules = (courseSchedules || []).filter(s => !s.is_makeup)
+
+    visibleSchedules.forEach(s => {
+      const key = keyFromSlotIndex(s.schedule_time)
+
+      if (!key) return
+      if (!map[key]) map[key] = []
+      map[key].push(s)
+    })
+    
+return map
+  }, [courseSchedules])
+
+  const scheduledStudentIdsByIndex = useMemo(() => {
+    const map: Record<number, Set<string>> = {}
+    const visibleSchedules = (courseSchedules || []).filter(s => !s.is_makeup)
+
+    visibleSchedules.forEach(s => {
+      const idx = s.schedule_time
+
+      if (!map[idx]) map[idx] = new Set<string>()
+      const students: any[] = Array.isArray(s.students) ? s.students : []
+
+      students.forEach(st => {
+        if (st?.id) map[idx].add(st.id)
+      })
+    })
+    
+return map
+  }, [courseSchedules])
 
   const freeStudentsByIndex = useMemo(() => {
     const map: Record<number, { id: string; fullname: string }[]> = {}
+
     if (!courseInfo) return map
     const profiles = (courseInfo.profileCourses || []).map(pc => pc.profile)
 
@@ -104,9 +206,12 @@ const SchedulePlanner = () => {
 
   const filteredClasses = useMemo(() => {
     const cls = courseInfo?.classes || []
+
     if (!classSearch.trim()) return cls
     const keyword = classSearch.toLowerCase()
-    return cls.filter(c => c.name.toLowerCase().includes(keyword))
+
+    
+return cls.filter(c => c.name.toLowerCase().includes(keyword))
   }, [courseInfo, classSearch])
 
   return (
@@ -176,19 +281,68 @@ const SchedulePlanner = () => {
                         <DayCell>{day}</DayCell>
                         {times.map(time => {
                           const index = indexFromDayTime(day, time)
-                          const free = index > 0 ? (freeStudentsByIndex[index] || []) : []
-                          return (
+                          let free = index > 0 ? (freeStudentsByIndex[index] || []) : []
+                          const scheduled = schedulesByKey[`${day}|${time}`] || []
+
+                          if (index > 0 && scheduledStudentIdsByIndex[index]) {
+                            const set = scheduledStudentIdsByIndex[index]
+
+                            free = free.filter(s => !set.has(s.id))
+                          }
+
+                          
+return (
                             <GridCell key={`${day}|${time}`}>
-                              <Box display="flex" gap={0.5} flexDirection="column">
-                                {free.length === 0 ? (
-                                  <Typography variant="caption" color="text.secondary">Không có HS rảnh</Typography>
-                                ) : (
-                                  <Box display="flex" gap={0.5} flexWrap="wrap">
-                                    {free.map(s => (
-                                      <Chip key={s.id} size="small" label={s.fullname} />
-                                    ))}
-                                  </Box>
-                                )}
+                              <Box display="flex" gap={0.75} flexDirection="column">
+                                {/* Scheduled classes as boxes */}
+                                {scheduled.map((s, i) => (
+                                  <ClassBox key={`${s.class_id}-${s.lesson}-${i}`}>
+                                    <ClassBoxHeader>
+                                      <Box display="flex" gap={1} alignItems="center">
+                                        <Typography variant="body2" fontWeight={700}>{s.class_name}</Typography>
+                                        <Chip
+                                          size="small"
+                                          variant="outlined"
+                                          label={`Buổi ${s.lesson}`}
+                                          sx={{
+                                            borderColor: 'rgba(255,255,255,0.8)',
+                                            color: '#fff',
+                                            height: 22
+                                          }}
+                                        />
+                                      </Box>
+                                    </ClassBoxHeader>
+                                    <ClassBoxSubHeader>
+                                      <Typography variant="caption">GV: {s.teacher_name}</Typography>
+                                    </ClassBoxSubHeader>
+                                    <ClassBoxBody>
+                                      {Array.isArray(s.students) && s.students.length > 0 ? (
+                                        <Box display="flex" gap={0.5} flexWrap="wrap">
+                                          {s.students.map((st: any) => (
+                                            <Chip key={st.id} size="small" label={st.fullname} />
+                                          ))}
+                                        </Box>
+                                      ) : (
+                                        <Typography variant="caption" color="text.secondary">Chưa có danh sách học sinh</Typography>
+                                      )}
+                                    </ClassBoxBody>
+                                  </ClassBox>
+                                ))}
+
+                                {/* Free students list */}
+                                <Box>
+                                  {free.length > 0 ? (
+                                    <Box display="flex" gap={0.5} flexWrap="wrap">
+                                      {free.map(s => (
+                                        <Chip key={s.id} size="small" label={s.fullname} />
+                                      ))}
+                                    </Box>
+                                  ) : (
+                                    scheduled.length === 0 ? (
+                                      <Typography variant="caption" color="text.secondary">Không có HS rảnh</Typography>
+                                    ) : null
+                                  )}
+                                </Box>
                               </Box>
                             </GridCell>
                           )

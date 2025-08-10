@@ -161,6 +161,10 @@ interface allScheduleResponse {
     fullname?: string
     email?: string
     phone?: string
+    students?: {
+        id: string
+        fullname: string
+    }
 }
 
 const getAllSchedule = async (weekId?: string, courseId?: string): Promise<allScheduleResponse[]> => {
