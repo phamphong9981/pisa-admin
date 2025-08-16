@@ -365,3 +365,34 @@ export const useUpdateRollcallStatus = () => {
         }
     })
 }
+
+
+export interface CreateLessonScheduleDto {
+    weekId: string
+    scheduleTime: number
+    startTime: string
+    endTime: string
+    classId: string
+    lesson: number
+    teacherId: string
+    profileIds: string[]
+}
+
+const createLessonSchedule = async (lessonSchedule: CreateLessonScheduleDto) => {
+    const { data } = await axios.post(`${process.env.NEXT_PUBLIC_BASE_API}/create-lesson-schedule`, lessonSchedule)
+
+    return data.data;
+}
+
+export const useCreateLessonSchedule = () => {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: createLessonSchedule,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['unschedule-list'] })
+            queryClient.invalidateQueries({ queryKey: ['schedules'] })
+            queryClient.invalidateQueries({ queryKey: ['makeup-schedules'] })
+        },
+    })
+}

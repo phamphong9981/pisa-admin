@@ -10,6 +10,7 @@ import { styled } from '@mui/material/styles'
 import {
     Alert,
     Box,
+    Button,
     Card,
     CardContent,
     CardHeader,
@@ -30,6 +31,7 @@ import {
 import { useCourseInfo, useCourseList } from '@/@core/hooks/useCourse'
 import { SCHEDULE_TIME, useGetAllSchedule } from '@/@core/hooks/useSchedule'
 import ScheduleDetailPopup from '@/components/ScheduleDetailPopup'
+import CreateLessonSchedule from './CreateLessonSchedule'
 
 const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
   fontWeight: 700,
@@ -136,6 +138,19 @@ const SchedulePlanner = () => {
 
   // State for highlighting teacher's free schedule
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>('')
+
+  // State for create lesson schedule modal
+  const [createLessonModal, setCreateLessonModal] = useState<{
+    open: boolean
+    selectedSlot: {
+      day: string
+      time: string
+      slotIndex: number
+    } | null
+  }>({
+    open: false,
+    selectedSlot: null
+  })
 
   // Parse SCHEDULE_TIME into day + time
   const parsedSlots = useMemo(() => {
@@ -287,6 +302,22 @@ return cls.filter(c => c.name.toLowerCase().includes(keyword))
   // Handle close schedule detail popup
   const handleCloseScheduleDetailPopup = () => {
     setScheduleDetailPopup(prev => ({ ...prev, open: false }))
+  }
+
+  // Handle open create lesson schedule modal
+  const handleOpenCreateLessonModal = (day: string, time: string, slotIndex: number) => {
+    setCreateLessonModal({
+      open: true,
+      selectedSlot: { day, time, slotIndex }
+    })
+  }
+
+  // Handle close create lesson schedule modal
+  const handleCloseCreateLessonModal = () => {
+    setCreateLessonModal({
+      open: false,
+      selectedSlot: null
+    })
   }
 
   // Handle class click to highlight teacher's free schedule
@@ -511,6 +542,28 @@ return (
                                     ) : null
                                   )}
                                 </Box>
+
+                                {/* Create Lesson Button */}
+                                {free.length > 0 && (
+                                  <Box sx={{ mt: 1, textAlign: 'center' }}>
+                                    <Button
+                                      size="small"
+                                      variant="outlined"
+                                      color="primary"
+                                      startIcon={<i className="ri-add-line" />}
+                                      onClick={() => handleOpenCreateLessonModal(day, time, index)}
+                                      sx={{
+                                        fontSize: '0.75rem',
+                                        py: 0.5,
+                                        px: 1,
+                                        minWidth: 'auto',
+                                        borderStyle: 'dashed'
+                                      }}
+                                    >
+                                      Tạo lịch
+                                    </Button>
+                                  </Box>
+                                )}
                               </Box>
                             </GridCell>
                           )
@@ -536,6 +589,22 @@ return (
         teacherName={scheduleDetailPopup.teacherName}
         className={scheduleDetailPopup.className}
         scheduleTime={scheduleDetailPopup.scheduleTime}
+      />
+
+      {/* Create Lesson Schedule Modal */}
+      <CreateLessonSchedule
+        open={createLessonModal.open}
+        onClose={handleCloseCreateLessonModal}
+        selectedSlot={createLessonModal.selectedSlot}
+        availableStudents={(() => {
+          if (!createLessonModal.selectedSlot) return []
+          const index = createLessonModal.selectedSlot.slotIndex
+
+          
+return index > 0 ? (freeStudentsByIndex[index] || []) : []
+        })()}
+        courseClasses={courseInfo?.classes || []}
+        weekId="08a60c9a-b3f8-42f8-8ff8-c7015d4ef3e7"
       />
     </Box>
   )
