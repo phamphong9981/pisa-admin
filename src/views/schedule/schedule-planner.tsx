@@ -256,6 +256,7 @@ return cls.filter(c => c.name.toLowerCase().includes(keyword))
     
     // Find the class with this teacher
     const teacherClass = courseInfo.classes.find(cls => cls.teacherId === teacherId)
+
     if (!teacherClass?.teacher?.registeredBusySchedule) return false
     
     // Check if the teacher is busy at this slot (slotIndex is 0-based, registeredBusySchedule is 0-based)
