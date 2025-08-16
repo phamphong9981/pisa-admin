@@ -29,6 +29,7 @@ import {
 // Hooks
 import { useCourseInfo, useCourseList } from '@/@core/hooks/useCourse'
 import { SCHEDULE_TIME, useGetAllSchedule } from '@/@core/hooks/useSchedule'
+import ScheduleDetailPopup from '@/components/ScheduleDetailPopup'
 
 const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
   fontWeight: 700,
@@ -54,6 +55,8 @@ const GridCell = styled(TableCell)(({ theme }) => ({
   minWidth: 220,
   borderRight: `1px solid ${theme.palette.divider}`
 }))
+
+
 
 const ClassBox = styled('div')(({ theme }) => ({
   position: 'relative',
@@ -113,6 +116,26 @@ const SchedulePlanner = () => {
   const { data: courseInfo, isLoading: isCourseInfoLoading, error: courseInfoError } = useCourseInfo(selectedCourseId)
   const [classSearch, setClassSearch] = useState<string>('')
   const { data: courseSchedules } = useGetAllSchedule(selectedCourseId)
+
+  // State for schedule detail popup
+  const [scheduleDetailPopup, setScheduleDetailPopup] = useState<{
+    open: boolean
+    classId: string
+    lesson: number
+    teacherName: string
+    className: string
+    scheduleTime: number
+  }>({
+    open: false,
+    classId: '',
+    lesson: 0,
+    teacherName: '',
+    className: '',
+    scheduleTime: 0
+  })
+
+  // State for highlighting teacher's free schedule
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string>('')
 
   // Parse SCHEDULE_TIME into day + time
   const parsedSlots = useMemo(() => {
@@ -214,6 +237,66 @@ return map
 return cls.filter(c => c.name.toLowerCase().includes(keyword))
   }, [courseInfo, classSearch])
 
+  // Get all scheduled classes across all time slots
+  const allScheduledClasses = useMemo(() => {
+    const scheduledClassIds = new Set<string>()
+    
+    Object.values(schedulesByKey).forEach(schedules => {
+      schedules.forEach(schedule => {
+        scheduledClassIds.add(schedule.class_id)
+      })
+    })
+    
+    return scheduledClassIds
+  }, [schedulesByKey])
+
+  // Helper function to check if teacher is busy at specific time slot
+  const isTeacherBusy = (teacherId: string, slotIndex: number) => {
+    if (!courseInfo?.classes) return false
+    
+    // Find the class with this teacher
+    const teacherClass = courseInfo.classes.find(cls => cls.teacherId === teacherId)
+    if (!teacherClass?.teacher?.registeredBusySchedule) return false
+    
+    // Check if the teacher is busy at this slot (slotIndex is 0-based, registeredBusySchedule is 0-based)
+    return teacherClass.teacher.registeredBusySchedule.includes(slotIndex)
+  }
+
+  // Helper function to check if teacher is teaching at specific time slot
+  const isTeacherTeaching = (teacherId: string, slotIndex: number) => {
+    if (!courseSchedules) return false
+    
+    return courseSchedules.some(schedule => 
+      schedule.teacher_id === teacherId && schedule.schedule_time === slotIndex + 1
+    )
+  }
+
+  // Handle click on class box to open schedule detail popup
+  const handleClassBoxClick = (schedule: any) => {
+    setScheduleDetailPopup({
+      open: true,
+      classId: schedule.class_id,
+      lesson: schedule.lesson,
+      teacherName: schedule.teacher_name,
+      className: schedule.class_name,
+      scheduleTime: schedule.schedule_time
+    })
+  }
+
+  // Handle close schedule detail popup
+  const handleCloseScheduleDetailPopup = () => {
+    setScheduleDetailPopup(prev => ({ ...prev, open: false }))
+  }
+
+  // Handle class click to highlight teacher's free schedule
+  const handleClassClick = (teacherId: string) => {
+    if (selectedTeacherId === teacherId) {
+      setSelectedTeacherId('') // Deselect if same teacher
+    } else {
+      setSelectedTeacherId(teacherId) // Select new teacher
+    }
+  }
+
   return (
     <Box>
       <Card sx={{ mb: 4 }}>
@@ -249,9 +332,49 @@ return cls.filter(c => c.name.toLowerCase().includes(keyword))
                 onChange={(e) => setClassSearch(e.target.value)}
               />
               <Box display="flex" gap={0.5} flexWrap="wrap">
-                {filteredClasses.map(cls => (
-                  <Chip key={cls.id} size="small" label={cls.name} />
-                ))}
+                {filteredClasses.map(cls => {
+                  // Check if class has schedule
+                  const hasSchedule = allScheduledClasses.has(cls.id)
+                  
+                  // Get teacher info for this class
+                  const teacherId = cls.teacherId || ''
+                  const teacherName = cls.teacher?.name || 'Chưa có GV'
+                  
+                  return (
+                    <Chip 
+                      key={cls.id} 
+                      size="small" 
+                      label={
+                        <Box display="flex" alignItems="center" gap={0.5}>
+                          <span>{cls.name}</span>
+                          <Typography variant="caption" sx={{ fontSize: '0.7rem', opacity: 0.8 }}>
+                            (GV: {teacherName})
+                          </Typography>
+                        </Box>
+                      }
+                      color={hasSchedule ? 'success' : 'default'}
+                      variant={hasSchedule ? 'filled' : 'outlined'}
+                      onClick={() => handleClassClick(teacherId)}
+                      sx={{
+                        cursor: 'pointer',
+                        ...(hasSchedule && {
+                          backgroundColor: '#e8f5e8',
+                          color: '#2e7d32',
+                          borderColor: '#4caf50',
+                          fontWeight: 600
+                        }),
+                        ...(selectedTeacherId === teacherId && {
+                          backgroundColor: '#1976d2',
+                          color: '#fff',
+                          borderColor: '#1976d2',
+                          fontWeight: 700,
+                          transform: 'scale(1.05)',
+                          boxShadow: '0 4px 12px rgba(25, 118, 210, 0.3)'
+                        })
+                      }}
+                    />
+                  )
+                })}
                 {filteredClasses.length === 0 && (
                   <Typography variant="caption" color="text.secondary">Không có lớp phù hợp</Typography>
                 )}
@@ -290,13 +413,57 @@ return cls.filter(c => c.name.toLowerCase().includes(keyword))
                             free = free.filter(s => !set.has(s.id))
                           }
 
+                          // Check if this time slot should be highlighted for selected teacher
+                          const shouldHighlight = selectedTeacherId && index > 0 && 
+                            !isTeacherBusy(selectedTeacherId, index - 1) && 
+                            !isTeacherTeaching(selectedTeacherId, index - 1)
+
                           
 return (
-                            <GridCell key={`${day}|${time}`}>
-                              <Box display="flex" gap={0.75} flexDirection="column">
+                            <GridCell 
+                              key={`${day}|${time}`}
+                              sx={{
+                                ...(shouldHighlight && {
+                                  backgroundColor: '#e3f2fd',
+                                  border: '2px solid #1976d2',
+                                  position: 'relative',
+                                  '&::before': {
+                                    content: '""',
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    right: 0,
+                                    height: 4,
+                                    background: '#1976d2',
+                                    zIndex: 2
+                                  }
+                                })
+                              }}
+                            >
+                              {shouldHighlight && (
+                                <Box sx={{ 
+                                  textAlign: 'center', 
+                                  mb: 1,
+                                  p: 0.5,
+                                  backgroundColor: 'rgba(25, 118, 210, 0.1)',
+                                  borderRadius: 1,
+                                  border: '1px solid rgba(25, 118, 210, 0.3)'
+                                }}>
+                                  <Typography variant="caption" color="primary" fontWeight={600}>
+                                    <i className="ri-time-line" style={{ marginRight: 4 }} />
+                                    GV rảnh
+                                  </Typography>
+                                </Box>
+                              )}
+                              
+                              <Box display="flex" flexDirection="column" gap={0.75}>
                                 {/* Scheduled classes as boxes */}
                                 {scheduled.map((s, i) => (
-                                  <ClassBox key={`${s.class_id}-${s.lesson}-${i}`}>
+                                  <ClassBox 
+                                    key={`${s.class_id}-${s.lesson}-${i}`}
+                                    onClick={() => handleClassBoxClick(s)}
+                                    sx={{ cursor: 'pointer' }}
+                                  >
                                     <ClassBoxHeader>
                                       <Box display="flex" gap={1} alignItems="center">
                                         <Typography variant="body2" fontWeight={700}>{s.class_name}</Typography>
@@ -358,6 +525,17 @@ return (
       ) : (
         <Alert severity="info">Hãy chọn một khóa học để xem lưới học sinh rảnh.</Alert>
       )}
+
+      {/* Schedule Detail Popup */}
+      <ScheduleDetailPopup
+        open={scheduleDetailPopup.open}
+        onClose={handleCloseScheduleDetailPopup}
+        classId={scheduleDetailPopup.classId}
+        lesson={scheduleDetailPopup.lesson}
+        teacherName={scheduleDetailPopup.teacherName}
+        className={scheduleDetailPopup.className}
+        scheduleTime={scheduleDetailPopup.scheduleTime}
+      />
     </Box>
   )
 }

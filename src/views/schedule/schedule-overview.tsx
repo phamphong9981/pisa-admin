@@ -28,7 +28,7 @@ import {
 // Hooks
 import { SCHEDULE_TIME, useGetAllSchedule } from '@/@core/hooks/useSchedule'
 import { useCourseList } from '@/@core/hooks/useCourse'
-import ScheduleDetailPopup from '@/views/teachers/ScheduleDetailPopup'
+import ScheduleDetailPopup from '@/components/ScheduleDetailPopup'
 
 const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
   fontWeight: 700,
@@ -180,19 +180,19 @@ return dayMap[englishDay] || englishDay
             {isCourseSchedulesLoading ? (
               <Box display="flex" justifyContent="center" alignItems="center" minHeight={200}>
                 <CircularProgress />
-              </Box>
+            </Box>
             ) : (
               <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
                 <Table stickyHeader size="small">
-                  <TableHead>
-                    <TableRow>
+            <TableHead>
+              <TableRow>
                       <StyledHeaderCell>Thứ / Giờ</StyledHeaderCell>
                       {times.map(t => (
                         <StyledHeaderCell key={t} align="center">{t}</StyledHeaderCell>
                       ))}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
+              </TableRow>
+            </TableHead>
+            <TableBody>
                     {days.map(day => (
                       <TableRow key={day} hover={false}>
                         <DayCell>{getDayInVietnamese(day)}</DayCell>
@@ -208,10 +208,10 @@ return (
                                   <Typography variant="caption" color="text.secondary">-</Typography>
                                 ) : (
                                   items.map((s, i) => (
-                                    <Chip
+                      <Chip 
                                       key={`${s.class_id}-${s.lesson}-${i}`}
-                                      size="small"
-                                      color="primary"
+                        size="small"
+                        color="primary"
                                       label={`${s.class_name} • Buổi ${s.lesson}`}
                                       onClick={() => handleOpenPopup(s)}
                                     />
@@ -223,12 +223,12 @@ return (
                         })}
                       </TableRow>
                     ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+            </TableBody>
+          </Table>
+        </TableContainer>
             )}
-          </CardContent>
-        </Card>
+                </CardContent>
+              </Card>
       ) : (
         <Alert severity="info">Hãy chọn một khóa học để xem lưới thời gian.</Alert>
       )}
