@@ -22,6 +22,10 @@ interface ListUsersResponseDto {
         createdAt: Date;
         updatedAt: Date;
         profile: Profile;
+        course?: {
+            name: string,
+            id: string
+        }
     }[];
     pagination: {
         page: number;

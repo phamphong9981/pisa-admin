@@ -11,17 +11,21 @@ export interface TeacherListResponse {
 }
 
 // Function để gọi API lấy danh sách teacher
-const fetchTeacherList = async (): Promise<TeacherListResponse[]> => {
-    const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/teachers`);
+const fetchTeacherList = async (search?: string): Promise<TeacherListResponse[]> => {
+    const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/teachers`, {
+        params: {
+            search
+        }
+    });
 
-    
-return data.data;
+
+    return data.data;
 }
 
-export const useTeacherList = () => {
+export const useTeacherList = (search?: string) => {
     return useQuery<TeacherListResponse[], Error>({
-        queryKey: ['teachers'],
-        queryFn: fetchTeacherList,
+        queryKey: ['teachers', search],
+        queryFn: () => fetchTeacherList(search),
         staleTime: 5 * 60 * 1000,
         gcTime: 10 * 60 * 1000,
         retry: 1,

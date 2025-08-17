@@ -167,10 +167,10 @@ interface allScheduleResponse {
     }
 }
 
-const getAllSchedule = async (weekId?: string, courseId?: string): Promise<allScheduleResponse[]> => {
+const getAllSchedule = async (courseId: string, weekId?: string): Promise<allScheduleResponse[]> => {
     const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/schedules`, {
         params: {
-            weekId: "08a60c9a-b3f8-42f8-8ff8-c7015d4ef3e7",
+            weekId: weekId || "08a60c9a-b3f8-42f8-8ff8-c7015d4ef3e7",
             courseId,
         }
     });
@@ -178,10 +178,11 @@ const getAllSchedule = async (weekId?: string, courseId?: string): Promise<allSc
     return data.data;
 }
 
-export const useGetAllSchedule = (courseId?: string, weekId?: string) => {
+export const useGetAllSchedule = (courseId: string, weekId?: string) => {
     return useQuery({
         queryKey: ['schedules', courseId, weekId],
-        queryFn: () => getAllSchedule(weekId, courseId),
+        queryFn: () => getAllSchedule(courseId, weekId),
+        enabled: !!courseId,
         staleTime: 5 * 60 * 1000, // 5 phút
         gcTime: 10 * 60 * 1000, // 10 phút
         retry: 1,
@@ -329,6 +330,7 @@ export const useGetScheduleDetail = (classId: string, lesson: number, weekId: st
     return useQuery({
         queryKey: ['schedule-detail', classId, lesson, weekId],
         queryFn: () => getScheduleDetail(classId, lesson, weekId),
+        enabled: !!classId && !!lesson,
         staleTime: 5 * 60 * 1000, // 5 phút
         gcTime: 10 * 60 * 1000, // 10 phút
         retry: 1,
