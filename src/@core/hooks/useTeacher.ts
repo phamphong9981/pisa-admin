@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 
 export interface TeacherListResponse {
@@ -30,5 +30,25 @@ export const useTeacherList = (search?: string) => {
         gcTime: 10 * 60 * 1000,
         retry: 1,
         retryDelay: (attemptIndex) => Math.min(1000 * 1 ** attemptIndex, 30000),
+    })
+}
+
+
+const updateTeacherBusySchedule = async (teacherId: string, busySchedule: number[]) => {
+    const { data } = await axios.put(`${process.env.NEXT_PUBLIC_BASE_API}/teachers/${teacherId}/order-schedule`, {
+        registeredBusySchedule: busySchedule
+    });
+
+    return data.data;
+}
+
+export const useUpdateTeacherBusySchedule = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ teacherId, busySchedule }: { teacherId: string; busySchedule: number[] }) =>
+            updateTeacherBusySchedule(teacherId, busySchedule),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['teachers'] })
+        }
     })
 }
