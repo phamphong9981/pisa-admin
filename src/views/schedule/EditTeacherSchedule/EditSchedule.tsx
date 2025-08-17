@@ -10,12 +10,12 @@ import {
   CardContent,
   CardHeader,
   Tab,
-  Tabs,
-  Typography
+  Tabs
 } from '@mui/material'
 
 // Components
 import EditTeacherSchedule from './EditTeacherSchedule'
+import EditStudentSchedule from './EditStudentSchedule'
 
 interface TabPanelProps {
   children?: React.ReactNode
@@ -106,27 +106,7 @@ const EditSchedule = () => {
         </Box>
 
         <TabPanel value={tabValue} index={0}>
-          <Box 
-            display="flex" 
-            flexDirection="column" 
-            alignItems="center" 
-            justifyContent="center" 
-            minHeight="400px"
-            sx={{ 
-              backgroundColor: '#f8f9fa', 
-              borderRadius: 2, 
-              border: '2px dashed #dee2e6',
-              mx: 3
-            }}
-          >
-            <i className="ri-user-line" style={{ fontSize: '64px', color: '#adb5bd', marginBottom: '16px' }} />
-            <Typography variant="h6" color="text.secondary" gutterBottom>
-              Chỉnh sửa lịch học sinh
-            </Typography>
-            <Typography variant="body2" color="text.secondary" textAlign="center">
-              Tính năng này sẽ được phát triển trong phiên bản tiếp theo
-            </Typography>
-          </Box>
+          <EditStudentSchedule />
         </TabPanel>
 
         <TabPanel value={tabValue} index={1}>

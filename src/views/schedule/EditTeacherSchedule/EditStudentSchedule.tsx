@@ -37,9 +37,8 @@ import {
 import { styled } from '@mui/material/styles'
 
 // Hooks
+import { useStudentList, useUpdateStudentBusySchedule } from '@/@core/hooks/useStudent'
 import { SCHEDULE_TIME } from '@/@core/hooks/useSchedule'
-import { useTeacherList , useUpdateTeacherBusySchedule } from '@/@core/hooks/useTeacher'
-
 
 const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
   fontWeight: 600,
@@ -95,33 +94,6 @@ const ScheduleCell = styled(TableCell, {
   position: 'relative'
 }))
 
-const TeachingInfo = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  gap: theme.spacing(0.5),
-  padding: theme.spacing(0.5),
-  '& .class-name': {
-    fontSize: '0.75rem',
-    fontWeight: 600,
-    color: '#1976d2',
-    textAlign: 'center',
-    lineHeight: 1.2,
-    maxWidth: '100%',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap'
-  },
-  '& .lesson-info': {
-    fontSize: '0.65rem',
-    color: '#666',
-    backgroundColor: '#fff',
-    padding: '2px 6px',
-    borderRadius: '8px',
-    border: '1px solid #e0e0e0'
-  }
-}))
-
 const getDayInVietnamese = (englishDay: string) => {
   const dayMap: { [key: string]: string } = {
     'Monday': 'Thứ 2',
@@ -136,20 +108,17 @@ const getDayInVietnamese = (englishDay: string) => {
   return dayMap[englishDay] || englishDay
 }
 
-const EditTeacherSchedule = () => {
-  const { data: teachers, isLoading, error } = useTeacherList()
+const EditStudentSchedule = () => {
+  // States for search and filtering
+  const [studentSearch, setStudentSearch] = useState('')
+  const [selectedDay, setSelectedDay] = useState<string>('all')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
 
-  // For now, we'll use empty array for schedules until we have proper courseId and weekId
-  const schedules: any[] = []
+  // Hook for fetching students
+  const { data: studentData, isLoading, error } = useStudentList(debouncedSearch)
   
-  // IMPORTANT: Index Mapping
-  // - UI uses 0-41 index for 42 time slots
-  // - API uses 1-42 index for slot numbers
-  // - When checking if teacher is busy: teacherSchedule.includes(slotIndex + 1)
-  // - When updating busy schedule: use (slotIndex + 1) for API calls
-  
-  // Hook for updating teacher busy schedule
-  const updateTeacherBusyScheduleMutation = useUpdateTeacherBusySchedule()
+  // Hook for updating student busy schedule
+  const updateStudentBusyScheduleMutation = useUpdateStudentBusySchedule()
 
   // Add CSS for spinner animation
   React.useEffect(() => {
@@ -168,24 +137,29 @@ return () => {
       document.head.removeChild(style)
     }
   }, [])
-  
-  // States for filtering
-  const [teacherSearch, setTeacherSearch] = useState('')
-  const [selectedDay, setSelectedDay] = useState<string>('all')
+
+  // Debounce search input
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(studentSearch)
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [studentSearch])
 
   // States for edit dialog
   const [editDialog, setEditDialog] = useState<{
     open: boolean
-    teacherId: string
-    teacherName: string
+    studentId: string
+    studentName: string
     slotIndex: number
     day: string
     time: string
     currentStatus: 'busy' | 'free'
   }>({
     open: false,
-    teacherId: '',
-    teacherName: '',
+    studentId: '',
+    studentName: '',
     slotIndex: 0,
     day: '',
     time: '',
@@ -222,19 +196,18 @@ return () => {
     return slots
   }, [])
 
-  // Filter teachers based on search term
-  const filteredTeachers = useMemo(() => {
-    if (!teachers) return []
+  // Filter students based on search term
+  const filteredStudents = useMemo(() => {
+    if (!studentData?.users) return []
     
-    if (!teacherSearch.trim()) return teachers
+    if (!studentSearch.trim()) return studentData.users
     
-    return teachers.filter(teacher => 
-      teacher.name.toLowerCase().includes(teacherSearch.toLowerCase()) ||
-      teacher.skills.some(skill => 
-        skill.toLowerCase().includes(teacherSearch.toLowerCase())
-      )
+    return studentData.users.filter(student => 
+      student.profile.fullname.toLowerCase().includes(studentSearch.toLowerCase()) ||
+      student.profile.email.toLowerCase().includes(studentSearch.toLowerCase()) ||
+      student.course?.name.toLowerCase().includes(studentSearch.toLowerCase())
     )
-  }, [teachers, teacherSearch])
+  }, [studentData?.users, studentSearch])
 
   // Filter time slots based on selected day
   const filteredTimeSlots = useMemo(() => {
@@ -251,53 +224,27 @@ return () => {
 return ['all', ...Array.from(new Set(days))]
   }, [allTimeSlots])
 
-  // Check if teacher is busy at specific slot
+  // Check if student is busy at specific slot
   // Note: API uses 1-42, UI uses 0-41, so we need to add 1 to convert
-  const isTeacherBusy = (teacherSchedule: number[] | undefined, slotIndex: number) => {
-    if (!teacherSchedule || !Array.isArray(teacherSchedule)) return false
+  const isStudentBusy = (studentSchedule: number[] | undefined, slotIndex: number) => {
+    if (!studentSchedule || !Array.isArray(studentSchedule)) return false
     
-return teacherSchedule.includes(slotIndex + 1)
+return studentSchedule.includes(slotIndex + 1)
   }
 
-  // Check if teacher is teaching at specific slot
-  // Note: API uses 1-42, UI uses 0-41, so we need to add 1 to convert
-  const isTeacherTeaching = (teacherId: string, slotIndex: number) => {
-    if (!schedules) return false
-
-    return schedules.some(schedule => 
-      schedule.teacher_id === teacherId && schedule.schedule_time === slotIndex + 1
-    )
-  }
-
-  // Get teaching info for a teacher at specific slot
-  // Note: API uses 1-42, UI uses 0-41, so we need to add 1 to convert
-  const getTeachingInfo = (teacherId: string, slotIndex: number) => {
-    if (!schedules) return null
-
-    return schedules.find(schedule => 
-      schedule.teacher_id === teacherId && schedule.schedule_time === slotIndex + 1
-    )
-  }
-
-  // Check if slot is editable (not teaching)
-  const isSlotEditable = (teacherId: string, slotIndex: number) => {
-    return !isTeacherTeaching(teacherId, slotIndex)
-  }
 
   // Handle cell click for editing
-  const handleCellClick = (teacherId: string, slotIndex: number, day: string, time: string) => {
-    if (!isSlotEditable(teacherId, slotIndex)) return
+  const handleCellClick = (studentId: string, slotIndex: number, day: string, time: string) => {
+    const student = filteredStudents.find(s => s.id === studentId)
 
-    const teacher = teachers?.find(t => t.id === teacherId)
+    if (!student) return
 
-    if (!teacher) return
-
-    const isBusy = isTeacherBusy(teacher.registeredBusySchedule, slotIndex)
+    const isBusy = isStudentBusy(student.profile.busyScheduleArr, slotIndex)
     
     setEditDialog({
       open: true,
-      teacherId,
-      teacherName: teacher.name,
+      studentId,
+      studentName: student.profile.fullname,
       slotIndex,
       day,
       time,
@@ -313,11 +260,11 @@ return teacherSchedule.includes(slotIndex + 1)
   // Handle save schedule changes
   const handleSaveSchedule = async () => {
     try {
-      const teacher = teachers?.find(t => t.id === editDialog.teacherId)
+      const student = filteredStudents.find(s => s.id === editDialog.studentId)
 
-      if (!teacher) return
+      if (!student) return
 
-      const currentBusySchedule = [...(teacher.registeredBusySchedule || [])]
+      const currentBusySchedule = [...(student.profile.busyScheduleArr || [])]
       let newBusySchedule: number[]
 
       if (editDialog.currentStatus === 'busy') {
@@ -338,19 +285,19 @@ return teacherSchedule.includes(slotIndex + 1)
         newBusySchedule = currentBusySchedule.filter(slot => slot !== apiSlotIndex)
       }
 
-      // Use the hook to update teacher's busy schedule
-      await updateTeacherBusyScheduleMutation.mutateAsync({
-        teacherId: editDialog.teacherId,
+      // Use the hook to update student's busy schedule
+      await updateStudentBusyScheduleMutation.mutateAsync({
+        studentId: editDialog.studentId,
         busySchedule: newBusySchedule
       })
 
       setNotification({
         open: true,
-        message: `Đã cập nhật lịch ${editDialog.teacherName} thành công!`,
+        message: `Đã cập nhật lịch ${editDialog.studentName} thành công!`,
         severity: 'success'
       })
     } catch (error) {
-      console.error('Error updating teacher schedule:', error)
+      console.error('Error updating student schedule:', error)
       setNotification({
         open: true,
         message: 'Có lỗi xảy ra khi cập nhật lịch!',
@@ -369,7 +316,7 @@ return teacherSchedule.includes(slotIndex + 1)
   if (isLoading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <Typography>Đang tải dữ liệu giáo viên...</Typography>
+        <Typography>Đang tải dữ liệu học sinh...</Typography>
       </Box>
     )
   }
@@ -386,11 +333,11 @@ return teacherSchedule.includes(slotIndex + 1)
 
   return (
     <>
-      {/* Chỉnh sửa lịch giáo viên */}
+      {/* Chỉnh sửa lịch học sinh */}
       <Card>
         <CardHeader
-          title="Chỉnh sửa lịch giáo viên"
-          subheader="Click vào ô lịch để thay đổi trạng thái bận/rảnh của giáo viên (42 khung giờ/tuần)"
+          title="Chỉnh sửa lịch học sinh"
+          subheader="Click vào ô lịch để thay đổi trạng thái bận/rảnh của học sinh (42 khung giờ/tuần)"
           action={
             <Box display="flex" gap={1} alignItems="center">
               <Chip 
@@ -413,15 +360,6 @@ return teacherSchedule.includes(slotIndex + 1)
               />
               <Chip 
                 size="small" 
-                label="Đang dạy (Không thể sửa)" 
-                sx={{ 
-                  backgroundColor: '#e3f2fd',
-                  color: '#1976d2',
-                  border: '1px solid #bbdefb'
-                }}
-              />
-              <Chip 
-                size="small" 
                 label="Có thể chỉnh sửa" 
                 sx={{ 
                   backgroundColor: '#e8f5e8',
@@ -440,16 +378,16 @@ return teacherSchedule.includes(slotIndex + 1)
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  placeholder="Tìm kiếm theo tên giáo viên hoặc kỹ năng..."
-                  value={teacherSearch}
-                  onChange={(e) => setTeacherSearch(e.target.value)}
+                  placeholder="Tìm kiếm theo tên học sinh, email hoặc khóa học..."
+                  value={studentSearch}
+                  onChange={(e) => setStudentSearch(e.target.value)}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
                         <i className="ri-search-line" style={{ color: '#666' }} />
                       </InputAdornment>
                     ),
-                    endAdornment: teacherSearch && (
+                    endAdornment: studentSearch && (
                       <InputAdornment position="end">
                         <i 
                           className="ri-close-line" 
@@ -458,7 +396,7 @@ return teacherSchedule.includes(slotIndex + 1)
                             cursor: 'pointer',
                             fontSize: '18px'
                           }}
-                          onClick={() => setTeacherSearch('')}
+                          onClick={() => setStudentSearch('')}
                         />
                       </InputAdornment>
                     )
@@ -495,17 +433,17 @@ return teacherSchedule.includes(slotIndex + 1)
             </Grid>
             
             {/* Filter Summary */}
-            {(teacherSearch || selectedDay !== 'all') && (
+            {(studentSearch || selectedDay !== 'all') && (
               <Box sx={{ mt: 2, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
                 <Typography variant="body2" color="text.secondary">
                   <i className="ri-filter-line" style={{ marginRight: 8 }} />
                   Đang lọc: 
-                  {teacherSearch && (
+                  {studentSearch && (
                     <Chip 
-                      label={`Giáo viên: "${teacherSearch}"`} 
+                      label={`Học sinh: "${studentSearch}"`} 
                       size="small" 
                       sx={{ ml: 1, mr: 1 }}
-                      onDelete={() => setTeacherSearch('')}
+                      onDelete={() => setStudentSearch('')}
                     />
                   )}
                   {selectedDay !== 'all' && (
@@ -540,14 +478,14 @@ return teacherSchedule.includes(slotIndex + 1)
                       </Typography>
                     </Box>
                   </StyledHeaderCell>
-                  {filteredTeachers.map((teacher) => (
-                    <StyledHeaderCell key={teacher.id}>
+                  {filteredStudents.map((student) => (
+                    <StyledHeaderCell key={student.id}>
                       <Box>
                         <Typography variant="body2" fontWeight={600}>
-                          {teacher.name}
+                          {student.profile.fullname}
                         </Typography>
                         <Typography variant="caption" color="textSecondary">
-                          {teacher.skills?.length || 0} kỹ năng
+                          {student.course?.name || 'Chưa có khóa học'}
                         </Typography>
                       </Box>
                     </StyledHeaderCell>
@@ -557,7 +495,7 @@ return teacherSchedule.includes(slotIndex + 1)
               <TableBody>
                 {filteredTimeSlots.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={filteredTeachers.length + 1} align="center" sx={{ py: 4 }}>
+                    <TableCell colSpan={filteredStudents.length + 1} align="center" sx={{ py: 4 }}>
                       <Box display="flex" flexDirection="column" alignItems="center" gap={2}>
                         <i className="ri-calendar-line" style={{ fontSize: '48px', color: '#ccc' }} />
                         <Typography variant="h6" color="text.secondary">
@@ -582,45 +520,31 @@ return teacherSchedule.includes(slotIndex + 1)
                           </Typography>
                         </Box>
                       </StyledTimeCell>
-                      {filteredTeachers.map((teacher) => {
-                        const isBusy = isTeacherBusy(teacher.registeredBusySchedule, slot.slot)
-                        const isTeaching = isTeacherTeaching(teacher.id, slot.slot)
-                        const teachingInfo = getTeachingInfo(teacher.id, slot.slot)
-                        const isEditable = isSlotEditable(teacher.id, slot.slot)
+                      {filteredStudents.map((student) => {
+                        const isBusy = isStudentBusy(student.profile.busyScheduleArr, slot.slot)
                         
                         return (
                           <ScheduleCell
-                            key={`${teacher.id}-${slot.slot}`}
+                            key={`${student.id}-${slot.slot}`}
                             isBusy={isBusy}
-                            isTeaching={isTeaching}
-                            isEditable={isEditable}
-                            onClick={isEditable ? () => handleCellClick(
-                              teacher.id,
+                            isTeaching={false}
+                            isEditable={true}
+                            onClick={() => handleCellClick(
+                              student.id,
                               slot.slot,
                               slot.day,
                               slot.time
-                            ) : undefined}
+                            )}
                           >
-                            {isTeaching && teachingInfo ? (
-                              <TeachingInfo>
-                                <Box className="class-name" title={teachingInfo.class_name}>
-                                  {teachingInfo.class_name}
-                                </Box>
-                                <Box className="lesson-info">
-                                  Buổi {teachingInfo.lesson}
-                                </Box>
-                              </TeachingInfo>
-                            ) : (
-                              <Tooltip 
-                                title={
-                                  isEditable
-                                    ? `Click để thay đổi lịch ${teacher.name} vào ${slot.day} ${slot.time}`
-                                    : isBusy 
-                                      ? `${teacher.name} bận vào ${slot.day} ${slot.time}`
-                                      : `${teacher.name} rảnh vào ${slot.day} ${slot.time}`
-                                }
-                              >
-                                <IconButton size="small">
+                            
+                                <Tooltip 
+                                    title={
+                                    isBusy 
+                                        ? `${student.profile.fullname} bận vào ${slot.day} ${slot.time}`
+                                        : `${student.profile.fullname} rảnh vào ${slot.day} ${slot.time}`
+                                    }
+                                >
+                                    <IconButton size="small">
                                   {isBusy ? (
                                     <i className="ri-close-line" style={{ color: '#c62828', fontSize: '18px' }} />
                                   ) : (
@@ -628,7 +552,7 @@ return teacherSchedule.includes(slotIndex + 1)
                                   )}
                                 </IconButton>
                               </Tooltip>
-                            )}
+                                  
                           </ScheduleCell>
                         )
                       })}
@@ -642,21 +566,20 @@ return teacherSchedule.includes(slotIndex + 1)
           {/* Summary */}
           <Box mt={3}>
             <Typography variant="h6" gutterBottom>
-              Thống kê {filteredTeachers.length !== teachers?.length && `(${filteredTeachers.length}/${teachers?.length} giáo viên)`}
+              Thống kê {filteredStudents.length !== studentData?.users?.length && `(${filteredStudents.length}/${studentData?.users?.length} học sinh)`}
             </Typography>
             <Box display="flex" gap={2} flexWrap="wrap">
-              {filteredTeachers.map((teacher) => {
-                                 // Note: registeredBusySchedule contains API indices (1-42), not UI indices (0-41)
-                                 const busySlots = teacher.registeredBusySchedule?.length || 0
-                const teachingSlots = schedules?.filter(s => s.teacher_id === teacher.id).length || 0
+              {filteredStudents.map((student) => {
+                // Note: busyScheduleArr contains API indices (1-42), not UI indices (0-41)
+                const busySlots = student.profile.busyScheduleArr?.length || 0
                 const totalSlots = SCHEDULE_TIME.length
-                const freeSlots = totalSlots - busySlots - teachingSlots
+                const freeSlots = totalSlots - busySlots
                 
                 return (
-                  <Card key={teacher.id} variant="outlined" sx={{ minWidth: 200 }}>
+                  <Card key={student.id} variant="outlined" sx={{ minWidth: 200 }}>
                     <CardContent sx={{ p: 2 }}>
                       <Typography variant="subtitle2" fontWeight={600}>
-                        {teacher.name}
+                        {student.profile.fullname}
                       </Typography>
                       <Box display="flex" justifyContent="space-between" mt={1}>
                         <Typography variant="body2" sx={{ color: '#2e7d32' }}>
@@ -668,18 +591,16 @@ return teacherSchedule.includes(slotIndex + 1)
                       </Box>
                       <Box display="flex" justifyContent="space-between" mt={0.5}>
                         <Typography variant="body2" sx={{ color: '#1976d2' }}>
-                          Đang dạy: {teachingSlots}/{totalSlots}
+                          Khóa học: {student.course?.name || 'Chưa có'}
                         </Typography>
                       </Box>
                       <Box display="flex" gap={0.5} mt={1}>
-                        {teacher.skills.map((skill, index) => (
-                          <Chip 
-                            key={index}
-                            label={skill} 
-                            size="small" 
-                            variant="outlined"
-                          />
-                        ))}
+                        <Chip 
+                          label={student.profile.ieltsPoint || 'N/A'} 
+                          size="small" 
+                          variant="outlined"
+                          color="primary"
+                        />
                       </Box>
                     </CardContent>
                   </Card>
@@ -696,14 +617,14 @@ return teacherSchedule.includes(slotIndex + 1)
           <Box display="flex" alignItems="center" gap={2}>
             <i className="ri-calendar-edit-line" style={{ fontSize: '24px', color: '#1976d2' }} />
             <Typography variant="h6" fontWeight={600}>
-              Chỉnh sửa lịch giáo viên
+              Chỉnh sửa lịch học sinh
             </Typography>
           </Box>
         </DialogTitle>
         <DialogContent>
           <Box sx={{ mt: 2 }}>
             <Typography variant="body1" gutterBottom>
-              <strong>Giáo viên:</strong> {editDialog.teacherName}
+              <strong>Học sinh:</strong> {editDialog.studentName}
             </Typography>
             <Typography variant="body1" gutterBottom>
               <strong>Thời gian:</strong> {editDialog.day} - {editDialog.time}
@@ -750,14 +671,14 @@ return teacherSchedule.includes(slotIndex + 1)
           <Button
             variant="contained"
             onClick={handleSaveSchedule}
-            disabled={updateTeacherBusyScheduleMutation.isPending}
+            disabled={updateStudentBusyScheduleMutation.isPending}
             startIcon={
-              updateTeacherBusyScheduleMutation.isPending ? 
+              updateStudentBusyScheduleMutation.isPending ? 
                 <i className="ri-loader-4-line" style={{ animation: 'spin 1s linear infinite' }} /> : 
                 <i className="ri-save-line" />
             }
           >
-            {updateTeacherBusyScheduleMutation.isPending ? 'Đang lưu...' : 'Lưu thay đổi'}
+            {updateStudentBusyScheduleMutation.isPending ? 'Đang lưu...' : 'Lưu thay đổi'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -781,4 +702,4 @@ return teacherSchedule.includes(slotIndex + 1)
   )
 }
 
-export default EditTeacherSchedule
+export default EditStudentSchedule
