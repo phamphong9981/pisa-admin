@@ -128,11 +128,12 @@ export const useUpdateLessonSchedule = () => {
     })
 }
 
-export const updateUserSchedule = async (scheduleId: string, start_time?: string, end_time?: string) => {
+export const updateUserSchedule = async (scheduleId: string, start_time?: string, end_time?: string, note?: string) => {
     const { data } = await axios.put(`${process.env.NEXT_PUBLIC_BASE_API}/user-schedule`, {
         schedule_id: scheduleId,
         start_time: start_time,
-        end_time: end_time
+        end_time: end_time,
+        note: note
     })
 
     return data.data;
@@ -142,7 +143,7 @@ export const useUpdateUserSchedule = () => {
     const queryClient = useQueryClient()
 
     return useMutation({
-        mutationFn: ({ scheduleId, start_time, end_time }: { scheduleId: string, start_time?: string, end_time?: string }) => updateUserSchedule(scheduleId, start_time, end_time),
+        mutationFn: ({ scheduleId, start_time, end_time, note }: { scheduleId: string, start_time?: string, end_time?: string, note?: string }) => updateUserSchedule(scheduleId, start_time, end_time, note),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['schedule-detail'] })
         },
@@ -291,6 +292,7 @@ export interface StudentScheduleDetailDto {
     reason?: string,
     startTime?: string,
     endTime?: string,
+    note?: string,
 }
 
 export interface ClassScheduleDetailDto {

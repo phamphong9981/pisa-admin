@@ -147,9 +147,19 @@ const SchedulePlanner = () => {
       time: string
       slotIndex: number
     } | null
+    editMode: boolean
+    editData: {
+      classId: string
+      lesson: number
+      teacherName: string
+      className: string
+      scheduleTime: number
+    } | null
   }>({
     open: false,
-    selectedSlot: null
+    selectedSlot: null,
+    editMode: false,
+    editData: null
   })
 
   // Parse SCHEDULE_TIME into day + time
@@ -287,16 +297,29 @@ return cls.filter(c => c.name.toLowerCase().includes(keyword))
     )
   }
 
-  // Handle click on class box to open schedule detail popup
+  // Handle click on class box to open edit lesson schedule modal
   const handleClassBoxClick = (schedule: any) => {
-    setScheduleDetailPopup({
-      open: true,
-      classId: schedule.class_id,
-      lesson: schedule.lesson,
-      teacherName: schedule.teacher_name,
-      className: schedule.class_name,
-      scheduleTime: schedule.schedule_time
-    })
+    const slotIndex = schedule.schedule_time - 1 // Convert to 0-based index
+    const slot = parsedSlots[slotIndex]
+    
+    if (slot) {
+      setCreateLessonModal({
+        open: true,
+        selectedSlot: {
+          day: slot.day,
+          time: slot.time,
+          slotIndex: slotIndex
+        },
+        editMode: true,
+        editData: {
+          classId: schedule.class_id,
+          lesson: schedule.lesson,
+          teacherName: schedule.teacher_name,
+          className: schedule.class_name,
+          scheduleTime: schedule.schedule_time
+        }
+      })
+    }
   }
 
   // Handle close schedule detail popup
@@ -308,7 +331,9 @@ return cls.filter(c => c.name.toLowerCase().includes(keyword))
   const handleOpenCreateLessonModal = (day: string, time: string, slotIndex: number) => {
     setCreateLessonModal({
       open: true,
-      selectedSlot: { day, time, slotIndex }
+      selectedSlot: { day, time, slotIndex },
+      editMode: false,
+      editData: null
     })
   }
 
@@ -316,7 +341,9 @@ return cls.filter(c => c.name.toLowerCase().includes(keyword))
   const handleCloseCreateLessonModal = () => {
     setCreateLessonModal({
       open: false,
-      selectedSlot: null
+      selectedSlot: null,
+      editMode: false,
+      editData: null
     })
   }
 
@@ -605,6 +632,8 @@ return index > 0 ? (freeStudentsByIndex[index] || []) : []
         })()}
         courseClasses={courseInfo?.classes || []}
         weekId="08a60c9a-b3f8-42f8-8ff8-c7015d4ef3e7"
+        editMode={createLessonModal.editMode}
+        editData={createLessonModal.editData}
       />
     </Box>
   )
