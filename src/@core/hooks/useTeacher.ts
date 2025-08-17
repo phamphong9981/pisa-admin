@@ -44,7 +44,9 @@ const updateTeacherBusySchedule = async (teacherId: string, busySchedule: number
 
 export const useUpdateTeacherBusySchedule = () => {
     const queryClient = useQueryClient();
-    return useMutation({
+
+    
+return useMutation({
         mutationFn: ({ teacherId, busySchedule }: { teacherId: string; busySchedule: number[] }) =>
             updateTeacherBusySchedule(teacherId, busySchedule),
         onSuccess: () => {

@@ -17,7 +17,6 @@ import {
   IconButton,
   InputAdornment,
   InputLabel,
-  Menu,
   MenuItem,
   Select,
   Snackbar,
@@ -38,8 +37,8 @@ import {
 import { styled } from '@mui/material/styles'
 
 // Hooks
-import { useGetAllSchedule, SCHEDULE_TIME } from '@/@core/hooks/useSchedule'
-import { useTeacherList, useUpdateTeacherBusySchedule } from '@/@core/hooks/useTeacher'
+import { SCHEDULE_TIME } from '@/@core/hooks/useSchedule'
+import { useTeacherList , useUpdateTeacherBusySchedule } from '@/@core/hooks/useTeacher'
 
 
 const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
@@ -139,6 +138,7 @@ const getDayInVietnamese = (englishDay: string) => {
 
 const EditTeacherSchedule = () => {
   const { data: teachers, isLoading, error } = useTeacherList()
+
   // For now, we'll use empty array for schedules until we have proper courseId and weekId
   const schedules: any[] = []
   
@@ -154,6 +154,7 @@ const EditTeacherSchedule = () => {
   // Add CSS for spinner animation
   React.useEffect(() => {
     const style = document.createElement('style')
+
     style.textContent = `
       @keyframes spin {
         from { transform: rotate(0deg); }
@@ -161,7 +162,9 @@ const EditTeacherSchedule = () => {
       }
     `
     document.head.appendChild(style)
-    return () => {
+
+    
+return () => {
       document.head.removeChild(style)
     }
   }, [])
@@ -243,7 +246,9 @@ const EditTeacherSchedule = () => {
   // Get unique days for filter dropdown
   const uniqueDays = useMemo(() => {
     const days = allTimeSlots.map(slot => slot.day)
-    return ['all', ...Array.from(new Set(days))]
+
+    
+return ['all', ...Array.from(new Set(days))]
   }, [allTimeSlots])
 
   // Check if teacher is busy at specific slot
@@ -282,6 +287,7 @@ const EditTeacherSchedule = () => {
     if (!isSlotEditable(teacherId, slotIndex)) return
 
     const teacher = teachers?.find(t => t.id === teacherId)
+
     if (!teacher) return
 
     const isBusy = isTeacherBusy(teacher.registeredBusySchedule, slotIndex)
@@ -306,6 +312,7 @@ const EditTeacherSchedule = () => {
   const handleSaveSchedule = async () => {
     try {
       const teacher = teachers?.find(t => t.id === editDialog.teacherId)
+
       if (!teacher) return
 
       const currentBusySchedule = [...teacher.registeredBusySchedule]
@@ -315,6 +322,7 @@ const EditTeacherSchedule = () => {
         // Add slot to busy schedule if not already there
         // Note: API uses 1-28, so we need to add 1 to convert from UI index (0-27)
         const apiSlotIndex = editDialog.slotIndex + 1
+
         if (!currentBusySchedule.includes(apiSlotIndex)) {
           newBusySchedule = [...currentBusySchedule, apiSlotIndex]
         } else {
@@ -324,6 +332,7 @@ const EditTeacherSchedule = () => {
         // Remove slot from busy schedule
         // Note: API uses 1-28, so we need to add 1 to convert from UI index (0-27)
         const apiSlotIndex = editDialog.slotIndex + 1
+
         newBusySchedule = currentBusySchedule.filter(slot => slot !== apiSlotIndex)
       }
 
