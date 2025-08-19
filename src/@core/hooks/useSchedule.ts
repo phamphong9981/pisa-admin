@@ -412,7 +412,9 @@ const autoScheduleCourse = async (courseId: string) => {
 
 export const useAutoScheduleCourse = () => {
     const queryClient = useQueryClient()
-    return useMutation({
+
+    
+return useMutation({
         mutationFn: autoScheduleCourse,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['unschedule-list'] })

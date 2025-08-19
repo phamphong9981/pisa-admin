@@ -227,7 +227,7 @@ return slot ? `${slot.day}|${slot.time}` : ''
     })
     
 return map
-  }, [courseSchedules])
+  }, [courseSchedules, keyFromSlotIndex])
 
   const scheduledStudentIdsByIndex = useMemo(() => {
     const map: Record<number, Set<string>> = {}
@@ -373,7 +373,8 @@ return cls.filter(c => c.name.toLowerCase().includes(keyword))
         type: 'error',
         message: 'Vui lòng chọn một khóa học trước khi xếp lịch tự động'
       })
-      return
+      
+return
     }
 
     try {
@@ -461,7 +462,7 @@ return cls.filter(c => c.name.toLowerCase().includes(keyword))
                 <strong>Xếp lịch tự động:</strong>
               </Typography>
               <Typography variant="caption" color="text.secondary" display="block">
-                Nhấn nút "Xếp lịch tự động" ở góc trên bên phải để hệ thống tự động sắp xếp lịch học cho khóa học này dựa trên thời gian rảnh của học sinh và giáo viên.
+                Nhấn nút &quot;Xếp lịch tự động&quot; ở góc trên bên phải để hệ thống tự động sắp xếp lịch học cho khóa học này dựa trên thời gian rảnh của học sinh và giáo viên.
               </Typography>
             </Box>
           )}
