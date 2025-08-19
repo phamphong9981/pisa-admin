@@ -229,7 +229,9 @@ const ClassDetail = ({ classId }: ClassDetailProps) => {
         classId,
         lesson: selectedLesson.lesson,
         scheduleTime: editLessonForm.scheduleTime,
-        teacherId: editLessonForm.teacherId
+        teacherId: editLessonForm.teacherId,
+        weekId: "08a60c9a-b3f8-42f8-8ff8-c7015d4ef3e7",
+        action: "update"
       })
       
       setUpdateSuccess(`Đã cập nhật thông tin buổi ${selectedLesson.lesson} thành công`)
