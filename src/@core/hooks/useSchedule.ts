@@ -401,3 +401,23 @@ export const useCreateLessonSchedule = () => {
         },
     })
 }
+
+const autoScheduleCourse = async (courseId: string) => {
+    const { data } = await axios.post(`${process.env.NEXT_PUBLIC_BASE_API}/auto-schedule-course`, {
+        courseId
+    })
+
+    return data.data;
+}
+
+export const useAutoScheduleCourse = () => {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: autoScheduleCourse,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['unschedule-list'] })
+            queryClient.invalidateQueries({ queryKey: ['schedules'] })
+            queryClient.invalidateQueries({ queryKey: ['makeup-schedules'] })
+        },
+    })
+}

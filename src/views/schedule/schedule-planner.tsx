@@ -29,7 +29,7 @@ import {
 
 // Hooks
 import { useCourseInfo, useCourseList } from '@/@core/hooks/useCourse'
-import { SCHEDULE_TIME, useGetAllSchedule } from '@/@core/hooks/useSchedule'
+import { SCHEDULE_TIME, useGetAllSchedule, useAutoScheduleCourse } from '@/@core/hooks/useSchedule'
 import ScheduleDetailPopup from '@/components/ScheduleDetailPopup'
 import CreateLessonSchedule from './CreateLessonSchedule'
 
@@ -118,6 +118,7 @@ const SchedulePlanner = () => {
   const { data: courseInfo, isLoading: isCourseInfoLoading, error: courseInfoError } = useCourseInfo(selectedCourseId)
   const [classSearch, setClassSearch] = useState<string>('')
   const { data: courseSchedules } = useGetAllSchedule(selectedCourseId)
+  const autoScheduleCourseMutation = useAutoScheduleCourse()
 
   // State for schedule detail popup
   const [scheduleDetailPopup, setScheduleDetailPopup] = useState<{
@@ -138,6 +139,15 @@ const SchedulePlanner = () => {
 
   // State for highlighting teacher's free schedule
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>('')
+  
+  // State for auto schedule messages
+  const [autoScheduleMessage, setAutoScheduleMessage] = useState<{
+    type: 'success' | 'error' | null
+    message: string
+  }>({
+    type: null,
+    message: ''
+  })
 
   // State for create lesson schedule modal
   const [createLessonModal, setCreateLessonModal] = useState<{
@@ -356,10 +366,76 @@ return cls.filter(c => c.name.toLowerCase().includes(keyword))
     }
   }
 
+  // Handle auto schedule course
+  const handleAutoScheduleCourse = async () => {
+    if (!selectedCourseId) {
+      setAutoScheduleMessage({
+        type: 'error',
+        message: 'Vui lòng chọn một khóa học trước khi xếp lịch tự động'
+      })
+      return
+    }
+
+    try {
+      await autoScheduleCourseMutation.mutateAsync(selectedCourseId)
+      setAutoScheduleMessage({
+        type: 'success',
+        message: 'Xếp lịch tự động thành công! Hệ thống đã tự động sắp xếp lịch học cho khóa học này.'
+      })
+      
+      // Clear message after 5 seconds
+      setTimeout(() => {
+        setAutoScheduleMessage({ type: null, message: '' })
+      }, 5000)
+    } catch (error) {
+      console.error('Error auto scheduling course:', error)
+      setAutoScheduleMessage({
+        type: 'error',
+        message: 'Có lỗi xảy ra khi xếp lịch tự động. Vui lòng thử lại.'
+      })
+      
+      // Clear error message after 5 seconds
+      setTimeout(() => {
+        setAutoScheduleMessage({ type: null, message: '' })
+      }, 5000)
+    }
+  }
+
   return (
     <Box>
       <Card sx={{ mb: 4 }}>
-        <CardHeader title="Xếp lịch học theo khóa học" subheader="Chọn khóa học để xem lưới thời gian và các học sinh rảnh trong từng khung giờ" />
+        <CardHeader 
+          title="Xếp lịch học theo khóa học" 
+          subheader="Chọn khóa học để xem lưới thời gian và các học sinh rảnh trong từng khung giờ"
+          action={
+            selectedCourseId && (
+              <Box display="flex" alignItems="center" gap={1}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                  Khóa học: {courses?.find(c => c.id === selectedCourseId)?.name}
+                </Typography>
+                <Button
+                  variant="contained"
+                  color="success"
+                  startIcon={
+                    autoScheduleCourseMutation.isPending ? 
+                      <CircularProgress size={16} color="inherit" /> : 
+                      <i className="ri-magic-line" />
+                  }
+                  onClick={handleAutoScheduleCourse}
+                  disabled={autoScheduleCourseMutation.isPending}
+                  sx={{ 
+                    minWidth: 'auto',
+                    px: 2,
+                    py: 1,
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  {autoScheduleCourseMutation.isPending ? 'Đang xếp lịch...' : 'Xếp lịch tự động'}
+                </Button>
+              </Box>
+            )
+          }
+        />
         <CardContent>
           <Box display="flex" gap={1} flexWrap="wrap">
             {isCoursesLoading ? (
@@ -376,6 +452,31 @@ return cls.filter(c => c.name.toLowerCase().includes(keyword))
               />
             ))}
           </Box>
+          
+          {/* Auto schedule info */}
+          {selectedCourseId && (
+            <Box sx={{ mt: 2, p: 1.5, backgroundColor: '#e8f5e8', borderRadius: 1, border: '1px solid #c8e6c9' }}>
+              <Typography variant="caption" color="success.main" display="block" mb={0.5}>
+                <i className="ri-information-line" style={{ marginRight: 4 }} />
+                <strong>Xếp lịch tự động:</strong>
+              </Typography>
+              <Typography variant="caption" color="text.secondary" display="block">
+                Nhấn nút "Xếp lịch tự động" ở góc trên bên phải để hệ thống tự động sắp xếp lịch học cho khóa học này dựa trên thời gian rảnh của học sinh và giáo viên.
+              </Typography>
+            </Box>
+          )}
+
+          {/* Auto schedule messages */}
+          {autoScheduleMessage.type && (
+            <Box sx={{ mt: 2 }}>
+              <Alert 
+                severity={autoScheduleMessage.type} 
+                onClose={() => setAutoScheduleMessage({ type: null, message: '' })}
+              >
+                {autoScheduleMessage.message}
+              </Alert>
+            </Box>
+          )}
         </CardContent>
       </Card>
 
