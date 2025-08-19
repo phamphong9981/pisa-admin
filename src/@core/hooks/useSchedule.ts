@@ -103,30 +103,30 @@ export const useClassSchedule = (id: string) => {
     })
 }
 
-const updateLessonSchedule = async (classId: string, lesson: number, scheduleTime?: number, teacherId?: string) => {
-    const { data } = await axios.put(`${process.env.NEXT_PUBLIC_BASE_API}/schedule`, {
-        schedule_time: scheduleTime,
-        teacher_id: teacherId,
-        class_id: classId,
-        lesson
-    });
+// const updateLessonSchedule = async (classId: string, lesson: number, scheduleTime?: number, teacherId?: string) => {
+//     const { data } = await axios.put(`${process.env.NEXT_PUBLIC_BASE_API}/schedule`, {
+//         schedule_time: scheduleTime,
+//         teacher_id: teacherId,
+//         class_id: classId,
+//         lesson
+//     });
 
-    return data.data;
-}
+//     return data.data;
+// }
 
-export const useUpdateLessonSchedule = () => {
-    const queryClient = useQueryClient()
+// export const useUpdateLessonSchedule = () => {
+//     const queryClient = useQueryClient()
 
-    return useMutation({
-        mutationFn: ({ classId, lesson, scheduleTime, teacherId }: { classId: string, lesson: number, scheduleTime?: number, teacherId?: string }) => updateLessonSchedule(classId, lesson, scheduleTime, teacherId),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['class-schedule'] })
-        },
-        onError: (error) => {
-            console.error('Error updating lesson schedule:', error)
-        }
-    })
-}
+//     return useMutation({
+//         mutationFn: ({ classId, lesson, scheduleTime, teacherId }: { classId: string, lesson: number, scheduleTime?: number, teacherId?: string }) => updateLessonSchedule(classId, lesson, scheduleTime, teacherId),
+//         onSuccess: () => {
+//             queryClient.invalidateQueries({ queryKey: ['class-schedule'] })
+//         },
+//         onError: (error) => {
+//             console.error('Error updating lesson schedule:', error)
+//         }
+//     })
+// }
 
 export const updateUserSchedule = async (scheduleId: string, start_time?: string, end_time?: string, note?: string) => {
     const { data } = await axios.put(`${process.env.NEXT_PUBLIC_BASE_API}/user-schedule`, {
@@ -413,13 +413,52 @@ const autoScheduleCourse = async (courseId: string) => {
 export const useAutoScheduleCourse = () => {
     const queryClient = useQueryClient()
 
-    
-return useMutation({
+
+    return useMutation({
         mutationFn: autoScheduleCourse,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['unschedule-list'] })
             queryClient.invalidateQueries({ queryKey: ['schedules'] })
             queryClient.invalidateQueries({ queryKey: ['makeup-schedules'] })
+        },
+    })
+}
+
+export interface UpdateLessonScheduleDto {
+    weekId: string
+
+    scheduleTime?: number
+
+    classId: string
+
+    lesson: number
+
+    action: string // update, delete
+
+    startTime?: string
+
+    endTime?: string
+
+    teacherId?: string
+
+    profileIds?: string[]
+}
+
+const updateLessonSchedule = async (lessonSchedule: UpdateLessonScheduleDto) => {
+    const { data } = await axios.put(`${process.env.NEXT_PUBLIC_BASE_API}/update-lesson-schedule`, lessonSchedule)
+
+    return data.data;
+}
+
+export const useUpdateLessonSchedule = () => {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: updateLessonSchedule,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['unschedule-list'] })
+            queryClient.invalidateQueries({ queryKey: ['schedules'] })
+            queryClient.invalidateQueries({ queryKey: ['schedule-detail'] })
         },
     })
 }

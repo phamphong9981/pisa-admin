@@ -1,7 +1,7 @@
 'use client'
 
 // React Imports
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 
 // MUI Imports
 import {
@@ -25,7 +25,7 @@ import {
 } from '@mui/material'
 
 // Hooks
-import { useCreateLessonSchedule, useGetScheduleDetail, useUpdateUserSchedule } from '@/@core/hooks/useSchedule'
+import { useCreateLessonSchedule, useGetScheduleDetail, useUpdateUserSchedule, useUpdateLessonSchedule } from '@/@core/hooks/useSchedule'
 import { useStudentList } from '@/@core/hooks/useStudent'
 import { useTeacherList } from '@/@core/hooks/useTeacher'
 
@@ -74,6 +74,7 @@ const CreateLessonSchedule = ({
 }: CreateLessonScheduleProps) => {
   const createLessonScheduleMutation = useCreateLessonSchedule()
   const updateUserScheduleMutation = useUpdateUserSchedule()
+  const updateLessonScheduleMutation = useUpdateLessonSchedule()
   
   // Get schedule detail for edit mode
   const { data: scheduleDetail, isLoading: isLoadingScheduleDetail } = useGetScheduleDetail(
@@ -106,6 +107,16 @@ const CreateLessonSchedule = ({
   const [endTime, setEndTime] = useState('')
   const [note, setNote] = useState('')
   
+  // Original values for comparison (edit mode)
+  const [originalValues, setOriginalValues] = useState<{
+    students: SelectedStudent[]
+    classId: string
+    teacherId: string
+    lesson: number
+    startTime: string
+    endTime: string
+  } | null>(null)
+  
   // Individual student notes for edit mode
   const [studentNotes, setStudentNotes] = useState<Record<string, string>>({})
   
@@ -128,6 +139,8 @@ const CreateLessonSchedule = ({
   // Messages
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
+  
+  // Action state for edit mode (removed, will use direct action)
 
   // Reset form when modal opens/closes or slot changes
   useEffect(() => {
@@ -142,6 +155,7 @@ const CreateLessonSchedule = ({
 
         if (selectedClass) {
           setSelectedTeacherId(selectedClass.teacherId)
+          console.log('Setting teacher from class:', selectedClass.teacherId)
         }
       } else {
         // Create mode - reset form
@@ -155,6 +169,7 @@ const CreateLessonSchedule = ({
         setEditingStudentStartTime('')
         setEditingStudentEndTime('')
         setEditingStudentNote('')
+        setOriginalValues(null)
       }
       
       // Parse time from slot and format to HH:MM
@@ -187,6 +202,23 @@ const CreateLessonSchedule = ({
 
       setSelectedStudents(attendingStudents)
       
+      // Store original values for comparison
+      // Get the actual teacher ID from schedule detail or editData
+      const actualTeacherId = scheduleDetail.students.attending.length > 0 
+        ? (scheduleDetail.students.attending[0].teacherId || selectedTeacherId)
+        : selectedTeacherId
+        
+      const originalValuesToSet = {
+        students: [...attendingStudents],
+        classId: selectedClassId,
+        teacherId: actualTeacherId || '',
+        lesson: lessonNumber,
+        startTime: startTime,
+        endTime: endTime
+      }
+      
+      setOriginalValues(originalValuesToSet)
+      
       // Initialize individual student notes
       const notesMap: Record<string, string> = {}
 
@@ -213,7 +245,63 @@ const CreateLessonSchedule = ({
         }
       }
     }
-  }, [editMode, scheduleDetail, isLoadingScheduleDetail])
+  }, [editMode, scheduleDetail, isLoadingScheduleDetail, selectedClassId, selectedTeacherId, lessonNumber, startTime, endTime])
+
+  // Check if there are changes in edit mode
+  const hasChanges = useMemo(() => {
+    if (!editMode || !originalValues) return false
+    
+    // Check if students list has changed
+    const currentStudentIds = selectedStudents.map(s => s.profile_id).sort()
+    const originalStudentIds = originalValues.students.map(s => s.profile_id).sort()
+    const studentsChanged = JSON.stringify(currentStudentIds) !== JSON.stringify(originalStudentIds)
+    
+    // Check if other fields have changed
+    const otherFieldsChanged = 
+      selectedClassId !== originalValues.classId ||
+      selectedTeacherId !== originalValues.teacherId ||
+      lessonNumber !== originalValues.lesson ||
+      startTime !== originalValues.startTime ||
+      endTime !== originalValues.endTime
+    
+    // Debug log
+    if (editMode && originalValues) {
+      console.log('Debug hasChanges:', {
+        selectedTeacherId,
+        originalTeacherId: originalValues.teacherId,
+        teacherChanged: selectedTeacherId !== originalValues.teacherId,
+        otherFieldsChanged,
+        hasChanges: studentsChanged || otherFieldsChanged
+      })
+    }
+    
+    return studentsChanged || otherFieldsChanged
+  }, [editMode, originalValues, selectedStudents, selectedClassId, selectedTeacherId, lessonNumber, startTime, endTime])
+
+  // Handle delete lesson schedule
+  const handleDelete = async () => {
+    try {
+      await updateLessonScheduleMutation.mutateAsync({
+        weekId,
+        classId: selectedClassId,
+        lesson: lessonNumber,
+        action: 'delete'
+      })
+      
+      setSuccessMessage('Xóa lịch học thành công!')
+      setErrorMessage('')
+      
+      // Close modal after 2 seconds
+      setTimeout(() => {
+        onClose()
+        setSuccessMessage('')
+      }, 2000)
+      
+    } catch (error) {
+      setErrorMessage('Có lỗi xảy ra khi xóa lịch học')
+      setSuccessMessage('')
+    }
+  }
 
   // Handle form submission
   const handleSubmit = async () => {
@@ -256,26 +344,26 @@ return
     }
 
     try {
-      if (editMode && scheduleDetail) {
-        // Update mode - update each student's schedule with individual notes
-        const updatePromises = scheduleDetail.students.attending
-          .filter(student => student.scheduleId) // Only update students with scheduleId
-          .map(student => 
-            updateUserScheduleMutation.mutateAsync({
-              scheduleId: student.scheduleId!,
-              start_time: startTime ? formatTimeToHHMM(startTime) : undefined, // Format to HH:MM or undefined
-              end_time: endTime ? formatTimeToHHMM(endTime) : undefined, // Format to HH:MM or undefined
-              note: studentNotes[student.profileId] || '' // Use individual student note
-            })
-          )
-
-        await Promise.all(updatePromises)
+      if (editMode) {
+        // Update mode using UpdateLessonScheduleDto
+        await updateLessonScheduleMutation.mutateAsync({
+          weekId,
+          scheduleTime: selectedSlot!.slotIndex + 1, // Convert to 1-based index
+          classId: selectedClassId,
+          lesson: lessonNumber,
+          action: 'update',
+          startTime: startTime ? formatTimeToHHMM(startTime) : undefined,
+          endTime: endTime ? formatTimeToHHMM(endTime) : undefined,
+          teacherId: selectedTeacherId,
+          profileIds: selectedStudents.map(s => s.profile_id)
+        })
+        
         setSuccessMessage('Cập nhật lịch học thành công!')
       } else {
         // Create mode
         await createLessonScheduleMutation.mutateAsync({
           weekId,
-          scheduleTime: selectedSlot!.slotIndex, // Convert to 1-based index
+          scheduleTime: selectedSlot!.slotIndex + 1, // Convert to 1-based index
           startTime: formatTimeToHHMM(startTime), // Format to HH:MM
           endTime: formatTimeToHHMM(endTime), // Format to HH:MM
           classId: selectedClassId,
@@ -304,6 +392,26 @@ return
   // Handle remove student from selected list
   const handleRemoveStudent = (studentId: string) => {
     setSelectedStudents(prev => prev.filter(s => s.profile_id !== studentId && s.id !== studentId))
+  }
+
+  // Handle add student from available list (for edit mode)
+  const handleAddStudentFromAvailable = (student: { id: string; fullname: string }) => {
+    const isAlreadySelected = selectedStudents.some(s => s.id === student.id || s.profile_id === student.id)
+
+    if (!isAlreadySelected) {
+      const studentToAdd: SelectedStudent = {
+        id: student.id,
+        fullname: student.fullname,
+        email: undefined,
+        course: undefined,
+        ieltsPoint: undefined,
+        isBusy: false,
+        source: 'available',
+        profile_id: student.id
+      }
+
+      setSelectedStudents(prev => [...prev, studentToAdd])
+    }
   }
 
   // Handle start editing individual student
@@ -534,7 +642,7 @@ return /^\d{2}:\d{2}$/.test(time)
                   sx={{ fontSize: '0.65rem' }}
                 />
               )}
-              {!editMode && (
+              {(!editMode || editMode) && (
                 <Chip
                   size="small"
                   label="Xóa"
@@ -689,6 +797,7 @@ return /^\d{2}:\d{2}$/.test(time)
     setShowSearchResults(false)
     setSuccessMessage('')
     setErrorMessage('')
+    setOriginalValues(null)
     onClose()
   }
 
@@ -776,11 +885,13 @@ return /^\d{2}:\d{2}$/.test(time)
                   onChange={(e) => {
                     setSelectedClassId(e.target.value)
 
-                    // Auto-select teacher when class is selected
-                    const selectedClass = courseClasses.find(cls => cls.id === e.target.value)
+                    // Auto-select teacher when class is selected (only in create mode)
+                    if (!editMode) {
+                      const selectedClass = courseClasses.find(cls => cls.id === e.target.value)
 
-                    if (selectedClass) {
-                      setSelectedTeacherId(selectedClass.teacherId)
+                      if (selectedClass) {
+                        setSelectedTeacherId(selectedClass.teacherId)
+                      }
                     }
                   }}
                   label="Lớp học"
@@ -806,7 +917,7 @@ return /^\d{2}:\d{2}$/.test(time)
                   value={selectedTeacherId}
                   onChange={(e) => setSelectedTeacherId(e.target.value)}
                   label="Giáo viên"
-                  disabled={!selectedClassId || editMode}
+                  disabled={!selectedClassId}
                 >
                   {/* Default class teacher */}
                   {selectedClassId && (() => {
@@ -933,7 +1044,7 @@ return selectedClass?.teacherId === teacher.id
                 }}
                 helperText={
                   editMode 
-                    ? "Ghi chú này sẽ được áp dụng cho tất cả học sinh. Bạn cũng có thể chỉnh sửa ghi chú riêng cho từng học sinh bên dưới."
+                    ? "Ghi chú này sẽ được áp dụng cho tất cả học sinh. Bạn cũng cần chỉnh sửa ghi chú riêng cho từng học sinh bên dưới."
                     : ""
                 }
               />
@@ -948,8 +1059,8 @@ return selectedClass?.teacherId === teacher.id
               {editMode ? 'Học sinh trong lịch học' : 'Chọn học sinh'} ({selectedStudents.length} {editMode ? 'học sinh' : 'đã chọn'})
             </Typography>
 
-            {/* Search for additional students - only in create mode */}
-            {!editMode && (
+            {/* Search for additional students - only in create mode or edit mode */}
+            {(!editMode || editMode) && (
             <Box sx={{ mb: 2 }}>
               {/* Search Notice */}
               <Box sx={{ 
@@ -1121,8 +1232,8 @@ return selectedClass?.teacherId === teacher.id
             </Box>
             )}
             
-            {/* Available Students from Slot - only in create mode */}
-            {!editMode && availableStudents.length > 0 && (
+            {/* Available Students from Slot - only in create mode or edit mode */}
+            {(!editMode || editMode) && availableStudents.length > 0 && (
               <Box sx={{ mb: 2 }}>
                 <Typography variant="subtitle2" color="text.secondary" mb={1}>
                   Học sinh rảnh trong khung giờ này:
@@ -1139,7 +1250,7 @@ return selectedClass?.teacherId === teacher.id
                       <Grid item xs={12} sm={6} md={4} key={student.id}>
                         <Chip
                           label={student.fullname}
-                          onClick={() => handleAddAvailableStudent(student)}
+                          onClick={() => editMode ? handleAddStudentFromAvailable(student) : handleAddAvailableStudent(student)}
                           color={isStudentSelected(student.id) ? 'primary' : 'default'}
                           variant={isStudentSelected(student.id) ? 'filled' : 'outlined'}
                           sx={{ 
@@ -1199,25 +1310,45 @@ return selectedClass?.teacherId === teacher.id
         <Button onClick={handleClose} color="inherit">
           Hủy
         </Button>
+        
+        {/* Delete button for edit mode */}
+        {editMode && (
+          <Button
+            variant="outlined"
+            color="error"
+            onClick={handleDelete}
+            disabled={updateLessonScheduleMutation.isPending}
+            startIcon={
+              updateLessonScheduleMutation.isPending ? 
+                <CircularProgress size={16} /> : 
+                <i className="ri-delete-bin-line" />
+            }
+          >
+            {updateLessonScheduleMutation.isPending ? 'Đang xóa...' : 'Xóa lịch học'}
+          </Button>
+        )}
+        
+        {/* Update/Create button */}
         <Button
           variant="contained"
           onClick={handleSubmit}
           disabled={
-            (editMode ? updateUserScheduleMutation.isPending : createLessonScheduleMutation.isPending) || 
+            (editMode ? updateLessonScheduleMutation.isPending : createLessonScheduleMutation.isPending) || 
             (!editMode && selectedStudents.length === 0) || 
             (!editMode && !selectedTeacherId) ||
-            !startTime ||
-            !endTime ||
-            (editMode && isLoadingScheduleDetail)
+            (!editMode && (!startTime || !endTime)) ||
+            (editMode && isLoadingScheduleDetail) ||
+            (editMode && !hasChanges)
           }
+          color="primary"
           startIcon={
-            (editMode ? updateUserScheduleMutation.isPending : createLessonScheduleMutation.isPending) ? 
+            (editMode ? updateLessonScheduleMutation.isPending : createLessonScheduleMutation.isPending) ? 
               <CircularProgress size={16} /> : 
-              <i className={editMode ? "ri-save-line" : "ri-save-line"} />
+              <i className="ri-save-line" />
           }
         >
           {editMode ? 
-            (updateUserScheduleMutation.isPending ? 'Đang cập nhật...' : 'Cập nhật lịch học') : 
+            (updateLessonScheduleMutation.isPending ? 'Đang cập nhật...' : 'Cập nhật lịch học') : 
             (createLessonScheduleMutation.isPending ? 'Đang tạo...' : 'Tạo lịch học')
           }
         </Button>
