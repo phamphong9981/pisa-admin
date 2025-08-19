@@ -115,6 +115,7 @@ const CreateLessonSchedule = ({
     lesson: number
     startTime: string
     endTime: string
+    note: string
   } | null>(null)
   
   // Individual student notes for edit mode
@@ -155,7 +156,6 @@ const CreateLessonSchedule = ({
 
         if (selectedClass) {
           setSelectedTeacherId(selectedClass.teacherId)
-          console.log('Setting teacher from class:', selectedClass.teacherId)
         }
       } else {
         // Create mode - reset form
@@ -170,6 +170,7 @@ const CreateLessonSchedule = ({
         setEditingStudentEndTime('')
         setEditingStudentNote('')
         setOriginalValues(null)
+        setNote('')
       }
       
       // Parse time from slot and format to HH:MM
@@ -214,7 +215,8 @@ const CreateLessonSchedule = ({
         teacherId: actualTeacherId || '',
         lesson: lessonNumber,
         startTime: startTime,
-        endTime: endTime
+        endTime: endTime,
+        note: note
       }
       
       setOriginalValues(originalValuesToSet)
@@ -227,9 +229,15 @@ const CreateLessonSchedule = ({
       })
       setStudentNotes(notesMap)
       
-      // Set general note from first student's note (for backward compatibility)
-      if (scheduleDetail.students.attending.length > 0) {
+      // Set general note from scheduleInfo or first student's note (for backward compatibility)
+      if (scheduleDetail.scheduleInfo?.note) {
+        console.log('Setting note from scheduleInfo:', scheduleDetail.scheduleInfo.note)
+        setNote(scheduleDetail.scheduleInfo.note)
+      } else if (scheduleDetail.students.attending.length > 0) {
+        console.log('Setting note from student:', scheduleDetail.students.attending[0].note || '')
         setNote(scheduleDetail.students.attending[0].note || '')
+      } else {
+        setNote('')
       }
 
       // Set start/end time if available and format to HH:MM
@@ -249,7 +257,11 @@ const CreateLessonSchedule = ({
 
   // Check if there are changes in edit mode
   const hasChanges = useMemo(() => {
-    if (!editMode || !originalValues) return false
+    if (!editMode || !originalValues) {
+      console.log('hasChanges: editMode or originalValues not available', { editMode, originalValues: !!originalValues })
+      
+return false
+    }
     
     // Check if students list has changed
     const currentStudentIds = selectedStudents.map(s => s.profile_id).sort()
@@ -262,21 +274,23 @@ const CreateLessonSchedule = ({
       selectedTeacherId !== originalValues.teacherId ||
       lessonNumber !== originalValues.lesson ||
       startTime !== originalValues.startTime ||
-      endTime !== originalValues.endTime
+      endTime !== originalValues.endTime ||
+      note !== originalValues.note
     
-    // Debug log
-    if (editMode && originalValues) {
-      console.log('Debug hasChanges:', {
-        selectedTeacherId,
-        originalTeacherId: originalValues.teacherId,
-        teacherChanged: selectedTeacherId !== originalValues.teacherId,
-        otherFieldsChanged,
-        hasChanges: studentsChanged || otherFieldsChanged
-      })
-    }
+    // Debug log for troubleshooting
+    console.log('Debug hasChanges:', {
+      selectedTeacherId,
+      originalTeacherId: originalValues.teacherId,
+      teacherChanged: selectedTeacherId !== originalValues.teacherId,
+      note,
+      originalNote: originalValues.note,
+      noteChanged: note !== originalValues.note,
+      otherFieldsChanged,
+      hasChanges: studentsChanged || otherFieldsChanged
+    })
     
     return studentsChanged || otherFieldsChanged
-  }, [editMode, originalValues, selectedStudents, selectedClassId, selectedTeacherId, lessonNumber, startTime, endTime])
+  }, [editMode, originalValues, selectedStudents, selectedClassId, selectedTeacherId, lessonNumber, startTime, endTime, note])
 
   // Handle delete lesson schedule
   const handleDelete = async () => {
@@ -355,7 +369,8 @@ return
           startTime: startTime ? formatTimeToHHMM(startTime) : undefined,
           endTime: endTime ? formatTimeToHHMM(endTime) : undefined,
           teacherId: selectedTeacherId,
-          profileIds: selectedStudents.map(s => s.profile_id)
+          profileIds: selectedStudents.map(s => s.profile_id),
+          note: note
         })
         
         setSuccessMessage('Cập nhật lịch học thành công!')
@@ -369,7 +384,8 @@ return
           classId: selectedClassId,
           lesson: lessonNumber,
           teacherId: selectedTeacherId,
-          profileIds: selectedStudents.map(s => s.profile_id)
+          profileIds: selectedStudents.map(s => s.profile_id),
+          note: note
         })
 
         setSuccessMessage('Tạo lịch học thành công!')
@@ -798,6 +814,7 @@ return /^\d{2}:\d{2}$/.test(time)
     setSuccessMessage('')
     setErrorMessage('')
     setOriginalValues(null)
+    setNote('')
     onClose()
   }
 
@@ -1042,11 +1059,6 @@ return selectedClass?.teacherId === teacher.id
                     <i className="ri-sticky-note-line" style={{ color: '#666', marginRight: 8, alignSelf: 'flex-start', marginTop: 12 }} />
                   )
                 }}
-                helperText={
-                  editMode 
-                    ? "Ghi chú này sẽ được áp dụng cho tất cả học sinh. Bạn cũng cần chỉnh sửa ghi chú riêng cho từng học sinh bên dưới."
-                    : ""
-                }
               />
             </Grid>
           </Grid>

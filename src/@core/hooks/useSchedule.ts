@@ -315,6 +315,9 @@ export interface ScheduleDetailResponseDto {
         makeupCount: number
         absentCount: number
     }
+    scheduleInfo: {
+        note?: string
+    }
 }
 
 const getScheduleDetail = async (classId: string, lesson: number, weekId: string = "08a60c9a-b3f8-42f8-8ff8-c7015d4ef3e7"): Promise<ScheduleDetailResponseDto> => {
@@ -381,6 +384,7 @@ export interface CreateLessonScheduleDto {
     lesson: number
     teacherId: string
     profileIds: string[]
+    note?: string
 }
 
 const createLessonSchedule = async (lessonSchedule: CreateLessonScheduleDto) => {
@@ -442,6 +446,8 @@ export interface UpdateLessonScheduleDto {
     teacherId?: string
 
     profileIds?: string[]
+
+    note?: string
 }
 
 const updateLessonSchedule = async (lessonSchedule: UpdateLessonScheduleDto) => {
