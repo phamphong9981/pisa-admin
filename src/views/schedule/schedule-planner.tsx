@@ -668,9 +668,27 @@ return (
                                     <ClassBoxBody>
                                       {Array.isArray(s.students) && s.students.length > 0 ? (
                                         <Box display="flex" gap={0.5} flexWrap="wrap">
-                                          {s.students.map((st: any) => (
-                                            <Chip key={st.id} size="small" label={st.fullname} />
-                                          ))}
+                                          {s.students.map((st: any) => {
+                                            const displayLabel = st.note 
+                                              ? `${st.fullname} (${st.note})`
+                                              : st.fullname;
+                                            
+                                            return (
+                                              <Chip 
+                                                key={st.id} 
+                                                size="small" 
+                                                label={displayLabel}
+                                                sx={{
+                                                  maxWidth: '100%',
+                                                  '& .MuiChip-label': {
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    whiteSpace: 'nowrap'
+                                                  }
+                                                }}
+                                              />
+                                            );
+                                          })}
                                         </Box>
                                       ) : (
                                         <Typography variant="caption" color="text.secondary">Chưa có danh sách học sinh</Typography>

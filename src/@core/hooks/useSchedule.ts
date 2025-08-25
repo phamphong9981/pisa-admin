@@ -165,6 +165,7 @@ interface allScheduleResponse {
     students?: {
         id: string
         fullname: string
+        note?: string
     },
     note?: string
 }
