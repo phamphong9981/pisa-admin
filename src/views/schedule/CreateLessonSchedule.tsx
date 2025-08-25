@@ -89,6 +89,7 @@ const CreateLessonSchedule = ({
     fullname: string
     email?: string
     course?: { id: string; name: string }
+    courseName?: string
     ieltsPoint?: string
     isBusy: boolean
     source: 'available' | 'search'
@@ -192,6 +193,7 @@ const CreateLessonSchedule = ({
         fullname: student.fullname,
         email: student.email,
         course: undefined,
+        courseName: student.courseName,
         ieltsPoint: undefined,
         isBusy: false,
         source: 'available' as const,
@@ -410,25 +412,7 @@ return
     setSelectedStudents(prev => prev.filter(s => s.profile_id !== studentId && s.id !== studentId))
   }
 
-  // Handle add student from available list (for edit mode)
-  const handleAddStudentFromAvailable = (student: { id: string; fullname: string }) => {
-    const isAlreadySelected = selectedStudents.some(s => s.id === student.id || s.profile_id === student.id)
 
-    if (!isAlreadySelected) {
-      const studentToAdd: SelectedStudent = {
-        id: student.id,
-        fullname: student.fullname,
-        email: undefined,
-        course: undefined,
-        ieltsPoint: undefined,
-        isBusy: false,
-        source: 'available',
-        profile_id: student.id
-      }
-
-      setSelectedStudents(prev => [...prev, studentToAdd])
-    }
-  }
 
   // Handle start editing individual student
   const handleStartEditStudent = (student: any) => {
@@ -605,21 +589,21 @@ return /^\d{2}:\d{2}$/.test(time)
                   {student.email}
                 </Typography>
               )}
-              {student.course && (
+              {(student.course || student.courseName) && (
                 <Typography variant="caption" color="primary" display="block">
                   <i className="ri-book-line" style={{ marginRight: 4, fontSize: '10px' }} />
-                  {student.course.name}
+                  {student.course?.name || student.courseName}
                 </Typography>
               )}
               {/* Alternative: Try to get course from other sources */}
-              {!student.course && student.source === 'search' && student.ieltsPoint && (
+              {!student.course && !student.courseName && student.source === 'search' && student.ieltsPoint && (
                 <Typography variant="caption" color="info" display="block">
                   <i className="ri-award-line" style={{ marginRight: 4, fontSize: '10px' }} />
                   IELTS: {student.ieltsPoint}
                 </Typography>
               )}
               {/* Debug: Show course info if available */}
-              {!student.course && !student.ieltsPoint && student.source === 'search' && (
+              {!student.course && !student.courseName && !student.ieltsPoint && student.source === 'search' && (
                 <Typography variant="caption" color="text.secondary" display="block" sx={{ fontStyle: 'italic' }}>
                   <i className="ri-information-line" style={{ marginRight: 4, fontSize: '10px' }} />
                   Chưa có thông tin khóa học
@@ -1244,8 +1228,8 @@ return selectedClass?.teacherId === teacher.id
             </Box>
             )}
             
-            {/* Available Students from Slot - only in create mode or edit mode */}
-            {(!editMode || editMode) && availableStudents.length > 0 && (
+            {/* Available Students from Slot - only in create mode */}
+            {!editMode && availableStudents.length > 0 && (
               <Box sx={{ mb: 2 }}>
                 <Typography variant="subtitle2" color="text.secondary" mb={1}>
                   Học sinh rảnh trong khung giờ này:
@@ -1262,7 +1246,7 @@ return selectedClass?.teacherId === teacher.id
                       <Grid item xs={12} sm={6} md={4} key={student.id}>
                         <Chip
                           label={student.fullname}
-                          onClick={() => editMode ? handleAddStudentFromAvailable(student) : handleAddAvailableStudent(student)}
+                          onClick={() => handleAddAvailableStudent(student)}
                           color={isStudentSelected(student.id) ? 'primary' : 'default'}
                           variant={isStudentSelected(student.id) ? 'filled' : 'outlined'}
                           sx={{ 
@@ -1271,6 +1255,53 @@ return selectedClass?.teacherId === teacher.id
                             justifyContent: 'center'
                           }}
                         />
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Box>
+              </Box>
+            )}
+
+            {/* Absent Students - only in edit mode */}
+            {editMode && scheduleDetail && scheduleDetail.students.absent.length > 0 && (
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" color="text.secondary" mb={1}>
+                  Học sinh vắng mặt ({scheduleDetail.students.absent.length} học sinh):
+                </Typography>
+                <Box sx={{ 
+                  maxHeight: '200px', 
+                  overflowY: 'auto', 
+                  border: '1px solid #eee', 
+                  borderRadius: 1,
+                  p: 2
+                }}>
+                  <Grid container spacing={1}>
+                    {scheduleDetail.students.absent.map((student) => (
+                      <Grid item xs={12} sm={6} md={4} key={student.profileId}>
+                        <Box sx={{ 
+                          p: 1, 
+                          border: '1px solid #ffcdd2', 
+                          borderRadius: 1, 
+                          backgroundColor: '#ffebee',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 0.5
+                        }}>
+                          <Typography variant="body2" fontWeight={500} color="error">
+                            {student.fullname}
+                          </Typography>
+                          {student.courseName && (
+                            <Typography variant="caption" color="text.secondary">
+                              <i className="ri-book-line" style={{ marginRight: 4, fontSize: '10px' }} />
+                              {student.courseName}
+                            </Typography>
+                          )}
+                          {student.email && (
+                            <Typography variant="caption" color="text.secondary">
+                              {student.email}
+                            </Typography>
+                          )}
+                        </Box>
                       </Grid>
                     ))}
                   </Grid>

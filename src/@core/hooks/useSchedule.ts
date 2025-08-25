@@ -293,6 +293,7 @@ export interface StudentScheduleDetailDto {
     startTime?: string,
     endTime?: string,
     note?: string,
+    courseName: string
 }
 
 export interface ClassScheduleDetailDto {
