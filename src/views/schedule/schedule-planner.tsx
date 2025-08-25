@@ -627,7 +627,26 @@ return (
                                   >
                                     <ClassBoxHeader>
                                       <Box display="flex" gap={1} alignItems="center">
-                                        <Typography variant="body2" fontWeight={700}>{s.class_name}</Typography>
+                                        <Typography variant="body2" fontWeight={700}>{s.class_name}
+                                        {s.note && (
+                                          <Typography 
+                                            variant="caption" 
+                                            color="text.secondary"
+                                            sx={{ 
+                                              fontStyle: 'italic',
+                                              fontSize: '0.7rem',
+                                              lineHeight: 1.2,
+                                              overflow: 'hidden',
+                                              textOverflow: 'ellipsis',
+                                              display: '-webkit-box',
+                                              WebkitLineClamp: 2,
+                                              WebkitBoxOrient: 'vertical'
+                                            }}
+                                          >
+                                            {s.note}
+                                          </Typography>
+                                        )}
+                                        </Typography>
                                         <Chip
                                           size="small"
                                           variant="outlined"
@@ -641,7 +660,10 @@ return (
                                       </Box>
                                     </ClassBoxHeader>
                                     <ClassBoxSubHeader>
-                                      <Typography variant="caption">GV: {s.teacher_name}</Typography>
+                                      <Box display="flex" flexDirection="column" gap={0.5} width="100%">
+                                        <Typography variant="caption">GV: {s.teacher_name}</Typography>
+                                        
+                                      </Box>
                                     </ClassBoxSubHeader>
                                     <ClassBoxBody>
                                       {Array.isArray(s.students) && s.students.length > 0 ? (
