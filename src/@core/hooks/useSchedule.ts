@@ -2,6 +2,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import axios from 'axios'
 
+export enum ScheduleStatus {
+    ACTIVE = 'active',
+    ON_REQUEST_CANCEL = 'on_request_cancel',
+    CANCELLED = 'cancelled',
+}
+
 export const SCHEDULE_TIME = [
     "8:00-10:00 Monday",
     "10:00-12:00 Monday",
@@ -128,12 +134,13 @@ export const useClassSchedule = (id: string) => {
 //     })
 // }
 
-export const updateUserSchedule = async (scheduleId: string, start_time?: string, end_time?: string, note?: string) => {
+export const updateUserSchedule = async (scheduleId: string, start_time?: string, end_time?: string, note?: string, status?: ScheduleStatus) => {
     const { data } = await axios.put(`${process.env.NEXT_PUBLIC_BASE_API}/user-schedule`, {
         schedule_id: scheduleId,
         start_time: start_time,
         end_time: end_time,
-        note: note
+        note: note,
+        status: status
     })
 
     return data.data;
@@ -143,9 +150,10 @@ export const useUpdateUserSchedule = () => {
     const queryClient = useQueryClient()
 
     return useMutation({
-        mutationFn: ({ scheduleId, start_time, end_time, note }: { scheduleId: string, start_time?: string, end_time?: string, note?: string }) => updateUserSchedule(scheduleId, start_time, end_time, note),
+        mutationFn: ({ scheduleId, start_time, end_time, note, status }: { scheduleId: string, start_time?: string, end_time?: string, note?: string, status?: ScheduleStatus }) => updateUserSchedule(scheduleId, start_time, end_time, note, status),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['schedule-detail'] })
+            queryClient.invalidateQueries({ queryKey: ['schedule-by-fields'] })
         },
     })
 }
@@ -469,5 +477,40 @@ export const useUpdateLessonSchedule = () => {
             queryClient.invalidateQueries({ queryKey: ['schedules'] })
             queryClient.invalidateQueries({ queryKey: ['schedule-detail'] })
         },
+    })
+}
+
+export interface ScheduleByFieldResponseDto {
+    id: string
+    lesson: number
+    status: string
+    startTime?: string
+    endTime?: string
+    note?: string
+
+    // Joined fields
+    fullname: string
+    classname: string
+}
+
+const getScheduleByFields = async (status: ScheduleStatus, weekId: string = "08a60c9a-b3f8-42f8-8ff8-c7015d4ef3e7"): Promise<ScheduleByFieldResponseDto[]> => {
+    const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/schedules-by-fields`, {
+        params: {
+            status,
+            weekId
+        }
+    })
+
+    return data.data;
+}
+
+export const useGetScheduleByFields = (status: ScheduleStatus, weekId: string) => {
+    return useQuery({
+        queryKey: ['schedule-by-fields', status, weekId],
+        queryFn: () => getScheduleByFields(status, weekId),
+        staleTime: 5 * 60 * 1000, // 5 phút
+        gcTime: 10 * 60 * 1000, // 10 phút
+        retry: 1,
+        retryDelay: (attemptIndex) => Math.min(1000 * 1 ** attemptIndex, 30000),
     })
 }
