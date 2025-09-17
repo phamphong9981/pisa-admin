@@ -27,9 +27,9 @@ interface CreateClassFormProps {
 }
 
 const CreateClassForm = ({ courseId, onSuccess }: CreateClassFormProps) => {
-  const createClassMutation = useCreateClass(courseId||'')
+  const createClassMutation = useCreateClass(courseId || '')
   const { data: teachers, isLoading: isTeachersLoading, error: teachersError } = useTeacherList()
-  
+
   const [formData, setFormData] = useState<CreateClassDto>({
     name: '',
     total_lesson_per_week: 1,
@@ -37,7 +37,7 @@ const CreateClassForm = ({ courseId, onSuccess }: CreateClassFormProps) => {
     teacher_id: '',
     course_id: courseId || ''
   })
-  
+
   const [openSnackbar, setOpenSnackbar] = useState(false)
   const [snackbarMessage, setSnackbarMessage] = useState('')
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success')
@@ -51,13 +51,13 @@ const CreateClassForm = ({ courseId, onSuccess }: CreateClassFormProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     try {
       await createClassMutation.mutateAsync(formData)
       setSnackbarMessage('Tạo lớp học thành công!')
       setSnackbarSeverity('success')
       setOpenSnackbar(true)
-      
+
       // Reset form
       setFormData({
         name: '',
@@ -66,10 +66,10 @@ const CreateClassForm = ({ courseId, onSuccess }: CreateClassFormProps) => {
         teacher_id: '',
         course_id: courseId || ''
       })
-      
+
       // Call onSuccess callback
       onSuccess?.()
-      
+
     } catch (error) {
       setSnackbarMessage('Có lỗi xảy ra khi tạo lớp học!')
       setSnackbarSeverity('error')
@@ -124,7 +124,7 @@ const CreateClassForm = ({ courseId, onSuccess }: CreateClassFormProps) => {
               placeholder="Nhập tên lớp học"
             />
           </Grid>
-          
+
           <Grid item xs={12} md={6}>
             <TextField
               fullWidth
@@ -136,14 +136,14 @@ const CreateClassForm = ({ courseId, onSuccess }: CreateClassFormProps) => {
               inputProps={{ min: 1, max: 7 }}
             />
           </Grid>
-          
+
           <Grid item xs={12} md={6}>
             <FormControl fullWidth required>
-              <InputLabel>Loại lớp học</InputLabel>
+              <InputLabel>Trình độ lớp học</InputLabel>
               <Select
                 value={formData.class_type}
                 onChange={(e) => handleChange('class_type', e.target.value as ClassType)}
-                label="Loại lớp học"
+                label="Trình độ lớp học"
               >
                 {Object.values(ClassType).map((type) => (
                   <MenuItem key={type} value={type}>
@@ -153,7 +153,7 @@ const CreateClassForm = ({ courseId, onSuccess }: CreateClassFormProps) => {
               </Select>
             </FormControl>
           </Grid>
-          
+
           <Grid item xs={12} md={6}>
             <FormControl fullWidth required>
               <InputLabel>Giáo viên</InputLabel>
@@ -186,7 +186,7 @@ const CreateClassForm = ({ courseId, onSuccess }: CreateClassFormProps) => {
               </Select>
             </FormControl>
           </Grid>
-          
+
           <Grid item xs={12}>
             <Box display="flex" gap={2} justifyContent="flex-end">
               <Button
@@ -208,8 +208,8 @@ const CreateClassForm = ({ courseId, onSuccess }: CreateClassFormProps) => {
         onClose={() => setOpenSnackbar(false)}
         anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
-        <Alert 
-          onClose={() => setOpenSnackbar(false)} 
+        <Alert
+          onClose={() => setOpenSnackbar(false)}
           severity={snackbarSeverity}
           sx={{ width: '100%' }}
         >

@@ -206,11 +206,11 @@ const EditClassForm = ({ classId }: EditClassFormProps) => {
               
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth required>
-                  <InputLabel>Loại lớp học</InputLabel>
+                  <InputLabel>Trình độ lớp học</InputLabel>
                   <Select
                     value={formData.class_type}
                     onChange={(e) => handleChange('class_type', e.target.value as ClassType)}
-                    label="Loại lớp học"
+                    label="Trình độ lớp học"
                   >
                     {Object.values(ClassType).map((type) => (
                       <MenuItem key={type} value={type}>

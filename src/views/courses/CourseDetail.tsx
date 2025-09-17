@@ -58,7 +58,7 @@ const getCourseTypeLabel = (courseType: string) => {
   switch (courseType) {
     case 'FT_listening': return 'Nghe'
     case 'FT_writing': return 'Viết'
-    case 'FT_reading': return 'Đọc'  
+    case 'FT_reading': return 'Đọc'
     case 'FT_speaking': return 'Nói'
     default: return courseType
   }
@@ -78,7 +78,7 @@ const getClassTypeLabel = (classType: string) => {
   switch (classType) {
     case 'FT_listening': return 'Nghe'
     case 'FT_writing': return 'Viết'
-    case 'FT_reading': return 'Đọc'  
+    case 'FT_reading': return 'Đọc'
     case 'FT_speaking': return 'Nói'
     default: return classType
   }
@@ -115,7 +115,7 @@ const CourseDetail = ({ courseName }: CourseDetailProps) => {
   const { mutate: registerCourse, isPending: isRegistering } = useRegisterCourse()
   const { mutate: unregisterCourse, isPending: isUnregistering } = useUnregisterCourse()
   const { data: studentListData, isLoading: isStudentListLoading } = useStudentList(searchStudent)
-  
+
   // Get registered student IDs
   const registeredStudentIds = useMemo(() => {
     return course?.profileCourses?.map(pc => pc.profile.id) || []
@@ -124,8 +124,8 @@ const CourseDetail = ({ courseName }: CourseDetailProps) => {
   // Filter out already registered students
   const availableStudents = useMemo(() => {
     if (!studentListData?.users) return []
-    
-return studentListData.users.filter(student => 
+
+    return studentListData.users.filter(student =>
       !registeredStudentIds.includes(student.profile.id)
     )
   }, [studentListData?.users, registeredStudentIds])
@@ -150,8 +150,8 @@ return studentListData.users.filter(student =>
         <Typography color="text.secondary">
           {coursesError?.message}
         </Typography>
-        <Button 
-          variant="contained" 
+        <Button
+          variant="contained"
           onClick={() => router.push('/courses')}
           sx={{ mt: 2 }}
         >
@@ -167,8 +167,8 @@ return studentListData.users.filter(student =>
         <Typography variant="h5" gutterBottom>
           Không tìm thấy lớp học
         </Typography>
-        <Button 
-          variant="contained" 
+        <Button
+          variant="contained"
           onClick={() => router.push('/courses')}
         >
           Quay lại danh sách lớp học
@@ -176,7 +176,7 @@ return studentListData.users.filter(student =>
       </Box>
     )
   }
-  
+
   // Handler for register
   const handleRegisterStudents = () => {
     if (!course?.id || selectedStudentIds.length === 0) return
@@ -223,8 +223,8 @@ return studentListData.users.filter(student =>
               Lớp học: {courseName}
             </Typography>
           </Box>
-          <Button 
-            variant="outlined" 
+          <Button
+            variant="outlined"
             startIcon={<i className="ri-arrow-left-line" />}
             onClick={() => router.push('/courses')}
           >
@@ -234,7 +234,7 @@ return studentListData.users.filter(student =>
 
         {/* Thông tin cơ bản khóa học */}
         <StyledCard>
-          <CardHeader 
+          <CardHeader
             title={
               <Box display="flex" alignItems="center" gap={2}>
                 <Avatar sx={{ bgcolor: 'primary.main', width: 56, height: 56 }}>
@@ -242,8 +242,8 @@ return studentListData.users.filter(student =>
                 </Avatar>
                 <Box>
                   <Typography variant="h5">{course.name}</Typography>
-                  <Chip 
-                    label={getCourseTypeLabel(course.type)} 
+                  <Chip
+                    label={getCourseTypeLabel(course.type)}
                     color={getCourseTypeColor(course.type) as any}
                     size="small"
                   />
@@ -255,13 +255,13 @@ return studentListData.users.filter(student =>
             <Grid container spacing={3}>
               <Grid item xs={12} md={6}>
                 <Box mb={2}>
-                  <Typography variant="body2" color="text.secondary">Giáo viên phụ trách</Typography>
+                  <Typography variant="body2" color="text.secondary">Giáo viên chủ nhiệm</Typography>
                   <Typography variant="body1" fontWeight={500}>
                     {course.teacher?.name || 'Chưa phân công'}
                   </Typography>
                 </Box>
                 <Box mb={2}>
-                  <Typography variant="body2" color="text.secondary">Loại lớp học</Typography>
+                  <Typography variant="body2" color="text.secondary">Trình độ lớp học</Typography>
                   <Typography variant="body1" fontWeight={500}>
                     {getCourseTypeLabel(course.type)}
                   </Typography>
@@ -284,9 +284,9 @@ return studentListData.users.filter(student =>
               <Grid item xs={12} md={6}>
                 <Box mb={2}>
                   <Typography variant="body2" color="text.secondary">Trạng thái</Typography>
-                  <Chip 
-                    label="Đang hoạt động" 
-                    color="success" 
+                  <Chip
+                    label="Đang hoạt động"
+                    color="success"
                     size="small"
                   />
                 </Box>
@@ -297,7 +297,7 @@ return studentListData.users.filter(student =>
 
         {/* Danh sách học sinh */}
         <StyledCard>
-          <CardHeader 
+          <CardHeader
             title={
               <Box display="flex" alignItems="center" justifyContent="space-between">
                 <Typography variant="h6">
@@ -338,8 +338,8 @@ return studentListData.users.filter(student =>
                     {course.profileCourses.map((profileCourse) => {
                       const student = profileCourse.profile
 
-                      
-return (
+
+                      return (
                         <TableRow key={student.id} hover>
                           <TableCell>
                             <Box display="flex" alignItems="center" gap={2}>
@@ -367,8 +367,8 @@ return (
                             </Typography>
                           </TableCell>
                           <TableCell>
-                            <Chip 
-                              label={student.ieltsPoint || 'Chưa có điểm'} 
+                            <Chip
+                              label={student.ieltsPoint || 'Chưa có điểm'}
                               color={student.ieltsPoint ? 'success' : 'default'}
                               size="small"
                             />
@@ -381,8 +381,8 @@ return (
                           <TableCell align="center">
                             <Box display="flex" gap={1} justifyContent="center">
                               <Tooltip title="Xem chi tiết học sinh">
-                                <IconButton 
-                                  size="small" 
+                                <IconButton
+                                  size="small"
                                   color="primary"
                                   onClick={() => router.push(`/students/${student.id}`)}
                                 >
@@ -390,8 +390,8 @@ return (
                                 </IconButton>
                               </Tooltip>
                               <Tooltip title="Xem lịch học">
-                                <IconButton 
-                                  size="small" 
+                                <IconButton
+                                  size="small"
                                   color="info"
                                   onClick={() => router.push(`/students/${student.id}/schedule`)}
                                 >
@@ -399,8 +399,8 @@ return (
                                 </IconButton>
                               </Tooltip>
                               <Tooltip title="Hủy đăng ký">
-                                <IconButton 
-                                  size="small" 
+                                <IconButton
+                                  size="small"
                                   color="error"
                                   onClick={() => {
                                     setStudentToUnregister({ id: student.id, name: student.fullname })
@@ -495,7 +495,7 @@ return (
 
         {/* Danh sách lớp học */}
         <StyledCard>
-          <CardHeader 
+          <CardHeader
             title={
               <Box display="flex" alignItems="center" justifyContent="space-between">
                 <Typography variant="h6">
@@ -551,8 +551,8 @@ return (
                           </Box>
                         </TableCell>
                         <TableCell>
-                          <Chip 
-                            label={getClassTypeLabel(classItem.classType)} 
+                          <Chip
+                            label={getClassTypeLabel(classItem.classType)}
                             color={getClassTypeColor(classItem.classType) as any}
                             size="small"
                           />
@@ -582,8 +582,8 @@ return (
                         <TableCell align="center">
                           <Box display="flex" gap={1} justifyContent="center">
                             <Tooltip title="Xem chi tiết lớp kỹ năng">
-                              <IconButton 
-                                size="small" 
+                              <IconButton
+                                size="small"
                                 color="primary"
                                 onClick={() => router.push(`/classes/${classItem.id}`)}
                               >
@@ -624,55 +624,55 @@ return (
         fullWidth
       >
         <DialogContent>
-          <CreateClassForm 
-            courseId={course.id} 
-            onSuccess={() => setOpenCreateClassDialog(false)} 
+          <CreateClassForm
+            courseId={course.id}
+            onSuccess={() => setOpenCreateClassDialog(false)}
           />
         </DialogContent>
-              </Dialog>
+      </Dialog>
 
-        {/* Unregister Confirmation Dialog */}
-        <Dialog
-          open={openUnregisterDialog}
-          onClose={() => setOpenUnregisterDialog(false)}
-          maxWidth="sm"
-          fullWidth
-        >
-          <DialogContent>
-            <Box textAlign="center" py={2}>
-              <i className="ri-error-warning-line" style={{ fontSize: 48, color: '#f44336', marginBottom: 16 }} />
-              <Typography variant="h6" gutterBottom>
-                Xác nhận hủy đăng ký
-              </Typography>
-              <Typography variant="body1" color="text.secondary" mb={3}>
-                Bạn có chắc chắn muốn hủy đăng ký học sinh <strong>{studentToUnregister?.name}</strong> khỏi khóa học này?
-              </Typography>
-              <Typography variant="body2" color="text.secondary" mb={3}>
-                Hành động này không thể hoàn tác.
-              </Typography>
-              <Box display="flex" justifyContent="center" gap={2}>
-                <Button 
-                  variant="outlined" 
-                  onClick={() => setOpenUnregisterDialog(false)}
-                  disabled={isUnregistering}
-                >
-                  Hủy
-                </Button>
-                <Button 
-                  variant="contained" 
-                  color="error"
-                  onClick={handleUnregisterStudent}
-                  disabled={isUnregistering}
-                >
-                  {isUnregistering ? 'Đang xử lý...' : 'Xác nhận hủy đăng ký'}
-                </Button>
-              </Box>
+      {/* Unregister Confirmation Dialog */}
+      <Dialog
+        open={openUnregisterDialog}
+        onClose={() => setOpenUnregisterDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogContent>
+          <Box textAlign="center" py={2}>
+            <i className="ri-error-warning-line" style={{ fontSize: 48, color: '#f44336', marginBottom: 16 }} />
+            <Typography variant="h6" gutterBottom>
+              Xác nhận hủy đăng ký
+            </Typography>
+            <Typography variant="body1" color="text.secondary" mb={3}>
+              Bạn có chắc chắn muốn hủy đăng ký học sinh <strong>{studentToUnregister?.name}</strong> khỏi khóa học này?
+            </Typography>
+            <Typography variant="body2" color="text.secondary" mb={3}>
+              Hành động này không thể hoàn tác.
+            </Typography>
+            <Box display="flex" justifyContent="center" gap={2}>
+              <Button
+                variant="outlined"
+                onClick={() => setOpenUnregisterDialog(false)}
+                disabled={isUnregistering}
+              >
+                Hủy
+              </Button>
+              <Button
+                variant="contained"
+                color="error"
+                onClick={handleUnregisterStudent}
+                disabled={isUnregistering}
+              >
+                {isUnregistering ? 'Đang xử lý...' : 'Xác nhận hủy đăng ký'}
+              </Button>
             </Box>
-          </DialogContent>
-        </Dialog>
+          </Box>
+        </DialogContent>
+      </Dialog>
 
-        {/* Notification */}
-        <Snackbar
+      {/* Notification */}
+      <Snackbar
         open={notification.open}
         autoHideDuration={6000}
         onClose={() => setNotification({ ...notification, open: false })}

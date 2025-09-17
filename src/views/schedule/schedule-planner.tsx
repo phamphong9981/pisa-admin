@@ -119,25 +119,6 @@ const SchedulePlanner = () => {
   const { data: courseSchedules } = useGetAllSchedule(selectedCourseId)
   const autoScheduleCourseMutation = useAutoScheduleCourse()
 
-  // State for schedule detail popup
-  const [scheduleDetailPopup, setScheduleDetailPopup] = useState<{
-    open: boolean
-    classId: string
-    lesson: number
-    teacherName: string
-    className: string
-    scheduleTime: number
-  }>({
-    open: false,
-    classId: '',
-    lesson: 0,
-    teacherName: '',
-    className: '',
-    scheduleTime: 0
-  })
-
-  // State for highlighting teacher's free schedule
-  const [selectedTeacherId, setSelectedTeacherId] = useState<string>('')
 
   // State for auto schedule messages
   const [autoScheduleMessage, setAutoScheduleMessage] = useState<{
@@ -332,11 +313,6 @@ const SchedulePlanner = () => {
         teacherId: schedule.teacher_id // Truyền teacherId từ schedule
       })
     }
-  }
-
-  // Handle close schedule detail popup
-  const handleCloseScheduleDetailPopup = () => {
-    setScheduleDetailPopup(prev => ({ ...prev, open: false }))
   }
 
   // Handle open create lesson schedule modal
