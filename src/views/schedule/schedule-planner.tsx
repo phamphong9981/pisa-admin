@@ -119,6 +119,8 @@ const SchedulePlanner = () => {
   const { data: courseSchedules } = useGetAllSchedule(selectedCourseId)
   const autoScheduleCourseMutation = useAutoScheduleCourse()
 
+  // State for highlighting teacher's free schedule
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string>('')
 
   // State for auto schedule messages
   const [autoScheduleMessage, setAutoScheduleMessage] = useState<{
