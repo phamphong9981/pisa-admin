@@ -18,7 +18,8 @@ interface CourseListResponse {
     },
     classes: {
         id: string,
-    }[]
+    }[],
+    region: number
 }
 
 const fetchCourseList = async (region?: number): Promise<CourseListResponse[]> => {
@@ -82,7 +83,8 @@ export enum CourseType {
 interface CreateCourseRequest {
     name: string,
     type: CourseType,
-    teacher_id: string
+    teacher_id: string,
+    region: number
 }
 
 const createCourse = async (createCourseRequest: CreateCourseRequest) => {

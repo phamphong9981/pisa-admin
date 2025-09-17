@@ -17,8 +17,12 @@ import {
   Chip,
   Dialog,
   DialogContent,
+  FormControl,
   IconButton,
   InputAdornment,
+  InputLabel,
+  MenuItem,
+  Select,
   Table,
   TableBody,
   TableCell,
@@ -77,31 +81,56 @@ const getInitials = (name: string) => {
   return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)
 }
 
+const getRegionName = (region: number) => {
+  switch (region) {
+    case 1:
+      return 'Hạ Long'
+    case 2:
+      return 'Uông Bí'
+    default:
+      return 'Không xác định'
+  }
+}
+
+const getRegionColor = (region: number) => {
+  switch (region) {
+    case 1:
+      return 'primary'
+    case 2:
+      return 'secondary'
+    default:
+      return 'default'
+  }
+}
+
 const CoursesList = () => {
   // States
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(10)
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedRegion, setSelectedRegion] = useState<number | 'all'>('all')
   const [openCreateDialog, setOpenCreateDialog] = useState(false)
-  
-  const { data: courses, isLoading, error } = useCourseList()
+
+  const { data: courses, isLoading, error } = useCourseList(selectedRegion === 'all' ? undefined : selectedRegion)
 
   // Router
   const router = useRouter()
 
-  // Filter data based on search term
+  // Filter data based on search term and region
   const filteredData = useMemo(() => {
     if (!courses) return []
-    
+
     return courses.filter(course => {
       const teacherName = course.teacher?.name || ''
-      
+      const regionName = getRegionName(course.region)
+
       return course.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         getDisplayCourseTypeLabel(course.type).toLowerCase().includes(searchTerm.toLowerCase()) ||
-        teacherName.toLowerCase().includes(searchTerm.toLowerCase())
+        teacherName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        regionName.toLowerCase().includes(searchTerm.toLowerCase())
     })
   }, [searchTerm, courses])
-  
+
   // Paginate data
   const paginatedData = useMemo(() => {
     const startIndex = page * rowsPerPage
@@ -141,7 +170,34 @@ const CoursesList = () => {
           title="Quản lý lớp học"
           subheader="Quản lý các lớp học tại trung tâm"
           action={
-            <Box display="flex" gap={2} alignItems="center">
+            <Box display="flex" gap={2} alignItems="center" flexWrap="wrap">
+              <FormControl size="small" sx={{ minWidth: 150 }}>
+                <InputLabel>Khu vực</InputLabel>
+                <Select
+                  value={selectedRegion}
+                  onChange={(e) => setSelectedRegion(e.target.value as number | 'all')}
+                  label="Khu vực"
+                >
+                  <MenuItem value="all">
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <i className="ri-global-line" style={{ color: '#666' }} />
+                      <span>Tất cả</span>
+                    </Box>
+                  </MenuItem>
+                  <MenuItem value={1}>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <i className="ri-map-pin-line" style={{ color: '#1976d2' }} />
+                      <span>Hạ Long</span>
+                    </Box>
+                  </MenuItem>
+                  <MenuItem value={2}>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <i className="ri-map-pin-line" style={{ color: '#9c27b0' }} />
+                      <span>Uông Bí</span>
+                    </Box>
+                  </MenuItem>
+                </Select>
+              </FormControl>
               <Button
                 variant="contained"
                 startIcon={<i className="ri-add-line" />}
@@ -174,6 +230,7 @@ const CoursesList = () => {
                 <TableRow>
                   <StyledTableCell>Lớp học</StyledTableCell>
                   <StyledTableCell>Loại lớp</StyledTableCell>
+                  <StyledTableCell>Khu vực</StyledTableCell>
                   <StyledTableCell align="center">Số kỹ năng</StyledTableCell>
                   <StyledTableCell>Giáo viên</StyledTableCell>
                   <StyledTableCell align="center">Thao tác</StyledTableCell>
@@ -198,10 +255,18 @@ const CoursesList = () => {
                       </Box>
                     </TableCell>
                     <TableCell>
-                      <Chip 
-                        label={getDisplayCourseTypeLabel(course.type)} 
+                      <Chip
+                        label={getDisplayCourseTypeLabel(course.type)}
                         color={getCourseTypeColor(course.type) as any}
                         size="small"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={getRegionName(course.region)}
+                        color={getRegionColor(course.region) as any}
+                        size="small"
+                        icon={<i className="ri-map-pin-line" />}
                       />
                     </TableCell>
                     <TableCell align="center">
@@ -224,8 +289,8 @@ const CoursesList = () => {
                     <TableCell align="center">
                       <Box display="flex" gap={1} justifyContent="center">
                         <Tooltip title="Xem chi tiết lớp học">
-                          <IconButton 
-                            size="small" 
+                          <IconButton
+                            size="small"
                             color="primary"
                             onClick={() => router.push(`/courses/${encodeURIComponent(course.id)}`)}
                           >
@@ -253,7 +318,7 @@ const CoursesList = () => {
               </TableBody>
             </Table>
           </TableContainer>
-          
+
           <TablePagination
             component="div"
             count={filteredData.length}

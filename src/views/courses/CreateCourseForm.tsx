@@ -16,7 +16,7 @@ import {
   Snackbar
 } from '@mui/material'
 
-import { CourseType , useCreateCourse } from '@/@core/hooks/useCourse'
+import { CourseType, useCreateCourse } from '@/@core/hooks/useCourse'
 import { useTeacherList } from '@/@core/hooks/useTeacher'
 
 interface CreateCourseFormProps {
@@ -26,13 +26,14 @@ interface CreateCourseFormProps {
 const CreateCourseForm = ({ onSuccess }: CreateCourseFormProps) => {
   const createCourseMutation = useCreateCourse()
   const { data: teachers, isLoading: isTeachersLoading, error: teachersError } = useTeacherList()
-  
+
   const [formData, setFormData] = useState({
     name: '',
     type: CourseType.FOUNDATION,
-    teacher_id: ''
+    teacher_id: '',
+    region: 1 // Default to HALONG
   })
-  
+
   const [openSnackbar, setOpenSnackbar] = useState(false)
   const [snackbarMessage, setSnackbarMessage] = useState('')
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success')
@@ -46,23 +47,24 @@ const CreateCourseForm = ({ onSuccess }: CreateCourseFormProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     try {
       await createCourseMutation.mutateAsync(formData)
       setSnackbarMessage('Tạo khóa học thành công!')
       setSnackbarSeverity('success')
       setOpenSnackbar(true)
-      
+
       // Reset form
       setFormData({
         name: '',
         type: CourseType.FOUNDATION,
-        teacher_id: ''
+        teacher_id: '',
+        region: 1
       })
-      
+
       // Call onSuccess callback
       onSuccess?.()
-      
+
     } catch (error) {
       setSnackbarMessage('Có lỗi xảy ra khi tạo khóa học!')
       setSnackbarSeverity('error')
@@ -115,7 +117,7 @@ const CreateCourseForm = ({ onSuccess }: CreateCourseFormProps) => {
               placeholder="Nhập tên khóa học"
             />
           </Grid>
-          
+
           <Grid item xs={12} md={6}>
             <FormControl fullWidth required>
               <InputLabel>Loại khóa học</InputLabel>
@@ -132,7 +134,31 @@ const CreateCourseForm = ({ onSuccess }: CreateCourseFormProps) => {
               </Select>
             </FormControl>
           </Grid>
-          
+
+          <Grid item xs={12} md={6}>
+            <FormControl fullWidth required>
+              <InputLabel>Khu vực</InputLabel>
+              <Select
+                value={formData.region}
+                onChange={(e) => handleChange('region', Number(e.target.value))}
+                label="Khu vực"
+              >
+                <MenuItem value={1}>
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <i className="ri-map-pin-line" style={{ color: '#1976d2' }} />
+                    <span>Hạ Long</span>
+                  </Box>
+                </MenuItem>
+                <MenuItem value={2}>
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <i className="ri-map-pin-line" style={{ color: '#9c27b0' }} />
+                    <span>Uông Bí</span>
+                  </Box>
+                </MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+
           <Grid item xs={12} md={6}>
             <FormControl fullWidth required>
               <InputLabel>Giáo viên</InputLabel>
@@ -165,7 +191,7 @@ const CreateCourseForm = ({ onSuccess }: CreateCourseFormProps) => {
               </Select>
             </FormControl>
           </Grid>
-          
+
           <Grid item xs={12}>
             <Box display="flex" gap={2} justifyContent="flex-end">
               <Button
@@ -187,8 +213,8 @@ const CreateCourseForm = ({ onSuccess }: CreateCourseFormProps) => {
         onClose={() => setOpenSnackbar(false)}
         anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
-        <Alert 
-          onClose={() => setOpenSnackbar(false)} 
+        <Alert
+          onClose={() => setOpenSnackbar(false)}
           severity={snackbarSeverity}
           sx={{ width: '100%' }}
         >
