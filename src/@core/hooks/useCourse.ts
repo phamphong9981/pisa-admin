@@ -21,16 +21,21 @@ interface CourseListResponse {
     }[]
 }
 
-const fetchCourseList = async (): Promise<CourseListResponse[]> => {
-    const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/courses`);
+const fetchCourseList = async (region?: number): Promise<CourseListResponse[]> => {
+    const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/courses${region ? `?region=${region}` : ''}`);
 
     return data.data;
 }
 
-export const useCourseList = () => {
+const enum Region {
+    HALONG = 1,
+    UONGBI = 2
+}
+
+export const useCourseList = (region?: number) => {
     return useQuery<CourseListResponse[], Error>({
-        queryKey: ['courses'],
-        queryFn: fetchCourseList,
+        queryKey: ['courses', region],
+        queryFn: () => fetchCourseList(region),
         staleTime: 5 * 60 * 1000,
         gcTime: 10 * 60 * 1000,
         retry: 1,

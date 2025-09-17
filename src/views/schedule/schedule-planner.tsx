@@ -16,7 +16,11 @@ import {
   CardHeader,
   Chip,
   CircularProgress,
+  FormControl,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Table,
   TableBody,
   TableCell,
@@ -112,12 +116,18 @@ const ClassBoxSubHeader = styled('div')(({ theme }) => ({
 }))
 
 const SchedulePlanner = () => {
-  const { data: courses, isLoading: isCoursesLoading, error: coursesError } = useCourseList()
+  const [selectedRegion, setSelectedRegion] = useState<number>(1) // Default to HALONG
+  const { data: courses, isLoading: isCoursesLoading, error: coursesError } = useCourseList(selectedRegion)
   const [selectedCourseId, setSelectedCourseId] = useState<string>('')
   const { data: courseInfo, isLoading: isCourseInfoLoading, error: courseInfoError } = useCourseInfo(selectedCourseId)
   const [classSearch, setClassSearch] = useState<string>('')
   const { data: courseSchedules } = useGetAllSchedule(selectedCourseId)
   const autoScheduleCourseMutation = useAutoScheduleCourse()
+
+  // Reset selected course when region changes
+  useMemo(() => {
+    setSelectedCourseId('')
+  }, [selectedRegion])
 
   // State for highlighting teacher's free schedule
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>('')
@@ -420,20 +430,51 @@ const SchedulePlanner = () => {
           }
         />
         <CardContent>
-          <Box display="flex" gap={1} flexWrap="wrap">
-            {isCoursesLoading ? (
-              <CircularProgress size={20} />
-            ) : coursesError ? (
-              <Alert severity="error">Lỗi tải danh sách khóa học: {coursesError.message}</Alert>
-            ) : (courses || []).map(course => (
-              <Chip
-                key={course.id}
-                label={course.name}
-                color={selectedCourseId === course.id ? 'primary' : 'default'}
-                variant={selectedCourseId === course.id ? 'filled' : 'outlined'}
-                onClick={() => setSelectedCourseId(course.id)}
-              />
-            ))}
+          {/* Region Selection */}
+          <Box sx={{ mb: 3 }}>
+            <FormControl size="small" sx={{ minWidth: 200 }}>
+              <InputLabel>Khu vực</InputLabel>
+              <Select
+                value={selectedRegion}
+                onChange={(e) => setSelectedRegion(Number(e.target.value))}
+                label="Khu vực"
+              >
+                <MenuItem value={1}>
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <i className="ri-map-pin-line" style={{ color: '#1976d2' }} />
+                    <span>Hạ Long</span>
+                  </Box>
+                </MenuItem>
+                <MenuItem value={2}>
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <i className="ri-map-pin-line" style={{ color: '#1976d2' }} />
+                    <span>Uông Bí</span>
+                  </Box>
+                </MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+
+          {/* Course Selection */}
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="subtitle2" gutterBottom>
+              Chọn khóa học:
+            </Typography>
+            <Box display="flex" gap={1} flexWrap="wrap">
+              {isCoursesLoading ? (
+                <CircularProgress size={20} />
+              ) : coursesError ? (
+                <Alert severity="error">Lỗi tải danh sách khóa học: {coursesError.message}</Alert>
+              ) : (courses || []).map(course => (
+                <Chip
+                  key={course.id}
+                  label={course.name}
+                  color={selectedCourseId === course.id ? 'primary' : 'default'}
+                  variant={selectedCourseId === course.id ? 'filled' : 'outlined'}
+                  onClick={() => setSelectedCourseId(course.id)}
+                />
+              ))}
+            </Box>
           </Box>
 
           {/* Auto schedule info */}
