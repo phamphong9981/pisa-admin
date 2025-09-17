@@ -75,7 +75,7 @@ const CreateLessonSchedule = ({
   const createLessonScheduleMutation = useCreateLessonSchedule()
   const updateUserScheduleMutation = useUpdateUserSchedule()
   const updateLessonScheduleMutation = useUpdateLessonSchedule()
-  
+
   // Get schedule detail for edit mode
   const { data: scheduleDetail, isLoading: isLoadingScheduleDetail } = useGetScheduleDetail(
     editData?.classId || '',
@@ -107,7 +107,7 @@ const CreateLessonSchedule = ({
   const [startTime, setStartTime] = useState('')
   const [endTime, setEndTime] = useState('')
   const [note, setNote] = useState('')
-  
+
   // Original values for comparison (edit mode)
   const [originalValues, setOriginalValues] = useState<{
     students: SelectedStudent[]
@@ -118,10 +118,10 @@ const CreateLessonSchedule = ({
     endTime: string
     note: string
   } | null>(null)
-  
+
   // Individual student notes for edit mode
   const [studentNotes, setStudentNotes] = useState<Record<string, string>>({})
-  
+
   // Edit states for individual student fields
   const [editingStudentId, setEditingStudentId] = useState<string | null>(null)
   const [editingStudentStartTime, setEditingStudentStartTime] = useState<string>('')
@@ -134,14 +134,14 @@ const CreateLessonSchedule = ({
 
   // Student search hook
   const { data: searchResults, isLoading: isSearchLoading } = useStudentList(studentSearch)
-  
+
   // Teacher list hook
   const { data: teacherList } = useTeacherList()
 
   // Messages
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
-  
+
   // Action state for edit mode (removed, will use direct action)
 
   // Reset form when modal opens/closes or slot changes
@@ -151,7 +151,7 @@ const CreateLessonSchedule = ({
         // Edit mode - populate with existing data
         setSelectedClassId(editData.classId)
         setLessonNumber(editData.lesson)
-        
+
         // Find teacher from class
         const selectedClass = courseClasses.find(cls => cls.id === editData.classId)
 
@@ -173,7 +173,7 @@ const CreateLessonSchedule = ({
         setOriginalValues(null)
         setNote('')
       }
-      
+
       // Parse time from slot and format to HH:MM
       const timeParts = selectedSlot.time.split('-')
 
@@ -187,6 +187,23 @@ const CreateLessonSchedule = ({
   // Populate form with schedule detail data when in edit mode
   useEffect(() => {
     if (editMode && scheduleDetail && !isLoadingScheduleDetail) {
+      // Get the actual start/end time from schedule detail first
+      const actualStartTime = scheduleDetail.students.attending.length > 0 && scheduleDetail.students.attending[0].startTime
+        ? formatTimeToHHMM(scheduleDetail.students.attending[0].startTime)
+        : ''
+      const actualEndTime = scheduleDetail.students.attending.length > 0 && scheduleDetail.students.attending[0].endTime
+        ? formatTimeToHHMM(scheduleDetail.students.attending[0].endTime)
+        : ''
+
+      // Get the actual note
+      const actualNote = scheduleDetail.scheduleInfo?.note ||
+        (scheduleDetail.students.attending.length > 0 ? scheduleDetail.students.attending[0].note || '' : '')
+
+      // Get the actual teacher ID
+      const actualTeacherId = scheduleDetail.students.attending.length > 0
+        ? (scheduleDetail.students.attending[0].teacherId || selectedTeacherId)
+        : selectedTeacherId
+
       // Populate students from schedule detail
       const attendingStudents = scheduleDetail.students.attending.map(student => ({
         id: student.profileId,
@@ -203,94 +220,74 @@ const CreateLessonSchedule = ({
         scheduleId: student.scheduleId
       }))
 
+      // Set all states at once
       setSelectedStudents(attendingStudents)
-      
-      // Store original values for comparison
-      // Get the actual teacher ID from schedule detail or editData
-      const actualTeacherId = scheduleDetail.students.attending.length > 0 
-        ? (scheduleDetail.students.attending[0].teacherId || selectedTeacherId)
-        : selectedTeacherId
-        
+      setStartTime(actualStartTime)
+      setEndTime(actualEndTime)
+      setNote(actualNote)
+
+      // Store original values for comparison with the actual values
       const originalValuesToSet = {
         students: [...attendingStudents],
         classId: selectedClassId,
         teacherId: actualTeacherId || '',
         lesson: lessonNumber,
-        startTime: startTime,
-        endTime: endTime,
-        note: note
+        startTime: actualStartTime,
+        endTime: actualEndTime,
+        note: actualNote
       }
-      
+
       setOriginalValues(originalValuesToSet)
-      
+
       // Initialize individual student notes
       const notesMap: Record<string, string> = {}
-
       scheduleDetail.students.attending.forEach(student => {
         notesMap[student.profileId] = student.note || ''
       })
       setStudentNotes(notesMap)
-      
-      // Set general note from scheduleInfo or first student's note (for backward compatibility)
-      if (scheduleDetail.scheduleInfo?.note) {
-        console.log('Setting note from scheduleInfo:', scheduleDetail.scheduleInfo.note)
-        setNote(scheduleDetail.scheduleInfo.note)
-      } else if (scheduleDetail.students.attending.length > 0) {
-        console.log('Setting note from student:', scheduleDetail.students.attending[0].note || '')
-        setNote(scheduleDetail.students.attending[0].note || '')
-      } else {
-        setNote('')
-      }
-
-      // Set start/end time if available and format to HH:MM
-      if (scheduleDetail.students.attending.length > 0) {
-        const firstStudent = scheduleDetail.students.attending[0]
-
-        if (firstStudent.startTime) {
-          setStartTime(formatTimeToHHMM(firstStudent.startTime))
-        }
-
-        if (firstStudent.endTime) {
-          setEndTime(formatTimeToHHMM(firstStudent.endTime))
-        }
-      }
     }
-  }, [editMode, scheduleDetail, isLoadingScheduleDetail, selectedClassId, selectedTeacherId, lessonNumber, startTime, endTime])
+  }, [editMode, scheduleDetail, isLoadingScheduleDetail, selectedClassId, selectedTeacherId, lessonNumber])
 
   // Check if there are changes in edit mode
   const hasChanges = useMemo(() => {
     if (!editMode || !originalValues) {
       console.log('hasChanges: editMode or originalValues not available', { editMode, originalValues: !!originalValues })
-      
-return false
+
+      return false
     }
-    
+
     // Check if students list has changed
     const currentStudentIds = selectedStudents.map(s => s.profile_id).sort()
     const originalStudentIds = originalValues.students.map(s => s.profile_id).sort()
     const studentsChanged = JSON.stringify(currentStudentIds) !== JSON.stringify(originalStudentIds)
-    
+
     // Check if other fields have changed
-    const otherFieldsChanged = 
+    const otherFieldsChanged =
       selectedClassId !== originalValues.classId ||
       selectedTeacherId !== originalValues.teacherId ||
       lessonNumber !== originalValues.lesson ||
       startTime !== originalValues.startTime ||
       endTime !== originalValues.endTime ||
       note !== originalValues.note
-    
+
     // Debug log for troubleshooting
     console.log('Debug hasChanges:', {
       selectedTeacherId,
       originalTeacherId: originalValues.teacherId,
       teacherChanged: selectedTeacherId !== originalValues.teacherId,
+      startTime,
+      originalStartTime: originalValues.startTime,
+      startTimeChanged: startTime !== originalValues.startTime,
+      endTime,
+      originalEndTime: originalValues.endTime,
+      endTimeChanged: endTime !== originalValues.endTime,
       note,
       originalNote: originalValues.note,
       noteChanged: note !== originalValues.note,
       otherFieldsChanged,
       hasChanges: studentsChanged || otherFieldsChanged
     })
-    
+
     return studentsChanged || otherFieldsChanged
   }, [editMode, originalValues, selectedStudents, selectedClassId, selectedTeacherId, lessonNumber, startTime, endTime, note])
 
@@ -303,16 +300,16 @@ return false
         lesson: lessonNumber,
         action: 'delete'
       })
-      
+
       setSuccessMessage('Xóa lịch học thành công!')
       setErrorMessage('')
-      
+
       // Close modal after 2 seconds
       setTimeout(() => {
         onClose()
         setSuccessMessage('')
       }, 2000)
-      
+
     } catch (error) {
       setErrorMessage('Có lỗi xảy ra khi xóa lịch học')
       setSuccessMessage('')
@@ -323,40 +320,40 @@ return false
   const handleSubmit = async () => {
     if (selectedStudents.length === 0) {
       setErrorMessage('Vui lòng chọn ít nhất một học sinh')
-      
-return
+
+      return
     }
 
     if (!selectedClassId) {
       setErrorMessage('Vui lòng chọn lớp học')
-      
-return
+
+      return
     }
 
     if (!selectedTeacherId) {
       setErrorMessage('Vui lòng chọn giáo viên')
-      
-return
+
+      return
     }
 
     // Note: startTime and endTime can be undefined in edit mode
     if (!editMode && (!startTime || !endTime)) {
       setErrorMessage('Vui lòng nhập thời gian bắt đầu và kết thúc')
-      
-return
+
+      return
     }
 
     // Validate time format for both create and edit modes
     if (startTime && !isValidTimeFormat(startTime)) {
       setErrorMessage('Thời gian bắt đầu phải ở định dạng HH:MM (ví dụ: 08:00)')
-      
-return
+
+      return
     }
 
     if (endTime && !isValidTimeFormat(endTime)) {
       setErrorMessage('Thời gian kết thúc phải ở định dạng HH:MM (ví dụ: 10:00)')
-      
-return
+
+      return
     }
 
     try {
@@ -374,7 +371,7 @@ return
           profileIds: selectedStudents.map(s => s.profile_id),
           note: note
         })
-        
+
         setSuccessMessage('Cập nhật lịch học thành công!')
       } else {
         // Create mode
@@ -425,17 +422,17 @@ return
   // Format time to HH:MM format
   const formatTimeToHHMM = (time: string): string => {
     if (!time) return ''
-    
+
     // If time is already in HH:MM format, return as is
     if (/^\d{2}:\d{2}$/.test(time)) {
       return time
     }
-    
+
     // If time is in HH:MM:SS format, extract HH:MM
     if (/^\d{2}:\d{2}:\d{2}$/.test(time)) {
       return time.substring(0, 5)
     }
-    
+
     // If time is in other formats, try to parse and format
     try {
       const date = new Date(`2000-01-01T${time}`)
@@ -446,28 +443,33 @@ return
     } catch (e) {
       // Ignore parsing errors
     }
-    
+
     return time
   }
 
   // Validate time format
   const isValidTimeFormat = (time: string): boolean => {
     if (!time) return true // Empty time is valid (can be undefined)
-    
-return /^\d{2}:\d{2}$/.test(time)
+
+    // Check format HH:MM
+    if (!/^\d{2}:\d{2}$/.test(time)) return false
+
+    // Check if hours and minutes are valid
+    const [hours, minutes] = time.split(':').map(Number)
+    return hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59
   }
 
   // Handle save individual student changes
   const handleSaveStudentChanges = async (student: any) => {
     if (!student.scheduleId) return
 
-          try {
-        await updateUserScheduleMutation.mutateAsync({
-          scheduleId: student.scheduleId,
-          start_time: editingStudentStartTime ? formatTimeToHHMM(editingStudentStartTime) : undefined,
-          end_time: editingStudentEndTime ? formatTimeToHHMM(editingStudentEndTime) : undefined,
-          note: editingStudentNote
-        })
+    try {
+      await updateUserScheduleMutation.mutateAsync({
+        scheduleId: student.scheduleId,
+        start_time: editingStudentStartTime ? formatTimeToHHMM(editingStudentStartTime) : undefined,
+        end_time: editingStudentEndTime ? formatTimeToHHMM(editingStudentEndTime) : undefined,
+        note: editingStudentNote
+      })
 
       // Update local state
       setStudentNotes(prev => ({
@@ -505,7 +507,7 @@ return /^\d{2}:\d{2}$/.test(time)
   }
 
   // Handle add student from search
-  const handleAddStudentFromSearch = (user: { id: string; fullname: string; email: string, profile_id: string}) => {
+  const handleAddStudentFromSearch = (user: { id: string; fullname: string; email: string, profile_id: string }) => {
     const isAlreadySelected = selectedStudents.some(s => s.profile_id === user.profile_id)
 
     if (!isAlreadySelected) {
@@ -559,7 +561,7 @@ return /^\d{2}:\d{2}$/.test(time)
 
   // Render selected students
   const renderSelectedStudents = () => {
-    return selectedStudents.map(student => {      
+    return selectedStudents.map(student => {
       return (
         <Box
           key={student.profile_id}
@@ -574,9 +576,9 @@ return /^\d{2}:\d{2}$/.test(time)
           }}
         >
           {/* Student Info Row */}
-          <Box sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
+          <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
             justifyContent: 'space-between',
             width: '100%'
           }}>
@@ -610,7 +612,7 @@ return /^\d{2}:\d{2}$/.test(time)
                 </Typography>
               )}
               {student.source === 'search' && student.isBusy && (
-                <Box sx={{ 
+                <Box sx={{
                   mt: 0.5,
                   p: 0.5,
                   backgroundColor: '#ffebee',
@@ -626,18 +628,18 @@ return /^\d{2}:\d{2}$/.test(time)
             </Box>
             <Box display="flex" alignItems="center" gap={1}>
               {student.source === 'search' && student.isBusy ? (
-                <Chip 
-                  size="small" 
-                  label="Bận" 
-                  color="error" 
+                <Chip
+                  size="small"
+                  label="Bận"
+                  color="error"
                   variant="outlined"
                   sx={{ fontSize: '0.65rem' }}
                 />
               ) : (
-                <Chip 
-                  size="small" 
-                  label="Rảnh" 
-                  color="success" 
+                <Chip
+                  size="small"
+                  label="Rảnh"
+                  color="success"
                   variant="outlined"
                   sx={{ fontSize: '0.65rem' }}
                 />
@@ -660,9 +662,9 @@ return /^\d{2}:\d{2}$/.test(time)
             <Box sx={{ mt: 1 }}>
               {/* Show current values when not editing */}
               {editingStudentId !== student.profile_id && (
-                <Box sx={{ 
-                  p: 1, 
-                  backgroundColor: '#f5f5f5', 
+                <Box sx={{
+                  p: 1,
+                  backgroundColor: '#f5f5f5',
                   borderRadius: 1,
                   border: '1px solid #e0e0e0'
                 }}>
@@ -680,7 +682,7 @@ return /^\d{2}:\d{2}$/.test(time)
                       Chỉnh sửa
                     </Button>
                   </Box>
-                  
+
                   {/* Current values display */}
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                     <Typography variant="caption" color="text.secondary">
@@ -695,9 +697,9 @@ return /^\d{2}:\d{2}$/.test(time)
 
               {/* Edit form when editing */}
               {editingStudentId === student.profile_id && (
-                <Box sx={{ 
-                  p: 1.5, 
-                  backgroundColor: '#e3f2fd', 
+                <Box sx={{
+                  p: 1.5,
+                  backgroundColor: '#e3f2fd',
                   borderRadius: 1,
                   border: '1px solid #bbdefb'
                 }}>
@@ -705,18 +707,31 @@ return /^\d{2}:\d{2}$/.test(time)
                     <i className="ri-edit-line" style={{ marginRight: 4 }} />
                     Chỉnh sửa thông tin cho {student.fullname}
                   </Typography>
-                  
+
                   <Grid container spacing={1}>
                     <Grid item xs={6}>
                       <TextField
                         fullWidth
                         size="small"
                         label="Thời gian bắt đầu"
-                        type="time"
                         value={editingStudentStartTime}
-                        onChange={(e) => setEditingStudentStartTime(e.target.value)}
+                        onChange={(e) => {
+                          const value = e.target.value
+                          const sanitized = value.replace(/[^0-9:]/g, '')
+                          if (sanitized.length === 2 && !sanitized.includes(':')) {
+                            setEditingStudentStartTime(sanitized + ':')
+                          } else if (sanitized.length <= 5) {
+                            setEditingStudentStartTime(sanitized)
+                          }
+                        }}
+                        placeholder="HH:MM"
                         InputLabelProps={{ shrink: true }}
                         helperText="HH:MM"
+                        inputProps={{
+                          maxLength: 5,
+                          pattern: '[0-9]{2}:[0-9]{2}'
+                        }}
+                        error={!!(editingStudentStartTime && !isValidTimeFormat(editingStudentStartTime))}
                         sx={{ '& .MuiInputBase-root': { fontSize: '0.75rem' } }}
                       />
                     </Grid>
@@ -725,11 +740,24 @@ return /^\d{2}:\d{2}$/.test(time)
                         fullWidth
                         size="small"
                         label="Thời gian kết thúc"
-                        type="time"
                         value={editingStudentEndTime}
-                        onChange={(e) => setEditingStudentEndTime(e.target.value)}
+                        onChange={(e) => {
+                          const value = e.target.value
+                          const sanitized = value.replace(/[^0-9:]/g, '')
+                          if (sanitized.length === 2 && !sanitized.includes(':')) {
+                            setEditingStudentEndTime(sanitized + ':')
+                          } else if (sanitized.length <= 5) {
+                            setEditingStudentEndTime(sanitized)
+                          }
+                        }}
+                        placeholder="HH:MM"
                         InputLabelProps={{ shrink: true }}
                         helperText="HH:MM"
+                        inputProps={{
+                          maxLength: 5,
+                          pattern: '[0-9]{2}:[0-9]{2}'
+                        }}
+                        error={!!(editingStudentEndTime && !isValidTimeFormat(editingStudentEndTime))}
                         sx={{ '& .MuiInputBase-root': { fontSize: '0.75rem' } }}
                       />
                     </Grid>
@@ -747,7 +775,7 @@ return /^\d{2}:\d{2}$/.test(time)
                       />
                     </Grid>
                   </Grid>
-                  
+
                   {/* Action buttons */}
                   <Box display="flex" gap={1} mt={1}>
                     <Button
@@ -805,8 +833,8 @@ return /^\d{2}:\d{2}$/.test(time)
   if (!selectedSlot) return null
 
   return (
-    <Dialog 
-      open={open} 
+    <Dialog
+      open={open}
       onClose={handleClose}
       maxWidth="md"
       fullWidth
@@ -818,7 +846,7 @@ return /^\d{2}:\d{2}$/.test(time)
             {editMode ? 'Chỉnh sửa lịch học' : 'Tạo lịch học mới'}
           </Typography>
           {editMode && editData && (
-            <Chip 
+            <Chip
               label={`${editData.className} - Buổi ${editData.lesson}`}
               color="primary"
               variant="outlined"
@@ -842,509 +870,516 @@ return /^\d{2}:\d{2}$/.test(time)
 
           {/* Form content - hide while loading in edit mode */}
           {(!editMode || !isLoadingScheduleDetail) && (
-          <>
-          {/* Slot Information */}
-          <Box sx={{ mb: 3, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
-            <Typography variant="subtitle1" fontWeight={600} mb={1}>
-              Thông tin khung giờ
-            </Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={6}>
-                <Typography variant="body2" color="text.secondary">
-                  Ngày: <strong>{selectedSlot.day}</strong>
+            <>
+              {/* Slot Information */}
+              <Box sx={{ mb: 3, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
+                <Typography variant="subtitle1" fontWeight={600} mb={1}>
+                  Thông tin khung giờ
                 </Typography>
-              </Grid>
-              <Grid item xs={6}>
-                <Typography variant="body2" color="text.secondary">
-                  Giờ: <strong>{selectedSlot.time}</strong>
-                </Typography>
-              </Grid>
-            </Grid>
-          </Box>
+                <Grid container spacing={2}>
+                  <Grid item xs={6}>
+                    <Typography variant="body2" color="text.secondary">
+                      Ngày: <strong>{selectedSlot.day}</strong>
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography variant="body2" color="text.secondary">
+                      Giờ: <strong>{selectedSlot.time}</strong>
+                    </Typography>
+                  </Grid>
+                </Grid>
+              </Box>
 
-          <Grid container spacing={3}>
-            {/* Lesson Number */}
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Số buổi học"
-                type="number"
-                value={lessonNumber}
-                onChange={(e) => setLessonNumber(parseInt(e.target.value) || 1)}
-                inputProps={{ min: 1, max: 50 }}
-                required
-                disabled={editMode}
-              />
-            </Grid>
+              <Grid container spacing={3}>
+                {/* Lesson Number */}
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Số buổi học"
+                    type="number"
+                    value={lessonNumber}
+                    onChange={(e) => setLessonNumber(parseInt(e.target.value) || 1)}
+                    inputProps={{ min: 1, max: 50 }}
+                    required
+                    disabled={editMode}
+                  />
+                </Grid>
 
-            {/* Class Selection */}
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth required>
-                <InputLabel>Lớp học</InputLabel>
-                <Select
-                  value={selectedClassId}
-                  onChange={(e) => {
-                    setSelectedClassId(e.target.value)
+                {/* Class Selection */}
+                <Grid item xs={12} md={6}>
+                  <FormControl fullWidth required>
+                    <InputLabel>Lớp học</InputLabel>
+                    <Select
+                      value={selectedClassId}
+                      onChange={(e) => {
+                        setSelectedClassId(e.target.value)
 
-                    // Auto-select teacher when class is selected (only in create mode)
-                    if (!editMode) {
-                      const selectedClass = courseClasses.find(cls => cls.id === e.target.value)
+                        // Auto-select teacher when class is selected (only in create mode)
+                        if (!editMode) {
+                          const selectedClass = courseClasses.find(cls => cls.id === e.target.value)
 
-                      if (selectedClass) {
-                        setSelectedTeacherId(selectedClass.teacherId)
+                          if (selectedClass) {
+                            setSelectedTeacherId(selectedClass.teacherId)
+                          }
+                        }
+                      }}
+                      label="Lớp học"
+                      disabled={editMode}
+                    >
+                      {courseClasses.map((cls) => (
+                        <MenuItem key={cls.id} value={cls.id}>
+                          <Box display="flex" alignItems="center" gap={1}>
+                            <i className="ri-book-line" style={{ color: '#1976d2' }} />
+                            <span>{cls.name}</span>
+                          </Box>
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                {/* Teacher Selection */}
+                <Grid item xs={12} md={6}>
+                  <FormControl fullWidth required>
+                    <InputLabel>Giáo viên</InputLabel>
+                    <Select
+                      value={selectedTeacherId}
+                      onChange={(e) => setSelectedTeacherId(e.target.value)}
+                      label="Giáo viên"
+                      disabled={!selectedClassId}
+                    >
+                      {/* Default class teacher */}
+                      {selectedClassId && (() => {
+                        const selectedClass = courseClasses.find(cls => cls.id === selectedClassId)
+
+                        if (!selectedClass) return null
+
+                        // Check if default teacher is busy at selected time slot
+                        const isDefaultTeacherBusy = teacherList?.find(t => t.id === selectedClass.teacherId)?.registeredBusySchedule?.includes(selectedSlot!.slotIndex + 1)
+
+                        return (
+                          <MenuItem value={selectedClass.teacherId}>
+                            <Box display="flex" alignItems="center" gap={1}>
+                              <i className="ri-user-star-line" style={{ color: '#1976d2' }} />
+                              <span>{selectedClass.teacher.name}</span>
+                              <Chip
+                                size="small"
+                                label="Giáo viên mặc định"
+                                color="primary"
+                                variant="outlined"
+                                sx={{ fontSize: '0.7rem' }}
+                              />
+                              <Chip
+                                size="small"
+                                label={isDefaultTeacherBusy ? "Bận" : "Rảnh"}
+                                color={isDefaultTeacherBusy ? "error" : "success"}
+                                variant="outlined"
+                                sx={{ fontSize: '0.7rem' }}
+                              />
+                            </Box>
+                          </MenuItem>
+                        )
+                      })()}
+
+                      {/* Divider */}
+                      {selectedClassId && teacherList && teacherList.length > 0 && (
+                        <MenuItem disabled>
+                          <Divider sx={{ width: '100%' }}>
+                            <Chip label="Hoặc chọn giáo viên khác" size="small" />
+                          </Divider>
+                        </MenuItem>
+                      )}
+
+                      {/* All available teachers */}
+                      {teacherList?.map((teacher) => {
+                        const isDefaultTeacher = selectedClassId && (() => {
+                          const selectedClass = courseClasses.find(cls => cls.id === selectedClassId)
+
+
+                          return selectedClass?.teacherId === teacher.id
+                        })()
+
+                        if (isDefaultTeacher) return null // Skip default teacher as it's already shown above
+
+                        // Check if teacher is busy at selected time slot
+                        const isTeacherBusy = teacher.registeredBusySchedule?.includes(selectedSlot!.slotIndex + 1)
+
+                        return (
+                          <MenuItem key={teacher.id} value={teacher.id}>
+                            <Box display="flex" alignItems="center" gap={1}>
+                              <i className="ri-user-line" style={{ color: '#666' }} />
+                              <span>{teacher.name}</span>
+                              <Chip
+                                size="small"
+                                label={isTeacherBusy ? "Bận" : "Rảnh"}
+                                color={isTeacherBusy ? "error" : "success"}
+                                variant="outlined"
+                                sx={{ fontSize: '0.7rem' }}
+                              />
+                            </Box>
+                          </MenuItem>
+                        )
+                      })}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                {/* Start Time */}
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Thời gian bắt đầu"
+                    value={startTime}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      // Chỉ cho phép nhập số và dấu :
+                      const sanitized = value.replace(/[^0-9:]/g, '')
+                      // Tự động thêm dấu : sau 2 ký tự đầu
+                      if (sanitized.length === 2 && !sanitized.includes(':')) {
+                        setStartTime(sanitized + ':')
+                      } else if (sanitized.length <= 5) {
+                        setStartTime(sanitized)
                       }
+                    }}
+                    placeholder="HH:MM"
+                    required
+                    InputLabelProps={{ shrink: true }}
+                    helperText="Định dạng: HH:MM (ví dụ: 08:00)"
+                    inputProps={{
+                      maxLength: 5,
+                      pattern: '[0-9]{2}:[0-9]{2}'
+                    }}
+                    error={!!(startTime && !isValidTimeFormat(startTime))}
+                  />
+                </Grid>
+
+                {/* End Time */}
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Thời gian kết thúc"
+                    value={endTime}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      // Chỉ cho phép nhập số và dấu :
+                      const sanitized = value.replace(/[^0-9:]/g, '')
+                      // Tự động thêm dấu : sau 2 ký tự đầu
+                      if (sanitized.length === 2 && !sanitized.includes(':')) {
+                        setEndTime(sanitized + ':')
+                      } else if (sanitized.length <= 5) {
+                        setEndTime(sanitized)
+                      }
+                    }}
+                    placeholder="HH:MM"
+                    required
+                    InputLabelProps={{ shrink: true }}
+                    helperText="Định dạng: HH:MM (ví dụ: 17:00)"
+                    inputProps={{
+                      maxLength: 5,
+                      pattern: '[0-9]{2}:[0-9]{2}'
+                    }}
+                    error={!!(endTime && !isValidTimeFormat(endTime))}
+                  />
+                </Grid>
+
+                {/* Note Field */}
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label={editMode ? "Ghi chú chung cho buổi học" : "Ghi chú cho buổi học"}
+                    multiline
+                    rows={3}
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    placeholder={
+                      editMode
+                        ? "Nhập ghi chú chung về nội dung, bài tập hoặc thông tin khác cho buổi học này..."
+                        : "Nhập ghi chú về nội dung, bài tập hoặc thông tin khác cho buổi học này..."
                     }
-                  }}
-                  label="Lớp học"
-                  disabled={editMode}
-                >
-                  {courseClasses.map((cls) => (
-                    <MenuItem key={cls.id} value={cls.id}>
-                      <Box display="flex" alignItems="center" gap={1}>
-                        <i className="ri-book-line" style={{ color: '#1976d2' }} />
-                        <span>{cls.name}</span>
-                      </Box>
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
+                    InputProps={{
+                      startAdornment: (
+                        <i className="ri-sticky-note-line" style={{ color: '#666', marginRight: 8, alignSelf: 'flex-start', marginTop: 12 }} />
+                      )
+                    }}
+                  />
+                </Grid>
+              </Grid>
 
-            {/* Teacher Selection */}
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth required>
-                <InputLabel>Giáo viên</InputLabel>
-                <Select
-                  value={selectedTeacherId}
-                  onChange={(e) => setSelectedTeacherId(e.target.value)}
-                  label="Giáo viên"
-                  disabled={!selectedClassId}
-                >
-                  {/* Default class teacher */}
-                  {selectedClassId && (() => {
-                    const selectedClass = courseClasses.find(cls => cls.id === selectedClassId)
+              <Divider sx={{ my: 3 }} />
 
-                    if (!selectedClass) return null
-                    
-                    // Check if default teacher is busy at selected time slot
-                    const isDefaultTeacherBusy = teacherList?.find(t => t.id === selectedClass.teacherId)?.registeredBusySchedule?.includes(selectedSlot!.slotIndex + 1)
-                    
-                    return (
-                      <MenuItem value={selectedClass.teacherId}>
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <i className="ri-user-star-line" style={{ color: '#1976d2' }} />
-                          <span>{selectedClass.teacher.name}</span>
-                          <Chip 
-                            size="small" 
-                            label="Giáo viên mặc định" 
-                            color="primary" 
-                            variant="outlined"
-                            sx={{ fontSize: '0.7rem' }}
+              {/* Student Selection - only show in create mode or show read-only in edit mode */}
+              <Box>
+                <Typography variant="h6" gutterBottom>
+                  {editMode ? 'Học sinh trong lịch học' : 'Chọn học sinh'} ({selectedStudents.length} {editMode ? 'học sinh' : 'đã chọn'})
+                </Typography>
+
+                {/* Search for additional students - only in create mode or edit mode */}
+                {(!editMode || editMode) && (
+                  <Box sx={{ mb: 2 }}>
+                    <TextField
+                      fullWidth
+                      placeholder="Tìm kiếm học sinh để thêm vào lịch học..."
+                      value={studentSearch}
+                      onChange={(e) => handleSearchStudent(e.target.value)}
+                      InputProps={{
+                        startAdornment: (
+                          <i className="ri-search-line" style={{ color: '#666', marginRight: 8 }} />
+                        ),
+                        endAdornment: studentSearch && (
+                          <i
+                            className="ri-close-line"
+                            style={{
+                              color: '#666',
+                              cursor: 'pointer',
+                              fontSize: '18px'
+                            }}
+                            onClick={() => {
+                              setStudentSearch('')
+                              setShowSearchResults(false)
+                            }}
                           />
-                          <Chip 
-                            size="small" 
-                            label={isDefaultTeacherBusy ? "Bận" : "Rảnh"} 
-                            color={isDefaultTeacherBusy ? "error" : "success"} 
-                            variant="outlined"
-                            sx={{ fontSize: '0.7rem' }}
-                          />
-                        </Box>
-                      </MenuItem>
-                    )
-                  })()}
-                  
-                  {/* Divider */}
-                  {selectedClassId && teacherList && teacherList.length > 0 && (
-                    <MenuItem disabled>
-                      <Divider sx={{ width: '100%' }}>
-                        <Chip label="Hoặc chọn giáo viên khác" size="small" />
-                      </Divider>
-                    </MenuItem>
-                  )}
-                  
-                  {/* All available teachers */}
-                  {teacherList?.map((teacher) => {
-                    const isDefaultTeacher = selectedClassId && (() => {
-                      const selectedClass = courseClasses.find(cls => cls.id === selectedClassId)
-
-                      
-return selectedClass?.teacherId === teacher.id
-                    })()
-                    
-                    if (isDefaultTeacher) return null // Skip default teacher as it's already shown above
-                    
-                    // Check if teacher is busy at selected time slot
-                    const isTeacherBusy = teacher.registeredBusySchedule?.includes(selectedSlot!.slotIndex + 1)
-                    
-                    return (
-                      <MenuItem key={teacher.id} value={teacher.id}>
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <i className="ri-user-line" style={{ color: '#666' }} />
-                          <span>{teacher.name}</span>
-                          <Chip 
-                            size="small" 
-                            label={isTeacherBusy ? "Bận" : "Rảnh"} 
-                            color={isTeacherBusy ? "error" : "success"} 
-                            variant="outlined"
-                            sx={{ fontSize: '0.7rem' }}
-                          />
-                        </Box>
-                      </MenuItem>
-                    )
-                  })}
-                </Select>
-              </FormControl>
-            </Grid>
-
-            {/* Start Time */}
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Thời gian bắt đầu"
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                required
-                InputLabelProps={{ shrink: true }}
-                helperText="Định dạng: HH:MM (ví dụ: 08:00)"
-              />
-            </Grid>
-
-            {/* End Time */}
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Thời gian kết thúc"
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                required
-                InputLabelProps={{ shrink: true }}
-                helperText="Định dạng: HH:MM (ví dụ: 17:00)"
-              />
-            </Grid>
-
-            {/* Note Field */}
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label={editMode ? "Ghi chú chung cho buổi học" : "Ghi chú cho buổi học"}
-                multiline
-                rows={3}
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder={
-                  editMode 
-                    ? "Nhập ghi chú chung về nội dung, bài tập hoặc thông tin khác cho buổi học này..." 
-                    : "Nhập ghi chú về nội dung, bài tập hoặc thông tin khác cho buổi học này..."
-                }
-                InputProps={{
-                  startAdornment: (
-                    <i className="ri-sticky-note-line" style={{ color: '#666', marginRight: 8, alignSelf: 'flex-start', marginTop: 12 }} />
-                  )
-                }}
-              />
-            </Grid>
-          </Grid>
-
-          <Divider sx={{ my: 3 }} />
-
-          {/* Student Selection - only show in create mode or show read-only in edit mode */}
-          <Box>
-            <Typography variant="h6" gutterBottom>
-              {editMode ? 'Học sinh trong lịch học' : 'Chọn học sinh'} ({selectedStudents.length} {editMode ? 'học sinh' : 'đã chọn'})
-            </Typography>
-
-            {/* Search for additional students - only in create mode or edit mode */}
-            {(!editMode || editMode) && (
-            <Box sx={{ mb: 2 }}>
-              {/* Search Notice */}
-              <Box sx={{ 
-                mb: 2, 
-                p: 1.5, 
-                backgroundColor: '#e3f2fd', 
-                borderRadius: 1, 
-                border: '1px solid #bbdefb' 
-              }}>
-                <Typography variant="caption" color="primary" display="block" mb={0.5}>
-                  <i className="ri-information-line" style={{ marginRight: 4 }} />
-                  <strong>Lưu ý:</strong>
-                </Typography>
-                <Typography variant="caption" color="text.secondary" display="block">
-                  • <span style={{ color: '#2e7d32' }}>🟢 Rảnh:</span> Học sinh có thể tham gia lịch học này
-                </Typography>
-                <Typography variant="caption" color="text.secondary" display="block">
-                  • <span style={{ color: '#c62828' }}>🔴 Bận:</span> Học sinh đã có lịch học khác trong khung giờ này
-                </Typography>
-                <Typography variant="caption" color="text.secondary" display="block">
-                  • <span style={{ color: '#1976d2' }}>📚 Course:</span> Hiển thị khóa học hiện tại của học sinh
-                </Typography>
-              </Box>
-
-              <TextField
-                fullWidth
-                placeholder="Tìm kiếm học sinh để thêm vào lịch học..."
-                value={studentSearch}
-                onChange={(e) => handleSearchStudent(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <i className="ri-search-line" style={{ color: '#666', marginRight: 8 }} />
-                  ),
-                  endAdornment: studentSearch && (
-                    <i 
-                      className="ri-close-line" 
-                      style={{ 
-                        color: '#666', 
-                        cursor: 'pointer',
-                        fontSize: '18px'
+                        )
                       }}
-                      onClick={() => {
-                        setStudentSearch('')
-                        setShowSearchResults(false)
-                      }}
+                      sx={{ mb: 1 }}
                     />
-                  )
-                }}
-                sx={{ mb: 1 }}
-              />
 
-              {/* Search Results */}
-              {showSearchResults && (
-                <Box sx={{ 
-                  maxHeight: '200px', 
-                  overflowY: 'auto', 
-                  border: '1px solid #eee', 
-                  borderRadius: 1,
-                  p: 1,
-                  backgroundColor: '#f8f9fa'
-                }}>
-                  {isSearchLoading ? (
-                    <Box display="flex" justifyContent="center" p={2}>
-                      <CircularProgress size={20} />
-                    </Box>
-                  ) : searchResults?.users && searchResults.users.length > 0 ? (
-                    <Box>
-                      <Typography variant="caption" color="text.secondary" display="block" mb={1}>
-                        Kết quả tìm kiếm ({searchResults.users.length} học sinh):
-                      </Typography>
-                                             {searchResults.users.map((user) => {
-                         // Check if student is busy at selected time slot
-                         const isBusy = user.profile.busyScheduleArr?.includes(selectedSlot!.slotIndex + 1)
-                         
-                         return (
-                           <Box
-                             key={user.id}
-                             sx={{
-                               p: 1,
-                               borderBottom: '1px solid #eee',
-                               '&:last-child': { borderBottom: 'none' },
-                               cursor: isBusy ? 'not-allowed' : 'pointer',
-                               '&:hover': { 
-                                 backgroundColor: isBusy ? '#ffebee' : '#e3f2fd' 
-                               },
-                               borderRadius: 1,
-                               display: 'flex',
-                               alignItems: 'center',
-                               justifyContent: 'space-between',
-                               opacity: isBusy ? 0.6 : 1,
-                               backgroundColor: isBusy ? '#fff5f5' : 'transparent'
-                             }}
-                             onClick={() => {
-                               if (!isBusy) {
-                                 handleAddStudentFromSearch({
-                                   id: user.id,
-                                   fullname: user.profile.fullname,
-                                   email: user.profile.email,
-                                   profile_id: user.profile.id
-                                 })
-                               }
-                             }}
-                           >
-                             <Box sx={{ flex: 1 }}>
-                               <Typography variant="body2" fontWeight={500}>
-                                 {user.profile.fullname}
-                               </Typography>
-                               <Typography variant="caption" color="text.secondary" display="block">
-                                 {user.profile.email}
-                               </Typography>
-                               {user?.course && (
-                                 <Typography variant="caption" color="primary" display="block">
-                                   <i className="ri-book-line" style={{ marginRight: 4, fontSize: '12px' }} />
-                                   {user.course.name}
-                                 </Typography>
-                               )}
-                               {isBusy && (
-                                 <Box sx={{ 
-                                   mt: 0.5,
-                                   p: 0.5,
-                                   backgroundColor: '#ffebee',
-                                   borderRadius: 0.5,
-                                   border: '1px solid #ffcdd2'
-                                 }}>
-                                   <Typography variant="caption" color="error" sx={{ fontSize: '0.7rem' }}>
-                                     <i className="ri-time-line" style={{ marginRight: 4 }} />
-                                     Bận trong khung giờ này
-                                   </Typography>
-                                 </Box>
-                               )}
-                             </Box>
-                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                               {isBusy ? (
-                                 <Chip 
-                                   size="small" 
-                                   label="Bận" 
-                                   color="error" 
-                                   variant="outlined"
-                                   sx={{ fontSize: '0.7rem' }}
-                                 />
-                               ) : isStudentSelected(user.profile.id) ? (
-                                 <Chip 
-                                   size="small" 
-                                   label="Đã chọn" 
-                                   color="success" 
-                                   variant="outlined"
-                                 />
-                               ) : (
-                                 <Chip 
-                                   size="small" 
-                                   label="Rảnh" 
-                                   color="success" 
-                                   variant="outlined"
-                                   sx={{ fontSize: '0.7rem' }}
-                                 />
-                               )}
-                             </Box>
-                           </Box>
-                         )
-                       })}
-                    </Box>
-                  ) : (
-                    <Typography variant="body2" color="text.secondary" textAlign="center" p={2}>
-                      Không tìm thấy học sinh nào
-                    </Typography>
-                  )}
-                </Box>
-              )}
-            </Box>
-            )}
-            
-            {/* Available Students from Slot - only in create mode */}
-            {!editMode && availableStudents.length > 0 && (
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" color="text.secondary" mb={1}>
-                  Học sinh rảnh trong khung giờ này:
-                </Typography>
-                <Box sx={{ 
-                  maxHeight: '200px', 
-                  overflowY: 'auto', 
-                  border: '1px solid #eee', 
-                  borderRadius: 1,
-                  p: 2
-                }}>
-                  <Grid container spacing={1}>
-                    {availableStudents.map((student) => (
-                      <Grid item xs={12} sm={6} md={4} key={student.id}>
-                        <Chip
-                          label={student.fullname}
-                          onClick={() => handleAddAvailableStudent(student)}
-                          color={isStudentSelected(student.id) ? 'primary' : 'default'}
-                          variant={isStudentSelected(student.id) ? 'filled' : 'outlined'}
-                          sx={{ 
-                            cursor: 'pointer',
-                            width: '100%',
-                            justifyContent: 'center'
-                          }}
-                        />
-                      </Grid>
-                    ))}
-                  </Grid>
-                </Box>
-              </Box>
-            )}
+                    {/* Search Results */}
+                    {showSearchResults && (
+                      <Box sx={{
+                        maxHeight: '200px',
+                        overflowY: 'auto',
+                        border: '1px solid #eee',
+                        borderRadius: 1,
+                        p: 1,
+                        backgroundColor: '#f8f9fa'
+                      }}>
+                        {isSearchLoading ? (
+                          <Box display="flex" justifyContent="center" p={2}>
+                            <CircularProgress size={20} />
+                          </Box>
+                        ) : searchResults?.users && searchResults.users.length > 0 ? (
+                          <Box>
+                            <Typography variant="caption" color="text.secondary" display="block" mb={1}>
+                              Kết quả tìm kiếm ({searchResults.users.length} học sinh):
+                            </Typography>
+                            {searchResults.users.map((user) => {
+                              // Check if student is busy at selected time slot
+                              const isBusy = user.profile.busyScheduleArr?.includes(selectedSlot!.slotIndex + 1)
 
-            {/* Absent Students - only in edit mode */}
-            {editMode && scheduleDetail && scheduleDetail.students.absent.length > 0 && (
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" color="text.secondary" mb={1}>
-                  Học sinh vắng mặt ({scheduleDetail.students.absent.length} học sinh):
-                </Typography>
-                <Box sx={{ 
-                  maxHeight: '200px', 
-                  overflowY: 'auto', 
-                  border: '1px solid #eee', 
-                  borderRadius: 1,
-                  p: 2
-                }}>
-                  <Grid container spacing={1}>
-                    {scheduleDetail.students.absent.map((student) => (
-                      <Grid item xs={12} sm={6} md={4} key={student.profileId}>
-                        <Box sx={{ 
-                          p: 1, 
-                          border: '1px solid #ffcdd2', 
-                          borderRadius: 1, 
-                          backgroundColor: '#ffebee',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 0.5
-                        }}>
-                          <Typography variant="body2" fontWeight={500} color="error">
-                            {student.fullname}
+                              return (
+                                <Box
+                                  key={user.id}
+                                  sx={{
+                                    p: 1,
+                                    borderBottom: '1px solid #eee',
+                                    '&:last-child': { borderBottom: 'none' },
+                                    cursor: isBusy ? 'not-allowed' : 'pointer',
+                                    '&:hover': {
+                                      backgroundColor: isBusy ? '#ffebee' : '#e3f2fd'
+                                    },
+                                    borderRadius: 1,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    opacity: isBusy ? 0.6 : 1,
+                                    backgroundColor: isBusy ? '#fff5f5' : 'transparent'
+                                  }}
+                                  onClick={() => {
+                                    if (!isBusy) {
+                                      handleAddStudentFromSearch({
+                                        id: user.id,
+                                        fullname: user.profile.fullname,
+                                        email: user.profile.email,
+                                        profile_id: user.profile.id
+                                      })
+                                    }
+                                  }}
+                                >
+                                  <Box sx={{ flex: 1 }}>
+                                    <Typography variant="body2" fontWeight={500}>
+                                      {user.profile.fullname}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary" display="block">
+                                      {user.profile.email}
+                                    </Typography>
+                                    {user?.course && (
+                                      <Typography variant="caption" color="primary" display="block">
+                                        <i className="ri-book-line" style={{ marginRight: 4, fontSize: '12px' }} />
+                                        {user.course.name}
+                                      </Typography>
+                                    )}
+                                    {isBusy && (
+                                      <Box sx={{
+                                        mt: 0.5,
+                                        p: 0.5,
+                                        backgroundColor: '#ffebee',
+                                        borderRadius: 0.5,
+                                        border: '1px solid #ffcdd2'
+                                      }}>
+                                        <Typography variant="caption" color="error" sx={{ fontSize: '0.7rem' }}>
+                                          <i className="ri-time-line" style={{ marginRight: 4 }} />
+                                          Bận trong khung giờ này
+                                        </Typography>
+                                      </Box>
+                                    )}
+                                  </Box>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    {isBusy ? (
+                                      <Chip
+                                        size="small"
+                                        label="Bận"
+                                        color="error"
+                                        variant="outlined"
+                                        sx={{ fontSize: '0.7rem' }}
+                                      />
+                                    ) : isStudentSelected(user.profile.id) ? (
+                                      <Chip
+                                        size="small"
+                                        label="Đã chọn"
+                                        color="success"
+                                        variant="outlined"
+                                      />
+                                    ) : (
+                                      <Chip
+                                        size="small"
+                                        label="Rảnh"
+                                        color="success"
+                                        variant="outlined"
+                                        sx={{ fontSize: '0.7rem' }}
+                                      />
+                                    )}
+                                  </Box>
+                                </Box>
+                              )
+                            })}
+                          </Box>
+                        ) : (
+                          <Typography variant="body2" color="text.secondary" textAlign="center" p={2}>
+                            Không tìm thấy học sinh nào
                           </Typography>
-                          {student.courseName && (
-                            <Typography variant="caption" color="text.secondary">
-                              <i className="ri-book-line" style={{ marginRight: 4, fontSize: '10px' }} />
-                              {student.courseName}
-                            </Typography>
-                          )}
-                          {student.email && (
-                            <Typography variant="caption" color="text.secondary">
-                              {student.email}
-                            </Typography>
-                          )}
-                        </Box>
-                      </Grid>
-                    ))}
-                  </Grid>
-                </Box>
-              </Box>
-            )}
-
-                          {/* Selected Students Summary */}
-              {selectedStudents.length > 0 && (
-                <Box sx={{ 
-                  p: 2, 
-                  backgroundColor: editMode ? '#fff3e0' : '#e8f5e8', 
-                  borderRadius: 1, 
-                  border: `1px solid ${editMode ? '#ffb74d' : '#c8e6c9'}` 
-                }}>
-                  <Typography variant="subtitle2" fontWeight={600} color={editMode ? 'warning.main' : 'success.main'} mb={1}>
-                    {editMode ? 'Học sinh trong lịch học' : 'Học sinh đã chọn'} ({selectedStudents.length}):
-                  </Typography>
-                  {editMode && (
-                    <Typography variant="caption" color="text.secondary" display="block" mb={1}>
-                      <i className="ri-information-line" style={{ marginRight: 4 }} />
-                      Bạn có thể chỉnh sửa ghi chú riêng cho từng học sinh bên dưới
-                    </Typography>
-                  )}
-                  <Box display="flex" flexDirection="column" gap={1}>
-                    {renderSelectedStudents()}
+                        )}
+                      </Box>
+                    )}
                   </Box>
-                </Box>
-              )}
-          </Box>
+                )}
 
-          {/* Messages */}
-          {successMessage && (
-            <Alert severity="success" sx={{ mt: 2 }}>
-              {successMessage}
-            </Alert>
-          )}
-          {errorMessage && (
-            <Alert severity="error" sx={{ mt: 2 }}>
-              {errorMessage}
-            </Alert>
-          )}
-          </>
+                {/* Available Students from Slot - only in create mode */}
+                {!editMode && availableStudents.length > 0 && (
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="subtitle2" color="text.secondary" mb={1}>
+                      Học sinh rảnh trong khung giờ này:
+                    </Typography>
+                    <Box sx={{
+                      maxHeight: '200px',
+                      overflowY: 'auto',
+                      border: '1px solid #eee',
+                      borderRadius: 1,
+                      p: 2
+                    }}>
+                      <Grid container spacing={1}>
+                        {availableStudents.map((student) => (
+                          <Grid item xs={12} sm={6} md={4} key={student.id}>
+                            <Chip
+                              label={student.fullname}
+                              onClick={() => handleAddAvailableStudent(student)}
+                              color={isStudentSelected(student.id) ? 'primary' : 'default'}
+                              variant={isStudentSelected(student.id) ? 'filled' : 'outlined'}
+                              sx={{
+                                cursor: 'pointer',
+                                width: '100%',
+                                justifyContent: 'center'
+                              }}
+                            />
+                          </Grid>
+                        ))}
+                      </Grid>
+                    </Box>
+                  </Box>
+                )}
+
+                {/* Absent Students - only in edit mode */}
+                {editMode && scheduleDetail && scheduleDetail.students.absent.length > 0 && (
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="subtitle2" color="text.secondary" mb={1}>
+                      Học sinh vắng mặt ({scheduleDetail.students.absent.length} học sinh):
+                    </Typography>
+                    <Box sx={{
+                      maxHeight: '200px',
+                      overflowY: 'auto',
+                      border: '1px solid #eee',
+                      borderRadius: 1,
+                      p: 2
+                    }}>
+                      <Grid container spacing={1}>
+                        {scheduleDetail.students.absent.map((student) => (
+                          <Grid item xs={12} sm={6} md={4} key={student.profileId}>
+                            <Box sx={{
+                              p: 1,
+                              border: '1px solid #ffcdd2',
+                              borderRadius: 1,
+                              backgroundColor: '#ffebee',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: 0.5
+                            }}>
+                              <Typography variant="body2" fontWeight={500} color="error">
+                                {student.fullname}
+                              </Typography>
+                              {student.courseName && (
+                                <Typography variant="caption" color="text.secondary">
+                                  <i className="ri-book-line" style={{ marginRight: 4, fontSize: '10px' }} />
+                                  {student.courseName}
+                                </Typography>
+                              )}
+                              {student.email && (
+                                <Typography variant="caption" color="text.secondary">
+                                  {student.email}
+                                </Typography>
+                              )}
+                            </Box>
+                          </Grid>
+                        ))}
+                      </Grid>
+                    </Box>
+                  </Box>
+                )}
+
+                {/* Selected Students Summary */}
+                {selectedStudents.length > 0 && (
+                  <Box sx={{
+                    p: 2,
+                    backgroundColor: editMode ? '#fff3e0' : '#e8f5e8',
+                    borderRadius: 1,
+                    border: `1px solid ${editMode ? '#ffb74d' : '#c8e6c9'}`
+                  }}>
+                    <Typography variant="subtitle2" fontWeight={600} color={editMode ? 'warning.main' : 'success.main'} mb={1}>
+                      {editMode ? 'Học sinh trong lịch học' : 'Học sinh đã chọn'} ({selectedStudents.length}):
+                    </Typography>
+                    {editMode && (
+                      <Typography variant="caption" color="text.secondary" display="block" mb={1}>
+                        <i className="ri-information-line" style={{ marginRight: 4 }} />
+                        Bạn có thể chỉnh sửa ghi chú riêng cho từng học sinh bên dưới
+                      </Typography>
+                    )}
+                    <Box display="flex" flexDirection="column" gap={1}>
+                      {renderSelectedStudents()}
+                    </Box>
+                  </Box>
+                )}
+              </Box>
+
+              {/* Messages */}
+              {successMessage && (
+                <Alert severity="success" sx={{ mt: 2 }}>
+                  {successMessage}
+                </Alert>
+              )}
+              {errorMessage && (
+                <Alert severity="error" sx={{ mt: 2 }}>
+                  {errorMessage}
+                </Alert>
+              )}
+            </>
           )}
         </Box>
       </DialogContent>
@@ -1353,7 +1388,7 @@ return selectedClass?.teacherId === teacher.id
         <Button onClick={handleClose} color="inherit">
           Hủy
         </Button>
-        
+
         {/* Delete button for edit mode */}
         {editMode && (
           <Button
@@ -1362,22 +1397,22 @@ return selectedClass?.teacherId === teacher.id
             onClick={handleDelete}
             disabled={updateLessonScheduleMutation.isPending}
             startIcon={
-              updateLessonScheduleMutation.isPending ? 
-                <CircularProgress size={16} /> : 
+              updateLessonScheduleMutation.isPending ?
+                <CircularProgress size={16} /> :
                 <i className="ri-delete-bin-line" />
             }
           >
             {updateLessonScheduleMutation.isPending ? 'Đang xóa...' : 'Xóa lịch học'}
           </Button>
         )}
-        
+
         {/* Update/Create button */}
         <Button
           variant="contained"
           onClick={handleSubmit}
           disabled={
-            (editMode ? updateLessonScheduleMutation.isPending : createLessonScheduleMutation.isPending) || 
-            (!editMode && selectedStudents.length === 0) || 
+            (editMode ? updateLessonScheduleMutation.isPending : createLessonScheduleMutation.isPending) ||
+            (!editMode && selectedStudents.length === 0) ||
             (!editMode && !selectedTeacherId) ||
             (!editMode && (!startTime || !endTime)) ||
             (editMode && isLoadingScheduleDetail) ||
@@ -1385,13 +1420,13 @@ return selectedClass?.teacherId === teacher.id
           }
           color="primary"
           startIcon={
-            (editMode ? updateLessonScheduleMutation.isPending : createLessonScheduleMutation.isPending) ? 
-              <CircularProgress size={16} /> : 
+            (editMode ? updateLessonScheduleMutation.isPending : createLessonScheduleMutation.isPending) ?
+              <CircularProgress size={16} /> :
               <i className="ri-save-line" />
           }
         >
-          {editMode ? 
-            (updateLessonScheduleMutation.isPending ? 'Đang cập nhật...' : 'Cập nhật lịch học') : 
+          {editMode ?
+            (updateLessonScheduleMutation.isPending ? 'Đang cập nhật...' : 'Cập nhật lịch học') :
             (createLessonScheduleMutation.isPending ? 'Đang tạo...' : 'Tạo lịch học')
           }
         </Button>
