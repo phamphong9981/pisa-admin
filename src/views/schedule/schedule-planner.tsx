@@ -8,29 +8,28 @@ import { styled } from '@mui/material/styles'
 
 // MUI Imports
 import {
-    Alert,
-    Box,
-    Button,
-    Card,
-    CardContent,
-    CardHeader,
-    Chip,
-    CircularProgress,
-    Paper,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
-    TextField,
-    Typography
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  Chip,
+  CircularProgress,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography
 } from '@mui/material'
 
 // Hooks
 import { useCourseInfo, useCourseList } from '@/@core/hooks/useCourse'
-import { SCHEDULE_TIME, useGetAllSchedule, useAutoScheduleCourse } from '@/@core/hooks/useSchedule'
-import ScheduleDetailPopup from '@/components/ScheduleDetailPopup'
+import { SCHEDULE_TIME, useAutoScheduleCourse, useGetAllSchedule } from '@/@core/hooks/useSchedule'
 import CreateLessonSchedule from './CreateLessonSchedule'
 
 const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
@@ -139,7 +138,7 @@ const SchedulePlanner = () => {
 
   // State for highlighting teacher's free schedule
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>('')
-  
+
   // State for auto schedule messages
   const [autoScheduleMessage, setAutoScheduleMessage] = useState<{
     type: 'success' | 'error' | null
@@ -165,11 +164,13 @@ const SchedulePlanner = () => {
       className: string
       scheduleTime: number
     } | null
+    teacherId?: string
   }>({
     open: false,
     selectedSlot: null,
     editMode: false,
-    editData: null
+    editData: null,
+    teacherId: undefined
   })
 
   // Parse SCHEDULE_TIME into day + time
@@ -177,8 +178,8 @@ const SchedulePlanner = () => {
     return SCHEDULE_TIME.map((s) => {
       const [time, day] = s.split(' ')
 
-      
-return { time, day }
+
+      return { time, day }
     })
   }, [])
 
@@ -187,8 +188,8 @@ return { time, day }
     const order: string[] = []
 
     parsedSlots.forEach(p => { if (!seen.has(p.day)) { seen.add(p.day); order.push(p.day) } })
-    
-return order
+
+    return order
   }, [parsedSlots])
 
   const times = useMemo(() => {
@@ -196,22 +197,22 @@ return order
     const order: string[] = []
 
     parsedSlots.forEach(p => { if (!seen.has(p.time)) { seen.add(p.time); order.push(p.time) } })
-    
-return order
+
+    return order
   }, [parsedSlots])
 
   const indexFromDayTime = (day: string, time: string) => {
     const idx = parsedSlots.findIndex(p => p.day === day && p.time === time)
 
-    
-return idx >= 0 ? idx + 1 : -1
+
+    return idx >= 0 ? idx + 1 : -1
   }
 
   const keyFromSlotIndex = (slotIndex1Based: number) => {
     const slot = parsedSlots[slotIndex1Based - 1]
 
-    
-return slot ? `${slot.day}|${slot.time}` : ''
+
+    return slot ? `${slot.day}|${slot.time}` : ''
   }
 
   const schedulesByKey = useMemo(() => {
@@ -225,8 +226,8 @@ return slot ? `${slot.day}|${slot.time}` : ''
       if (!map[key]) map[key] = []
       map[key].push(s)
     })
-    
-return map
+
+    return map
   }, [courseSchedules, keyFromSlotIndex])
 
   const scheduledStudentIdsByIndex = useMemo(() => {
@@ -243,8 +244,8 @@ return map
         if (st?.id) map[idx].add(st.id)
       })
     })
-    
-return map
+
+    return map
   }, [courseSchedules])
 
   const freeStudentsByIndex = useMemo(() => {
@@ -268,32 +269,32 @@ return map
     if (!classSearch.trim()) return cls
     const keyword = classSearch.toLowerCase()
 
-    
-return cls.filter(c => c.name.toLowerCase().includes(keyword))
+
+    return cls.filter(c => c.name.toLowerCase().includes(keyword))
   }, [courseInfo, classSearch])
 
   // Get all scheduled classes across all time slots
   const allScheduledClasses = useMemo(() => {
     const scheduledClassIds = new Set<string>()
-    
+
     Object.values(schedulesByKey).forEach(schedules => {
       schedules.forEach(schedule => {
         scheduledClassIds.add(schedule.class_id)
       })
     })
-    
+
     return scheduledClassIds
   }, [schedulesByKey])
 
   // Helper function to check if teacher is busy at specific time slot
   const isTeacherBusy = (teacherId: string, slotIndex: number) => {
     if (!courseInfo?.classes) return false
-    
+
     // Find the class with this teacher
     const teacherClass = courseInfo.classes.find(cls => cls.teacherId === teacherId)
 
     if (!teacherClass?.teacher?.registeredBusySchedule) return false
-    
+
     // Check if the teacher is busy at this slot (slotIndex is 0-based, registeredBusySchedule is 0-based)
     return teacherClass.teacher.registeredBusySchedule.includes(slotIndex)
   }
@@ -301,8 +302,8 @@ return cls.filter(c => c.name.toLowerCase().includes(keyword))
   // Helper function to check if teacher is teaching at specific time slot
   const isTeacherTeaching = (teacherId: string, slotIndex: number) => {
     if (!courseSchedules) return false
-    
-    return courseSchedules.some(schedule => 
+
+    return courseSchedules.some(schedule =>
       schedule.teacher_id === teacherId && schedule.schedule_time === slotIndex + 1
     )
   }
@@ -311,7 +312,7 @@ return cls.filter(c => c.name.toLowerCase().includes(keyword))
   const handleClassBoxClick = (schedule: any) => {
     const slotIndex = schedule.schedule_time - 1 // Convert to 0-based index
     const slot = parsedSlots[slotIndex]
-    
+
     if (slot) {
       setCreateLessonModal({
         open: true,
@@ -327,7 +328,8 @@ return cls.filter(c => c.name.toLowerCase().includes(keyword))
           teacherName: schedule.teacher_name,
           className: schedule.class_name,
           scheduleTime: schedule.schedule_time
-        }
+        },
+        teacherId: schedule.teacher_id // Truyền teacherId từ schedule
       })
     }
   }
@@ -338,12 +340,13 @@ return cls.filter(c => c.name.toLowerCase().includes(keyword))
   }
 
   // Handle open create lesson schedule modal
-  const handleOpenCreateLessonModal = (day: string, time: string, slotIndex: number) => {
+  const handleOpenCreateLessonModal = (day: string, time: string, slotIndex: number, teacherId?: string) => {
     setCreateLessonModal({
       open: true,
       selectedSlot: { day, time, slotIndex },
       editMode: false,
-      editData: null
+      editData: null,
+      teacherId
     })
   }
 
@@ -353,7 +356,8 @@ return cls.filter(c => c.name.toLowerCase().includes(keyword))
       open: false,
       selectedSlot: null,
       editMode: false,
-      editData: null
+      editData: null,
+      teacherId: undefined
     })
   }
 
@@ -373,8 +377,8 @@ return cls.filter(c => c.name.toLowerCase().includes(keyword))
         type: 'error',
         message: 'Vui lòng chọn một khóa học trước khi xếp lịch tự động'
       })
-      
-return
+
+      return
     }
 
     try {
@@ -383,7 +387,7 @@ return
         type: 'success',
         message: 'Xếp lịch tự động thành công! Hệ thống đã tự động sắp xếp lịch học cho khóa học này.'
       })
-      
+
       // Clear message after 5 seconds
       setTimeout(() => {
         setAutoScheduleMessage({ type: null, message: '' })
@@ -394,7 +398,7 @@ return
         type: 'error',
         message: 'Có lỗi xảy ra khi xếp lịch tự động. Vui lòng thử lại.'
       })
-      
+
       // Clear error message after 5 seconds
       setTimeout(() => {
         setAutoScheduleMessage({ type: null, message: '' })
@@ -405,8 +409,8 @@ return
   return (
     <Box>
       <Card sx={{ mb: 4 }}>
-        <CardHeader 
-          title="Xếp lịch học theo khóa học" 
+        <CardHeader
+          title="Xếp lịch học theo khóa học"
           subheader="Chọn khóa học để xem lưới thời gian và các học sinh rảnh trong từng khung giờ"
           action={
             selectedCourseId && (
@@ -418,13 +422,13 @@ return
                   variant="contained"
                   color="success"
                   startIcon={
-                    autoScheduleCourseMutation.isPending ? 
-                      <CircularProgress size={16} color="inherit" /> : 
+                    autoScheduleCourseMutation.isPending ?
+                      <CircularProgress size={16} color="inherit" /> :
                       <i className="ri-magic-line" />
                   }
                   onClick={handleAutoScheduleCourse}
                   disabled={autoScheduleCourseMutation.isPending}
-                  sx={{ 
+                  sx={{
                     minWidth: 'auto',
                     px: 2,
                     py: 1,
@@ -453,7 +457,7 @@ return
               />
             ))}
           </Box>
-          
+
           {/* Auto schedule info */}
           {selectedCourseId && (
             <Box sx={{ mt: 2, p: 1.5, backgroundColor: '#e8f5e8', borderRadius: 1, border: '1px solid #c8e6c9' }}>
@@ -470,8 +474,8 @@ return
           {/* Auto schedule messages */}
           {autoScheduleMessage.type && (
             <Box sx={{ mt: 2 }}>
-              <Alert 
-                severity={autoScheduleMessage.type} 
+              <Alert
+                severity={autoScheduleMessage.type}
                 onClose={() => setAutoScheduleMessage({ type: null, message: '' })}
               >
                 {autoScheduleMessage.message}
@@ -496,15 +500,15 @@ return
                 {filteredClasses.map(cls => {
                   // Check if class has schedule
                   const hasSchedule = allScheduledClasses.has(cls.id)
-                  
+
                   // Get teacher info for this class
                   const teacherId = cls.teacherId || ''
                   const teacherName = cls.teacher?.name || 'Chưa có GV'
-                  
+
                   return (
-                    <Chip 
-                      key={cls.id} 
-                      size="small" 
+                    <Chip
+                      key={cls.id}
+                      size="small"
                       label={
                         <Box display="flex" alignItems="center" gap={0.5}>
                           <span>{cls.name}</span>
@@ -575,13 +579,13 @@ return
                           }
 
                           // Check if this time slot should be highlighted for selected teacher
-                          const shouldHighlight = selectedTeacherId && index > 0 && 
-                            !isTeacherBusy(selectedTeacherId, index - 1) && 
+                          const shouldHighlight = selectedTeacherId && index > 0 &&
+                            !isTeacherBusy(selectedTeacherId, index - 1) &&
                             !isTeacherTeaching(selectedTeacherId, index - 1)
 
-                          
-return (
-                            <GridCell 
+
+                          return (
+                            <GridCell
                               key={`${day}|${time}`}
                               sx={{
                                 ...(shouldHighlight && {
@@ -602,8 +606,8 @@ return (
                               }}
                             >
                               {shouldHighlight && (
-                                <Box sx={{ 
-                                  textAlign: 'center', 
+                                <Box sx={{
+                                  textAlign: 'center',
                                   mb: 1,
                                   p: 0.5,
                                   backgroundColor: 'rgba(25, 118, 210, 0.1)',
@@ -616,11 +620,11 @@ return (
                                   </Typography>
                                 </Box>
                               )}
-                              
+
                               <Box display="flex" flexDirection="column" gap={0.75}>
                                 {/* Scheduled classes as boxes */}
                                 {scheduled.map((s, i) => (
-                                  <ClassBox 
+                                  <ClassBox
                                     key={`${s.class_id}-${s.lesson}-${i}`}
                                     onClick={() => handleClassBoxClick(s)}
                                     sx={{ cursor: 'pointer' }}
@@ -628,24 +632,24 @@ return (
                                     <ClassBoxHeader>
                                       <Box display="flex" gap={1} alignItems="center">
                                         <Typography variant="body2" fontWeight={700}>{s.class_name}
-                                        {s.note && (
-                                          <Typography 
-                                            variant="caption" 
-                                            color="text.secondary"
-                                            sx={{ 
-                                              fontStyle: 'italic',
-                                              fontSize: '0.7rem',
-                                              lineHeight: 1.2,
-                                              overflow: 'hidden',
-                                              textOverflow: 'ellipsis',
-                                              display: '-webkit-box',
-                                              WebkitLineClamp: 2,
-                                              WebkitBoxOrient: 'vertical'
-                                            }}
-                                          >
-                                            {s.note}
-                                          </Typography>
-                                        )}
+                                          {s.note && (
+                                            <Typography
+                                              variant="caption"
+                                              color="text.secondary"
+                                              sx={{
+                                                fontStyle: 'italic',
+                                                fontSize: '0.7rem',
+                                                lineHeight: 1.2,
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                display: '-webkit-box',
+                                                WebkitLineClamp: 2,
+                                                WebkitBoxOrient: 'vertical'
+                                              }}
+                                            >
+                                              {s.note}
+                                            </Typography>
+                                          )}
                                         </Typography>
                                         <Chip
                                           size="small"
@@ -662,21 +666,21 @@ return (
                                     <ClassBoxSubHeader>
                                       <Box display="flex" flexDirection="column" gap={0.5} width="100%">
                                         <Typography variant="caption">GV: {s.teacher_name}</Typography>
-                                        
+
                                       </Box>
                                     </ClassBoxSubHeader>
                                     <ClassBoxBody>
                                       {Array.isArray(s.students) && s.students.length > 0 ? (
                                         <Box display="flex" gap={0.5} flexWrap="wrap">
                                           {s.students.map((st: any) => {
-                                            const displayLabel = st.note 
+                                            const displayLabel = st.note
                                               ? `${st.fullname} (${st.note})`
                                               : st.fullname;
-                                            
+
                                             return (
-                                              <Chip 
-                                                key={st.id} 
-                                                size="small" 
+                                              <Chip
+                                                key={st.id}
+                                                size="small"
                                                 label={displayLabel}
                                                 sx={{
                                                   maxWidth: '100%',
@@ -750,7 +754,7 @@ return (
       )}
 
       {/* Schedule Detail Popup */}
-      <ScheduleDetailPopup
+      {/* <ScheduleDetailPopup
         open={scheduleDetailPopup.open}
         onClose={handleCloseScheduleDetailPopup}
         classId={scheduleDetailPopup.classId}
@@ -758,7 +762,7 @@ return (
         teacherName={scheduleDetailPopup.teacherName}
         className={scheduleDetailPopup.className}
         scheduleTime={scheduleDetailPopup.scheduleTime}
-      />
+      /> */}
 
       {/* Create Lesson Schedule Modal */}
       <CreateLessonSchedule
@@ -769,13 +773,14 @@ return (
           if (!createLessonModal.selectedSlot) return []
           const index = createLessonModal.selectedSlot.slotIndex
 
-          
-return index > 0 ? (freeStudentsByIndex[index] || []) : []
+
+          return index > 0 ? (freeStudentsByIndex[index] || []) : []
         })()}
         courseClasses={courseInfo?.classes || []}
         weekId="08a60c9a-b3f8-42f8-8ff8-c7015d4ef3e7"
         editMode={createLessonModal.editMode}
         editData={createLessonModal.editData}
+        teacherId={createLessonModal.teacherId}
       />
     </Box>
   )

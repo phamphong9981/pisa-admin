@@ -60,6 +60,7 @@ interface CreateLessonScheduleProps {
     className: string
     scheduleTime: number
   } | null
+  teacherId?: string // Thêm teacherId để hiển thị giáo viên mặc định
 }
 
 const CreateLessonSchedule = ({
@@ -70,7 +71,8 @@ const CreateLessonSchedule = ({
   courseClasses,
   weekId = "08a60c9a-b3f8-42f8-8ff8-c7015d4ef3e7",
   editMode = false,
-  editData = null
+  editData = null,
+  teacherId: propTeacherId
 }: CreateLessonScheduleProps) => {
   const createLessonScheduleMutation = useCreateLessonSchedule()
   const updateUserScheduleMutation = useUpdateUserSchedule()
@@ -131,6 +133,8 @@ const CreateLessonSchedule = ({
   // Search states
   const [studentSearch, setStudentSearch] = useState('')
   const [showSearchResults, setShowSearchResults] = useState(false)
+  const [teacherSearch, setTeacherSearch] = useState('')
+  const [showTeacherSearchResults, setShowTeacherSearchResults] = useState(false)
 
   // Student search hook
   const { data: searchResults, isLoading: isSearchLoading } = useStudentList(studentSearch)
@@ -152,11 +156,8 @@ const CreateLessonSchedule = ({
         setSelectedClassId(editData.classId)
         setLessonNumber(editData.lesson)
 
-        // Find teacher from class
-        const selectedClass = courseClasses.find(cls => cls.id === editData.classId)
-
-        if (selectedClass) {
-          setSelectedTeacherId(selectedClass.teacherId)
+        if (propTeacherId) {
+          setSelectedTeacherId(propTeacherId)
         }
       } else {
         // Create mode - reset form
@@ -182,7 +183,7 @@ const CreateLessonSchedule = ({
         setEndTime(formatTimeToHHMM(timeParts[1]))
       }
     }
-  }, [open, selectedSlot, editMode, editData, courseClasses])
+  }, [open, selectedSlot, editMode, editData, courseClasses, propTeacherId])
 
   // Populate form with schedule detail data when in edit mode
   useEffect(() => {
@@ -191,6 +192,7 @@ const CreateLessonSchedule = ({
       const actualStartTime = scheduleDetail.students.attending.length > 0 && scheduleDetail.students.attending[0].startTime
         ? formatTimeToHHMM(scheduleDetail.students.attending[0].startTime)
         : ''
+
       const actualEndTime = scheduleDetail.students.attending.length > 0 && scheduleDetail.students.attending[0].endTime
         ? formatTimeToHHMM(scheduleDetail.students.attending[0].endTime)
         : ''
@@ -241,6 +243,7 @@ const CreateLessonSchedule = ({
 
       // Initialize individual student notes
       const notesMap: Record<string, string> = {}
+
       scheduleDetail.students.attending.forEach(student => {
         notesMap[student.profileId] = student.note || ''
       })
@@ -456,7 +459,9 @@ const CreateLessonSchedule = ({
 
     // Check if hours and minutes are valid
     const [hours, minutes] = time.split(':').map(Number)
-    return hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59
+
+    
+return hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59
   }
 
   // Handle save individual student changes
@@ -506,6 +511,12 @@ const CreateLessonSchedule = ({
     setShowSearchResults(searchTerm.length > 0)
   }
 
+  // Handle search teacher
+  const handleSearchTeacher = (searchTerm: string) => {
+    setTeacherSearch(searchTerm)
+    setShowTeacherSearchResults(searchTerm.length > 0)
+  }
+
   // Handle add student from search
   const handleAddStudentFromSearch = (user: { id: string; fullname: string; email: string, profile_id: string }) => {
     const isAlreadySelected = selectedStudents.some(s => s.profile_id === user.profile_id)
@@ -532,6 +543,13 @@ const CreateLessonSchedule = ({
 
     setStudentSearch('')
     setShowSearchResults(false)
+  }
+
+  // Handle select teacher from search
+  const handleSelectTeacher = (teacherId: string) => {
+    setSelectedTeacherId(teacherId)
+    setTeacherSearch('')
+    setShowTeacherSearchResults(false)
   }
 
   // Handle add student from available list
@@ -718,6 +736,7 @@ const CreateLessonSchedule = ({
                         onChange={(e) => {
                           const value = e.target.value
                           const sanitized = value.replace(/[^0-9:]/g, '')
+
                           if (sanitized.length === 2 && !sanitized.includes(':')) {
                             setEditingStudentStartTime(sanitized + ':')
                           } else if (sanitized.length <= 5) {
@@ -744,6 +763,7 @@ const CreateLessonSchedule = ({
                         onChange={(e) => {
                           const value = e.target.value
                           const sanitized = value.replace(/[^0-9:]/g, '')
+
                           if (sanitized.length === 2 && !sanitized.includes(':')) {
                             setEditingStudentEndTime(sanitized + ':')
                           } else if (sanitized.length <= 5) {
@@ -823,6 +843,8 @@ const CreateLessonSchedule = ({
     setEditingStudentNote('')
     setStudentSearch('')
     setShowSearchResults(false)
+    setTeacherSearch('')
+    setShowTeacherSearchResults(false)
     setSuccessMessage('')
     setErrorMessage('')
     setOriginalValues(null)
@@ -940,88 +962,248 @@ const CreateLessonSchedule = ({
 
                 {/* Teacher Selection */}
                 <Grid item xs={12} md={6}>
-                  <FormControl fullWidth required>
-                    <InputLabel>Giáo viên</InputLabel>
-                    <Select
-                      value={selectedTeacherId}
-                      onChange={(e) => setSelectedTeacherId(e.target.value)}
-                      label="Giáo viên"
-                      disabled={!selectedClassId}
-                    >
-                      {/* Default class teacher */}
-                      {selectedClassId && (() => {
+                  <Box>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Giáo viên <span style={{ color: 'red' }}>*</span>
+                    </Typography>
+
+                    {/* Teacher Search */}
+                    <TextField
+                      fullWidth
+                      placeholder="Tìm kiếm giáo viên..."
+                      value={teacherSearch}
+                      onChange={(e) => handleSearchTeacher(e.target.value)}
+                      InputProps={{
+                        startAdornment: (
+                          <i className="ri-search-line" style={{ color: '#666', marginRight: 8 }} />
+                        ),
+                        endAdornment: teacherSearch && (
+                          <i
+                            className="ri-close-line"
+                            style={{
+                              color: '#666',
+                              cursor: 'pointer',
+                              fontSize: '18px'
+                            }}
+                            onClick={() => {
+                              setTeacherSearch('')
+                              setShowTeacherSearchResults(false)
+                            }}
+                          />
+                        )
+                      }}
+                      sx={{ mb: 1 }}
+                    />
+
+                    {/* Teacher Search Results */}
+                    {showTeacherSearchResults && (
+                      <Box sx={{
+                        maxHeight: '200px',
+                        overflowY: 'auto',
+                        border: '1px solid #eee',
+                        borderRadius: 1,
+                        p: 1,
+                        backgroundColor: '#f8f9fa',
+                        mb: 1
+                      }}>
+                        {teacherList?.filter(teacher =>
+                          teacher.name.toLowerCase().includes(teacherSearch.toLowerCase())
+                        ).map((teacher) => {
+                          const isDefaultTeacher = selectedClassId && (() => {
+                            const selectedClass = courseClasses.find(cls => cls.id === selectedClassId)
+
+                            
+return selectedClass?.teacherId === teacher.id
+                          })()
+
+                          const isTeacherBusy = teacher.registeredBusySchedule?.includes(selectedSlot!.slotIndex + 1)
+                          const isSelected = selectedTeacherId === teacher.id
+
+                          return (
+                            <Box
+                              key={teacher.id}
+                              sx={{
+                                p: 1,
+                                borderBottom: '1px solid #eee',
+                                '&:last-child': { borderBottom: 'none' },
+                                cursor: 'pointer',
+                                '&:hover': { backgroundColor: '#e3f2fd' },
+                                borderRadius: 1,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                backgroundColor: isSelected ? '#e3f2fd' : 'transparent'
+                              }}
+                              onClick={() => handleSelectTeacher(teacher.id)}
+                            >
+                              <Box sx={{ flex: 1 }}>
+                                <Typography variant="body2" fontWeight={500}>
+                                  {teacher.name}
+                                </Typography>
+                                {isDefaultTeacher && (
+                                  <Typography variant="caption" color="primary" display="block">
+                                    <i className="ri-user-star-line" style={{ marginRight: 4, fontSize: '12px' }} />
+                                    Giáo viên mặc định của lớp
+                                  </Typography>
+                                )}
+                              </Box>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                {isDefaultTeacher && (
+                                  <Chip
+                                    size="small"
+                                    label="Mặc định"
+                                    color="primary"
+                                    variant="outlined"
+                                    sx={{ fontSize: '0.7rem' }}
+                                  />
+                                )}
+                                <Chip
+                                  size="small"
+                                  label={isTeacherBusy ? "Bận" : "Rảnh"}
+                                  color={isTeacherBusy ? "error" : "success"}
+                                  variant="outlined"
+                                  sx={{ fontSize: '0.7rem' }}
+                                />
+                                {isSelected && (
+                                  <Chip
+                                    size="small"
+                                    label="Đã chọn"
+                                    color="success"
+                                    variant="filled"
+                                    sx={{ fontSize: '0.7rem' }}
+                                  />
+                                )}
+                              </Box>
+                            </Box>
+                          )
+                        })}
+                      </Box>
+                    )}
+
+                    {/* Selected Teacher Display */}
+                    {selectedTeacherId && !showTeacherSearchResults && (() => {
+                      const selectedTeacher = teacherList?.find(t => t.id === selectedTeacherId)
+
+                      if (!selectedTeacher) return null
+
+                      const isDefaultTeacher = selectedClassId && (() => {
                         const selectedClass = courseClasses.find(cls => cls.id === selectedClassId)
 
-                        if (!selectedClass) return null
+                        
+return selectedClass?.teacherId === selectedTeacher.id
+                      })()
 
-                        // Check if default teacher is busy at selected time slot
-                        const isDefaultTeacherBusy = teacherList?.find(t => t.id === selectedClass.teacherId)?.registeredBusySchedule?.includes(selectedSlot!.slotIndex + 1)
-
-                        return (
-                          <MenuItem value={selectedClass.teacherId}>
-                            <Box display="flex" alignItems="center" gap={1}>
-                              <i className="ri-user-star-line" style={{ color: '#1976d2' }} />
-                              <span>{selectedClass.teacher.name}</span>
+                      return (
+                        <Box sx={{
+                          p: 1.5,
+                          backgroundColor: '#e8f5e8',
+                          borderRadius: 1,
+                          border: '1px solid #c8e6c9',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between'
+                        }}>
+                          <Box sx={{ flex: 1 }}>
+                            <Typography variant="body2" fontWeight={600}>
+                              {selectedTeacher.name}
+                            </Typography>
+                            {isDefaultTeacher && (
+                              <Typography variant="caption" color="primary" display="block">
+                                <i className="ri-user-star-line" style={{ marginRight: 4, fontSize: '12px' }} />
+                                Giáo viên mặc định của lớp
+                              </Typography>
+                            )}
+                          </Box>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            {isDefaultTeacher && (
                               <Chip
                                 size="small"
-                                label="Giáo viên mặc định"
+                                label="Mặc định"
                                 color="primary"
                                 variant="outlined"
                                 sx={{ fontSize: '0.7rem' }}
                               />
-                              <Chip
-                                size="small"
-                                label={isDefaultTeacherBusy ? "Bận" : "Rảnh"}
-                                color={isDefaultTeacherBusy ? "error" : "success"}
-                                variant="outlined"
-                                sx={{ fontSize: '0.7rem' }}
-                              />
-                            </Box>
-                          </MenuItem>
-                        )
-                      })()}
+                            )}
+                            {/* <Chip
+                              size="small"
+                              label={isTeacherBusy ? "Bận" : "Rảnh"}
+                              color={isTeacherBusy ? "error" : "success"}
+                              variant="outlined"
+                              sx={{ fontSize: '0.7rem' }}
+                            /> */}
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              color="inherit"
+                              onClick={() => {
+                                setTeacherSearch('')
+                                setShowTeacherSearchResults(true)
+                              }}
+                              sx={{ fontSize: '0.7rem', py: 0.25, px: 1 }}
+                            >
+                              Thay đổi
+                            </Button>
+                          </Box>
+                        </Box>
+                      )
+                    })()}
 
-                      {/* Divider */}
-                      {selectedClassId && teacherList && teacherList.length > 0 && (
-                        <MenuItem disabled>
-                          <Divider sx={{ width: '100%' }}>
-                            <Chip label="Hoặc chọn giáo viên khác" size="small" />
-                          </Divider>
-                        </MenuItem>
-                      )}
+                    {/* Default Teacher Quick Select */}
+                    {selectedClassId && !selectedTeacherId && !showTeacherSearchResults && (() => {
+                      const selectedClass = courseClasses.find(cls => cls.id === selectedClassId)
 
-                      {/* All available teachers */}
-                      {teacherList?.map((teacher) => {
-                        const isDefaultTeacher = selectedClassId && (() => {
-                          const selectedClass = courseClasses.find(cls => cls.id === selectedClassId)
+                      if (!selectedClass) return null
 
+                      const isDefaultTeacherBusy = teacherList?.find(t => t.id === selectedClass.teacherId)?.registeredBusySchedule?.includes(selectedSlot!.slotIndex + 1)
 
-                          return selectedClass?.teacherId === teacher.id
-                        })()
-
-                        if (isDefaultTeacher) return null // Skip default teacher as it's already shown above
-
-                        // Check if teacher is busy at selected time slot
-                        const isTeacherBusy = teacher.registeredBusySchedule?.includes(selectedSlot!.slotIndex + 1)
-
-                        return (
-                          <MenuItem key={teacher.id} value={teacher.id}>
-                            <Box display="flex" alignItems="center" gap={1}>
-                              <i className="ri-user-line" style={{ color: '#666' }} />
-                              <span>{teacher.name}</span>
-                              <Chip
-                                size="small"
-                                label={isTeacherBusy ? "Bận" : "Rảnh"}
-                                color={isTeacherBusy ? "error" : "success"}
-                                variant="outlined"
-                                sx={{ fontSize: '0.7rem' }}
-                              />
-                            </Box>
-                          </MenuItem>
-                        )
-                      })}
-                    </Select>
-                  </FormControl>
+                      return (
+                        <Box sx={{
+                          p: 1.5,
+                          backgroundColor: '#fff3e0',
+                          borderRadius: 1,
+                          border: '1px solid #ffb74d',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between'
+                        }}>
+                          <Box sx={{ flex: 1 }}>
+                            <Typography variant="body2" fontWeight={600}>
+                              {selectedClass.teacher.name}
+                            </Typography>
+                            <Typography variant="caption" color="primary" display="block">
+                              <i className="ri-user-star-line" style={{ marginRight: 4, fontSize: '12px' }} />
+                              Giáo viên mặc định của lớp
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Chip
+                              size="small"
+                              label="Mặc định"
+                              color="primary"
+                              variant="outlined"
+                              sx={{ fontSize: '0.7rem' }}
+                            />
+                            <Chip
+                              size="small"
+                              label={isDefaultTeacherBusy ? "Bận" : "Rảnh"}
+                              color={isDefaultTeacherBusy ? "error" : "success"}
+                              variant="outlined"
+                              sx={{ fontSize: '0.7rem' }}
+                            />
+                            <Button
+                              size="small"
+                              variant="contained"
+                              color="primary"
+                              onClick={() => handleSelectTeacher(selectedClass.teacherId)}
+                              sx={{ fontSize: '0.7rem', py: 0.25, px: 1 }}
+                            >
+                              Chọn
+                            </Button>
+                          </Box>
+                        </Box>
+                      )
+                    })()}
+                  </Box>
                 </Grid>
 
                 {/* Start Time */}
@@ -1032,8 +1214,11 @@ const CreateLessonSchedule = ({
                     value={startTime}
                     onChange={(e) => {
                       const value = e.target.value
+
                       // Chỉ cho phép nhập số và dấu :
                       const sanitized = value.replace(/[^0-9:]/g, '')
+
+
                       // Tự động thêm dấu : sau 2 ký tự đầu
                       if (sanitized.length === 2 && !sanitized.includes(':')) {
                         setStartTime(sanitized + ':')
@@ -1061,8 +1246,11 @@ const CreateLessonSchedule = ({
                     value={endTime}
                     onChange={(e) => {
                       const value = e.target.value
+
                       // Chỉ cho phép nhập số và dấu :
                       const sanitized = value.replace(/[^0-9:]/g, '')
+
+
                       // Tự động thêm dấu : sau 2 ký tự đầu
                       if (sanitized.length === 2 && !sanitized.includes(':')) {
                         setEndTime(sanitized + ':')

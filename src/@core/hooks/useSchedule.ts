@@ -476,6 +476,7 @@ export const useUpdateLessonSchedule = () => {
             queryClient.invalidateQueries({ queryKey: ['unschedule-list'] })
             queryClient.invalidateQueries({ queryKey: ['schedules'] })
             queryClient.invalidateQueries({ queryKey: ['schedule-detail'] })
+            queryClient.invalidateQueries({ queryKey: ['teachers'] })
         },
     })
 }
