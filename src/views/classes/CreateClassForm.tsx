@@ -13,13 +13,18 @@ import {
   Select,
   MenuItem,
   Alert,
-  Snackbar
+  Snackbar,
+  Chip,
+  FormControlLabel,
+  Radio,
+  RadioGroup
 } from '@mui/material'
 
 import { ClassType } from '@/types/classes'
 import type { CreateClassDto } from '@/@core/hooks/useClass';
 import { useCreateClass } from '@/@core/hooks/useClass'
 import { useTeacherList } from '@/@core/hooks/useTeacher'
+import { SCHEDULE_TIME } from '@/@core/hooks/useSchedule'
 
 interface CreateClassFormProps {
   courseId?: string
@@ -35,7 +40,8 @@ const CreateClassForm = ({ courseId, onSuccess }: CreateClassFormProps) => {
     total_lesson_per_week: 1,
     class_type: ClassType.FT_LISTENING,
     teacher_id: '',
-    course_id: courseId || ''
+    course_id: courseId || '',
+    fixedSchedule: []
   })
 
   const [openSnackbar, setOpenSnackbar] = useState(false)
@@ -46,6 +52,13 @@ const CreateClassForm = ({ courseId, onSuccess }: CreateClassFormProps) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
+    }))
+  }
+
+  const handleFixedScheduleChange = (scheduleTime: number | null) => {
+    setFormData(prev => ({
+      ...prev,
+      fixedSchedule: scheduleTime ? [scheduleTime] : []
     }))
   }
 
@@ -64,7 +77,8 @@ const CreateClassForm = ({ courseId, onSuccess }: CreateClassFormProps) => {
         total_lesson_per_week: 1,
         class_type: ClassType.FT_LISTENING,
         teacher_id: '',
-        course_id: courseId || ''
+        course_id: courseId || '',
+        fixedSchedule: []
       })
 
       // Call onSuccess callback
@@ -185,6 +199,62 @@ const CreateClassForm = ({ courseId, onSuccess }: CreateClassFormProps) => {
                 )}
               </Select>
             </FormControl>
+          </Grid>
+
+          <Grid item xs={12}>
+            <Box>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Lịch học cố định (tùy chọn)
+              </Typography>
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
+                Chọn 1 khung giờ cố định cho lớp học này. Để trống nếu không có lịch cố định.
+              </Typography>
+              <RadioGroup
+                value={formData.fixedSchedule && formData.fixedSchedule.length > 0 ? formData.fixedSchedule[0] : ''}
+                onChange={(e) => handleFixedScheduleChange(e.target.value ? Number(e.target.value) : null)}
+              >
+                <Grid container spacing={1}>
+                  {SCHEDULE_TIME.map((time, index) => (
+                    <Grid item xs={12} sm={6} md={4} lg={3} key={index}>
+                      <FormControlLabel
+                        value={index + 1}
+                        control={<Radio size="small" />}
+                        label={
+                          <Box display="flex" alignItems="center" gap={1}>
+                            <i className="ri-time-line" style={{ fontSize: '14px' }} />
+                            <Typography variant="body2">{time}</Typography>
+                          </Box>
+                        }
+                        sx={{
+                          margin: 0,
+                          '& .MuiFormControlLabel-label': {
+                            fontSize: '0.875rem',
+                            fontWeight: 500
+                          }
+                        }}
+                      />
+                    </Grid>
+                  ))}
+                </Grid>
+              </RadioGroup>
+              {(formData.fixedSchedule && formData.fixedSchedule.length > 0) && (
+                <Box mt={2}>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Đã chọn lịch cố định:
+                  </Typography>
+                  <Box display="flex" flexWrap="wrap" gap={1}>
+                    <Chip
+                      label={SCHEDULE_TIME[formData.fixedSchedule[0] - 1]}
+                      size="small"
+                      color="primary"
+                      variant="outlined"
+                      onDelete={() => handleFixedScheduleChange(null)}
+                      icon={<i className="ri-time-line" />}
+                    />
+                  </Box>
+                </Box>
+              )}
+            </Box>
           </Grid>
 
           <Grid item xs={12}>

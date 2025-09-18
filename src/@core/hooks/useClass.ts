@@ -22,6 +22,7 @@ interface ClassInfo {
         email: string,
         lessons: number[]
     }[]
+    fixedSchedule?: number[]
 }
 
 export interface ClassListResponse {
@@ -42,6 +43,7 @@ interface CreateClassDto {
     class_type: ClassType
     teacher_id: string,
     course_id: string
+    fixedSchedule?: number[]
 }
 
 interface UpdateClassDto {
@@ -49,6 +51,7 @@ interface UpdateClassDto {
     total_lesson_per_week?: number
     class_type?: ClassType
     teacher_id?: string
+    fixedSchedule?: number[]
 }
 
 // Function để gọi API lấy danh sách class

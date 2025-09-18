@@ -19,7 +19,11 @@ import {
   MenuItem,
   Alert,
   Snackbar,
-  Skeleton
+  Skeleton,
+  Chip,
+  FormControlLabel,
+  Radio,
+  RadioGroup
 } from '@mui/material'
 import { styled } from '@mui/material/styles'
 
@@ -27,6 +31,7 @@ import { ClassType } from '@/types/classes'
 import type { UpdateClassDto } from '@/@core/hooks/useClass';
 import { useClass, useUpdateClass } from '@/@core/hooks/useClass'
 import { useTeacherList } from '@/@core/hooks/useTeacher'
+import { SCHEDULE_TIME } from '@/@core/hooks/useSchedule'
 
 const StyledCard = styled(Card)(({ theme }) => ({
   marginBottom: theme.spacing(3)
@@ -41,14 +46,15 @@ const EditClassForm = ({ classId }: EditClassFormProps) => {
   const { data: classData, isLoading: isClassLoading, error: classError } = useClass(classId)
   const { data: teachers, isLoading: isTeachersLoading, error: teachersError } = useTeacherList()
   const updateClassMutation = useUpdateClass()
-  
+
   const [formData, setFormData] = useState<UpdateClassDto>({
     name: '',
     total_lesson_per_week: 1,
     class_type: ClassType.FT_LISTENING,
-    teacher_id: ''
+    teacher_id: '',
+    fixedSchedule: []
   })
-  
+
   const [openSnackbar, setOpenSnackbar] = useState(false)
   const [snackbarMessage, setSnackbarMessage] = useState('')
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success')
@@ -60,7 +66,8 @@ const EditClassForm = ({ classId }: EditClassFormProps) => {
         name: classData.name,
         total_lesson_per_week: classData.totalLessonPerWeek,
         class_type: classData.classType as ClassType,
-        teacher_id: classData.teacherId || ''
+        teacher_id: classData.teacherId || '',
+        fixedSchedule: classData.fixedSchedule || []
       })
     }
   }, [classData])
@@ -72,20 +79,27 @@ const EditClassForm = ({ classId }: EditClassFormProps) => {
     }))
   }
 
+  const handleFixedScheduleChange = (scheduleTime: number | null) => {
+    setFormData(prev => ({
+      ...prev,
+      fixedSchedule: scheduleTime ? [scheduleTime] : []
+    }))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     try {
       await updateClassMutation.mutateAsync({ id: classId, classInfo: formData })
       setSnackbarMessage('Cập nhật lớp học thành công!')
       setSnackbarSeverity('success')
       setOpenSnackbar(true)
-      
+
       // Redirect sau 2 giây
       setTimeout(() => {
         router.push(`/classes/${classId}`)
       }, 2000)
-      
+
     } catch (error) {
       setSnackbarMessage('Có lỗi xảy ra khi cập nhật lớp học!')
       setSnackbarSeverity('error')
@@ -162,8 +176,8 @@ const EditClassForm = ({ classId }: EditClassFormProps) => {
             Cập nhật thông tin lớp học: {classData.name}
           </Typography>
         </Box>
-        <Button 
-          variant="outlined" 
+        <Button
+          variant="outlined"
           startIcon={<i className="ri-arrow-left-line" />}
           onClick={() => router.push(`/classes/${classId}`)}
         >
@@ -191,7 +205,7 @@ const EditClassForm = ({ classId }: EditClassFormProps) => {
                   placeholder="Nhập tên lớp học"
                 />
               </Grid>
-              
+
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
@@ -203,7 +217,7 @@ const EditClassForm = ({ classId }: EditClassFormProps) => {
                   inputProps={{ min: 1, max: 7 }}
                 />
               </Grid>
-              
+
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth required>
                   <InputLabel>Trình độ lớp học</InputLabel>
@@ -220,7 +234,7 @@ const EditClassForm = ({ classId }: EditClassFormProps) => {
                   </Select>
                 </FormControl>
               </Grid>
-              
+
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth required>
                   <InputLabel>Giáo viên</InputLabel>
@@ -253,7 +267,63 @@ const EditClassForm = ({ classId }: EditClassFormProps) => {
                   </Select>
                 </FormControl>
               </Grid>
-              
+
+              <Grid item xs={12}>
+                <Box>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Lịch học cố định (tùy chọn)
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
+                    Chọn 1 khung giờ cố định cho lớp học này. Để trống nếu không có lịch cố định.
+                  </Typography>
+                  <RadioGroup
+                    value={formData.fixedSchedule && formData.fixedSchedule.length > 0 ? formData.fixedSchedule[0] : ''}
+                    onChange={(e) => handleFixedScheduleChange(e.target.value ? Number(e.target.value) : null)}
+                  >
+                    <Grid container spacing={1}>
+                      {SCHEDULE_TIME.map((time, index) => (
+                        <Grid item xs={12} sm={6} md={4} lg={3} key={index}>
+                          <FormControlLabel
+                            value={index + 1}
+                            control={<Radio size="small" />}
+                            label={
+                              <Box display="flex" alignItems="center" gap={1}>
+                                <i className="ri-time-line" style={{ fontSize: '14px' }} />
+                                <Typography variant="body2">{time}</Typography>
+                              </Box>
+                            }
+                            sx={{
+                              margin: 0,
+                              '& .MuiFormControlLabel-label': {
+                                fontSize: '0.875rem',
+                                fontWeight: 500
+                              }
+                            }}
+                          />
+                        </Grid>
+                      ))}
+                    </Grid>
+                  </RadioGroup>
+                  {(formData.fixedSchedule && formData.fixedSchedule.length > 0) && (
+                    <Box mt={2}>
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
+                        Đã chọn lịch cố định:
+                      </Typography>
+                      <Box display="flex" flexWrap="wrap" gap={1}>
+                        <Chip
+                          label={SCHEDULE_TIME[formData.fixedSchedule[0] - 1]}
+                          size="small"
+                          color="primary"
+                          variant="outlined"
+                          onDelete={() => handleFixedScheduleChange(null)}
+                          icon={<i className="ri-time-line" />}
+                        />
+                      </Box>
+                    </Box>
+                  )}
+                </Box>
+              </Grid>
+
               <Grid item xs={12}>
                 <Box display="flex" gap={2} justifyContent="flex-end">
                   <Button
@@ -284,8 +354,8 @@ const EditClassForm = ({ classId }: EditClassFormProps) => {
         onClose={() => setOpenSnackbar(false)}
         anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
-        <Alert 
-          onClose={() => setOpenSnackbar(false)} 
+        <Alert
+          onClose={() => setOpenSnackbar(false)}
           severity={snackbarSeverity}
           sx={{ width: '100%' }}
         >
