@@ -460,8 +460,8 @@ const CreateLessonSchedule = ({
     // Check if hours and minutes are valid
     const [hours, minutes] = time.split(':').map(Number)
 
-    
-return hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59
+
+    return hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59
   }
 
   // Handle save individual student changes
@@ -1012,8 +1012,8 @@ return hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59
                           const isDefaultTeacher = selectedClassId && (() => {
                             const selectedClass = courseClasses.find(cls => cls.id === selectedClassId)
 
-                            
-return selectedClass?.teacherId === teacher.id
+
+                            return selectedClass?.teacherId === teacher.id
                           })()
 
                           const isTeacherBusy = teacher.registeredBusySchedule?.includes(selectedSlot!.slotIndex + 1)
@@ -1089,8 +1089,8 @@ return selectedClass?.teacherId === teacher.id
                       const isDefaultTeacher = selectedClassId && (() => {
                         const selectedClass = courseClasses.find(cls => cls.id === selectedClassId)
 
-                        
-return selectedClass?.teacherId === selectedTeacher.id
+
+                        return selectedClass?.teacherId === selectedTeacher.id
                       })()
 
                       return (
@@ -1489,7 +1489,7 @@ return selectedClass?.teacherId === selectedTeacher.id
                 {editMode && scheduleDetail && scheduleDetail.students.absent.length > 0 && (
                   <Box sx={{ mb: 2 }}>
                     <Typography variant="subtitle2" color="text.secondary" mb={1}>
-                      Học sinh vắng mặt ({scheduleDetail.students.absent.length} học sinh):
+                      Học sinh thiếu lịch ({scheduleDetail.students.absent.length} học sinh):
                     </Typography>
                     <Box sx={{
                       maxHeight: '200px',
