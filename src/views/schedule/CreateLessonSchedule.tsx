@@ -146,6 +146,9 @@ const CreateLessonSchedule = ({
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
 
+  // Delete confirmation modal
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+
   // Action state for edit mode (removed, will use direct action)
 
   // Reset form when modal opens/closes or slot changes
@@ -294,8 +297,13 @@ const CreateLessonSchedule = ({
     return studentsChanged || otherFieldsChanged
   }, [editMode, originalValues, selectedStudents, selectedClassId, selectedTeacherId, lessonNumber, startTime, endTime, note])
 
-  // Handle delete lesson schedule
-  const handleDelete = async () => {
+  // Handle delete lesson schedule - show confirmation modal
+  const handleDelete = () => {
+    setShowDeleteConfirm(true)
+  }
+
+  // Handle confirm delete
+  const handleConfirmDelete = async () => {
     try {
       await updateLessonScheduleMutation.mutateAsync({
         weekId,
@@ -306,6 +314,7 @@ const CreateLessonSchedule = ({
 
       setSuccessMessage('Xóa lịch học thành công!')
       setErrorMessage('')
+      setShowDeleteConfirm(false)
 
       // Close modal after 2 seconds
       setTimeout(() => {
@@ -316,7 +325,13 @@ const CreateLessonSchedule = ({
     } catch (error) {
       setErrorMessage('Có lỗi xảy ra khi xóa lịch học')
       setSuccessMessage('')
+      setShowDeleteConfirm(false)
     }
+  }
+
+  // Handle cancel delete
+  const handleCancelDelete = () => {
+    setShowDeleteConfirm(false)
   }
 
   // Handle form submission
@@ -848,6 +863,7 @@ const CreateLessonSchedule = ({
     setSuccessMessage('')
     setErrorMessage('')
     setOriginalValues(null)
+    setShowDeleteConfirm(false)
     setNote('')
     onClose()
   }
@@ -1619,6 +1635,154 @@ const CreateLessonSchedule = ({
           }
         </Button>
       </DialogActions>
+
+      {/* Delete Confirmation Modal */}
+      <Dialog
+        open={showDeleteConfirm}
+        onClose={handleCancelDelete}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.15)'
+          }
+        }}
+      >
+        <DialogTitle>
+          <Box display="flex" alignItems="center" gap={2}>
+            <Box
+              sx={{
+                width: 48,
+                height: 48,
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #ff5252 0%, #f44336 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'white'
+              }}
+            >
+              <i className="ri-delete-bin-line" style={{ fontSize: '24px' }} />
+            </Box>
+            <Box>
+              <Typography variant="h6" fontWeight={700} color="error">
+                Xác nhận xóa lịch học
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Hành động này không thể hoàn tác
+              </Typography>
+            </Box>
+          </Box>
+        </DialogTitle>
+
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              <Typography variant="body2" fontWeight={600}>
+                Bạn có chắc chắn muốn xóa lịch học này?
+              </Typography>
+            </Alert>
+
+            <Box sx={{ p: 2, backgroundColor: '#f5f5f5', borderRadius: 1, border: '1px solid #e0e0e0' }}>
+              <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                Thông tin lịch học sẽ bị xóa:
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                <Typography variant="body2" color="text.secondary">
+                  <strong>Lớp học:</strong> {editData?.className || 'Chưa chọn lớp'}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  <strong>Buổi học:</strong> {lessonNumber}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  <strong>Khung giờ:</strong> {selectedSlot?.day} - {selectedSlot?.time}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  <strong>Số học sinh:</strong> {selectedStudents.length} học sinh
+                </Typography>
+                {selectedStudents.length > 0 && (
+                  <Box sx={{ mt: 1 }}>
+                    <Typography variant="body2" color="text.secondary" fontWeight={500}>
+                      Danh sách học sinh:
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                      {selectedStudents.slice(0, 5).map((student) => (
+                        <Chip
+                          key={student.profile_id}
+                          label={student.fullname}
+                          size="small"
+                          variant="outlined"
+                          sx={{ fontSize: '0.7rem' }}
+                        />
+                      ))}
+                      {selectedStudents.length > 5 && (
+                        <Chip
+                          label={`+${selectedStudents.length - 5} khác`}
+                          size="small"
+                          variant="outlined"
+                          color="secondary"
+                          sx={{ fontSize: '0.7rem' }}
+                        />
+                      )}
+                    </Box>
+                  </Box>
+                )}
+              </Box>
+            </Box>
+
+            <Alert severity="error" sx={{ mt: 2 }}>
+              <Typography variant="body2">
+                <strong>Cảnh báo:</strong> Tất cả dữ liệu liên quan đến lịch học này sẽ bị xóa vĩnh viễn, bao gồm:
+              </Typography>
+              <Box component="ul" sx={{ mt: 1, pl: 2 }}>
+                <Typography component="li" variant="body2">
+                  Thông tin lịch học của học sinh
+                </Typography>
+                <Typography component="li" variant="body2">
+                  Ghi chú và thời gian cá nhân
+                </Typography>
+                <Typography component="li" variant="body2">
+                  Lịch sử điểm danh (nếu có)
+                </Typography>
+              </Box>
+            </Alert>
+          </Box>
+        </DialogContent>
+
+        <DialogActions>
+          <Button
+            onClick={handleCancelDelete}
+            variant="outlined"
+            color="inherit"
+            startIcon={<i className="ri-close-line" />}
+          >
+            Hủy
+          </Button>
+          <Button
+            onClick={handleConfirmDelete}
+            variant="contained"
+            color="error"
+            disabled={updateLessonScheduleMutation.isPending}
+            startIcon={
+              updateLessonScheduleMutation.isPending ? (
+                <CircularProgress size={16} color="inherit" />
+              ) : (
+                <i className="ri-delete-bin-line" />
+              )
+            }
+            sx={{
+              fontWeight: 600,
+              boxShadow: '0 4px 12px rgba(244, 67, 54, 0.3)',
+              '&:hover': {
+                boxShadow: '0 6px 16px rgba(244, 67, 54, 0.4)'
+              }
+            }}
+          >
+            {updateLessonScheduleMutation.isPending ? 'Đang xóa...' : 'Xóa lịch học'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Dialog>
   )
 }
