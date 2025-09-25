@@ -41,7 +41,7 @@ import { SCHEDULE_TIME, useGetAllSchedule } from '@/@core/hooks/useSchedule'
 import { useTeacherList } from '@/@core/hooks/useTeacher'
 
 // Components
-import ScheduleDetailPopup from '../../components/ScheduleDetailPopup'
+import ScheduleDetailPopup from './ScheduleDetailPopup'
 
 
 const StyledHeaderCell = styled(TableCell)(({ theme }) => ({

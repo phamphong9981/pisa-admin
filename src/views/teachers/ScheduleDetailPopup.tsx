@@ -240,7 +240,7 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
   const [selectedScheduleId, setSelectedScheduleId] = React.useState<string>('')
   const [selectedStudentName, setSelectedStudentName] = React.useState<string>('')
   const [showTimeSuccess, setShowTimeSuccess] = React.useState(false)
-  
+
   const { data: scheduleDetail, isLoading, error } = useGetScheduleDetail(classId, lesson, weekId)
   const updateRollcallMutation = useUpdateRollcallStatus()
   const updateUserScheduleMutation = useUpdateUserSchedule()
@@ -265,8 +265,8 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
   const getEffectiveReason = (studentId: string, fallbackReason?: string) => {
     const pending = pendingChanges.get(studentId)
 
-    
-return pending?.reason ?? fallbackReason
+
+    return pending?.reason ?? fallbackReason
   }
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
@@ -302,8 +302,8 @@ return pending?.reason ?? fallbackReason
       setReasonText(initialReason)
       setShowStatusDialog(false)
       setShowReasonDialog(true)
-      
-return
+
+      return
     }
 
     // Nếu trạng thái mới giống trạng thái cũ và không có lý do, xóa khỏi pendingChanges
@@ -312,16 +312,16 @@ return
         const newMap = new Map(prev)
 
         newMap.delete(currentStudentId)
-        
-return newMap
+
+        return newMap
       })
     } else {
       setPendingChanges(prev => {
         const newMap = new Map(prev)
 
         newMap.set(currentStudentId, { status: newStatus })
-        
-return newMap
+
+        return newMap
       })
     }
 
@@ -341,16 +341,16 @@ return newMap
         const newMap = new Map(prev)
 
         newMap.delete(currentStudentId)
-        
-return newMap
+
+        return newMap
       })
     } else {
       setPendingChanges(prev => {
         const newMap = new Map(prev)
 
         newMap.set(currentStudentId, { status: selectedStatusForReason, reason: reasonText.trim() || undefined })
-        
-return newMap
+
+        return newMap
       })
     }
 
@@ -406,8 +406,8 @@ return newMap
 
   const formatTimeRange = (start?: string, end?: string) => {
     if (!start && !end) return '—'
-    
-return `${toInputTime(start)} - ${toInputTime(end)}`
+
+    return `${toInputTime(start)} - ${toInputTime(end)}`
   }
 
   const handleOpenTimeDialog = (student: StudentScheduleDetailDto) => {
@@ -429,7 +429,7 @@ return `${toInputTime(start)} - ${toInputTime(end)}`
 
   const handleSaveTime = async () => {
     console.log(selectedScheduleId, timeStart, timeEnd);
-    
+
     if (!selectedScheduleId) return
 
     try {
@@ -535,7 +535,7 @@ return `${toInputTime(start)} - ${toInputTime(end)}`
           </Box>
         </Box>
       </DialogTitle>
-      
+
       <DialogContent>
         {/* Class Information */}
         <StyledCard sx={{ mb: 3 }}>
@@ -551,28 +551,31 @@ return `${toInputTime(start)} - ${toInputTime(end)}`
                 <Typography variant="body2" color="text.secondary">
                   Thời gian: {formatScheduleTime(scheduleTime)}
                 </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Ghi chú buổi học: {scheduleDetail?.scheduleInfo?.note}
+                </Typography>
               </Box>
               <Box textAlign="right">
                 <Typography variant="h6" color="primary" fontWeight={600}>
                   {students.total} học sinh
                 </Typography>
                 <Box display="flex" gap={1} mt={1}>
-                  <StyledChip 
-                    label={`${students.attendingCount} có mặt`} 
-                    size="small" 
-                    color="success" 
+                  <StyledChip
+                    label={`${students.attendingCount} có mặt`}
+                    size="small"
+                    color="success"
                     variant="outlined"
                   />
-                  <StyledChip 
-                    label={`${students.makeupCount} học bù`} 
-                    size="small" 
-                    color="info" 
+                  <StyledChip
+                    label={`${students.makeupCount} học bù`}
+                    size="small"
+                    color="info"
                     variant="outlined"
                   />
-                  <StyledChip 
-                    label={`${students.absentCount} vắng`} 
-                    size="small" 
-                    color="warning" 
+                  <StyledChip
+                    label={`${students.absentCount} vắng`}
+                    size="small"
+                    color="warning"
                     variant="outlined"
                   />
                 </Box>
@@ -584,18 +587,18 @@ return `${toInputTime(start)} - ${toInputTime(end)}`
         {/* Students Tabs */}
         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
           <StyledTabs value={tabValue} onChange={handleTabChange} aria-label="student status tabs">
-            <Tab 
-              label={`Có mặt (${students.attendingCount})`} 
+            <Tab
+              label={`Có mặt (${students.attendingCount})`}
               icon={<i className="ri-check-line" />}
               iconPosition="start"
             />
-            <Tab 
-              label={`Học bù (${students.makeupCount})`} 
+            <Tab
+              label={`Học bù (${students.makeupCount})`}
               icon={<i className="ri-refresh-line" />}
               iconPosition="start"
             />
-            <Tab 
-              label={`Vắng mặt (${students.absentCount})`} 
+            <Tab
+              label={`Vắng mặt (${students.absentCount})`}
               icon={<i className="ri-close-line" />}
               iconPosition="start"
             />
@@ -604,9 +607,9 @@ return `${toInputTime(start)} - ${toInputTime(end)}`
 
         {/* Tab Content */}
         <Box sx={{ mt: 2 }}>
-                      {/* Attending Students */}
-            {tabValue === 0 && (
-              <StyledTableContainer>
+          {/* Attending Students */}
+          {tabValue === 0 && (
+            <StyledTableContainer>
               <Table>
                 <TableHead>
                   <TableRow>
@@ -616,6 +619,7 @@ return `${toInputTime(start)} - ${toInputTime(end)}`
                     <StyledTableCell>Trạng thái</StyledTableCell>
                     <StyledTableCell>Thời gian</StyledTableCell>
                     <StyledTableCell>Giáo viên dạy</StyledTableCell>
+                    <StyledTableCell>Ghi chú</StyledTableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -641,7 +645,7 @@ return `${toInputTime(start)} - ${toInputTime(end)}`
                           {student.phone}
                         </Typography>
                       </StudentTableCell>
-                      <StudentTableCell 
+                      <StudentTableCell
                         onClick={() => handleStatusClick(student.profileId)}
                         sx={{
                           cursor: 'pointer',
@@ -656,8 +660,8 @@ return `${toInputTime(start)} - ${toInputTime(end)}`
                             const effectiveStatus = getEffectiveStatus(student.profileId, student.rollcallStatus)
                             const effectiveReason = getEffectiveReason(student.profileId, student.reason)
 
-                            
-return (
+
+                            return (
                               <>
                                 <StatusChip
                                   label={getRollcallStatusText(effectiveStatus)}
@@ -702,6 +706,17 @@ return (
                           </Typography>
                         )}
                       </StudentTableCell>
+                      <StudentTableCell>
+                        {student.note ? (
+                          <Typography variant="body2" color="text.primary" sx={{ fontStyle: 'italic' }}>
+                            {student.note}
+                          </Typography>
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">
+                            —
+                          </Typography>
+                        )}
+                      </StudentTableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -709,9 +724,9 @@ return (
             </StyledTableContainer>
           )}
 
-                      {/* Makeup Students */}
-            {tabValue === 1 && (
-              <StyledTableContainer>
+          {/* Makeup Students */}
+          {tabValue === 1 && (
+            <StyledTableContainer>
               <Table>
                 <TableHead>
                   <TableRow>
@@ -722,6 +737,7 @@ return (
                     <StyledTableCell>Thời gian</StyledTableCell>
                     <StyledTableCell>Giáo viên dạy</StyledTableCell>
                     <StyledTableCell>Lý do</StyledTableCell>
+                    <StyledTableCell>Ghi chú</StyledTableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -749,7 +765,7 @@ return (
                       </StudentTableCell>
                       <StudentTableCell>
                         {student.scheduleTime ? (
-                          <StyledChip 
+                          <StyledChip
                             label={formatScheduleTime(student.scheduleTime)}
                             size="small"
                             color="info"
@@ -794,6 +810,17 @@ return (
                           {student.reason || 'Không có lý do'}
                         </Typography>
                       </StudentTableCell>
+                      <StudentTableCell>
+                        {student.note ? (
+                          <Typography variant="body2" color="text.primary" sx={{ fontStyle: 'italic' }}>
+                            {student.note}
+                          </Typography>
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">
+                            —
+                          </Typography>
+                        )}
+                      </StudentTableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -801,20 +828,21 @@ return (
             </StyledTableContainer>
           )}
 
-                      {/* Absent Students */}
-            {tabValue === 2 && (
-              <StyledTableContainer>
+          {/* Absent Students */}
+          {tabValue === 2 && (
+            <StyledTableContainer>
               <Table>
-                  <TableHead>
-                    <TableRow>
-                      <StyledTableCell>Học sinh</StyledTableCell>
-                      <StyledTableCell>Email</StyledTableCell>
-                      <StyledTableCell>SĐT</StyledTableCell>
-                      <StyledTableCell>Trạng thái</StyledTableCell>
-                      <StyledTableCell>Thời gian</StyledTableCell>
-                      <StyledTableCell>Lịch bận</StyledTableCell>
-                    </TableRow>
-                  </TableHead>
+                <TableHead>
+                  <TableRow>
+                    <StyledTableCell>Học sinh</StyledTableCell>
+                    <StyledTableCell>Email</StyledTableCell>
+                    <StyledTableCell>SĐT</StyledTableCell>
+                    <StyledTableCell>Trạng thái</StyledTableCell>
+                    <StyledTableCell>Thời gian</StyledTableCell>
+                    <StyledTableCell>Lịch bận</StyledTableCell>
+                    <StyledTableCell>Ghi chú</StyledTableCell>
+                  </TableRow>
+                </TableHead>
                 <TableBody>
                   {students.absent.map((student) => (
                     <TableRow key={student.profileId}>
@@ -843,8 +871,8 @@ return (
                           const effectiveStatus = getEffectiveStatus(student.profileId, student.rollcallStatus)
                           const effectiveReason = getEffectiveReason(student.profileId, student.reason)
 
-                          
-return (
+
+                          return (
                             <Box>
                               <StatusChip
                                 label={getRollcallStatusText(effectiveStatus)}
@@ -885,6 +913,17 @@ return (
                           ))}
                         </Box>
                       </StudentTableCell>
+                      <StudentTableCell>
+                        {student.note ? (
+                          <Typography variant="body2" color="text.primary" sx={{ fontStyle: 'italic' }}>
+                            {student.note}
+                          </Typography>
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">
+                            —
+                          </Typography>
+                        )}
+                      </StudentTableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -893,21 +932,21 @@ return (
           )}
         </Box>
       </DialogContent>
-      
+
       <DialogActions>
         {pendingChanges.size > 0 && (
           <>
-            <Button 
-              onClick={handleCancelChanges} 
-              variant="outlined" 
+            <Button
+              onClick={handleCancelChanges}
+              variant="outlined"
               color="inherit"
               startIcon={<i className="ri-close-line" />}
             >
               Hủy thay đổi ({pendingChanges.size})
             </Button>
-            <Button 
-              onClick={handleBatchUpdate} 
-              variant="contained" 
+            <Button
+              onClick={handleBatchUpdate}
+              variant="contained"
               color="error"
               disabled={updateRollcallMutation.isPending}
               startIcon={
@@ -978,7 +1017,7 @@ return (
                 <Typography variant="body2" color="text.secondary">Học sinh có mặt trong buổi học</Typography>
               </Box>
             </Button>
-            
+
             <Button
               variant="outlined"
               onClick={() => handleStatusChange(RollcallStatus.ABSENT_WITHOUT_REASON)}
@@ -1000,7 +1039,7 @@ return (
                 <Typography variant="body2" color="text.secondary">Học sinh vắng mặt không có lý do</Typography>
               </Box>
             </Button>
-            
+
             <Button
               variant="outlined"
               onClick={() => handleStatusChange(RollcallStatus.ABSENT_WITH_REASON)}
@@ -1022,7 +1061,7 @@ return (
                 <Typography variant="body2" color="text.secondary">Học sinh vắng mặt có lý do chính đáng</Typography>
               </Box>
             </Button>
-            
+
             <Button
               variant="outlined"
               onClick={() => handleStatusChange(RollcallStatus.ABSENT_WITH_LATE_REASON)}
@@ -1044,7 +1083,7 @@ return (
                 <Typography variant="body2" color="text.secondary">Học sinh vắng mặt và báo muộn</Typography>
               </Box>
             </Button>
-            
+
             <Button
               variant="outlined"
               onClick={() => handleStatusChange(RollcallStatus.NOT_ROLLCALL)}
@@ -1169,9 +1208,9 @@ return (
         onClose={() => setShowSuccessMessage(false)}
         anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
-        <Alert 
-          onClose={() => setShowSuccessMessage(false)} 
-          severity="success" 
+        <Alert
+          onClose={() => setShowSuccessMessage(false)}
+          severity="success"
           sx={{ width: '100%' }}
         >
           Đã cập nhật trạng thái điểm danh cho {updatedCount} học sinh thành công!
