@@ -154,7 +154,7 @@ export const useUpdateUserSchedule = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['schedule-detail'] })
             queryClient.invalidateQueries({ queryKey: ['schedule-by-fields'] })
-            
+
         },
     })
 }
@@ -175,6 +175,7 @@ interface allScheduleResponse {
         id: string
         fullname: string
         note?: string
+        coursename?: string
     },
     note?: string
 }

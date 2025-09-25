@@ -692,9 +692,10 @@ const SchedulePlanner = () => {
                                       {Array.isArray(s.students) && s.students.length > 0 ? (
                                         <Box display="flex" gap={0.5} flexWrap="wrap">
                                           {s.students.map((st: any) => {
+                                            const coursename = st.coursename ? ` - ${st.coursename}` : '';
                                             const displayLabel = st.note
-                                              ? `${st.fullname} (${st.note})`
-                                              : st.fullname;
+                                              ? `${st.fullname}${coursename} (${st.note})`
+                                              : `${st.fullname}${coursename}`;
 
                                             return (
                                               <Chip
