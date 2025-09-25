@@ -112,17 +112,17 @@ const ScheduleRequests = () => {
   const [successMessage, setSuccessMessage] = useState('')
 
   // Fetch pending requests
-  const { 
-    data: pendingRequests, 
-    isLoading: isPendingLoading, 
-    error: pendingError 
+  const {
+    data: pendingRequests,
+    isLoading: isPendingLoading,
+    error: pendingError
   } = useGetScheduleByFields(ScheduleStatus.ON_REQUEST_CANCEL, "08a60c9a-b3f8-42f8-8ff8-c7015d4ef3e7")
 
   // Fetch cancelled requests
-  const { 
-    data: cancelledRequests, 
-    isLoading: isCancelledLoading, 
-    error: cancelledError 
+  const {
+    data: cancelledRequests,
+    isLoading: isCancelledLoading,
+    error: cancelledError
   } = useGetScheduleByFields(ScheduleStatus.CANCELLED, "08a60c9a-b3f8-42f8-8ff8-c7015d4ef3e7")
 
   const updateScheduleMutation = useUpdateUserSchedule()
@@ -170,15 +170,15 @@ const ScheduleRequests = () => {
 
     try {
       const newStatus = actionType === 'approve' ? ScheduleStatus.CANCELLED : ScheduleStatus.ACTIVE
-      
+
       await updateScheduleMutation.mutateAsync({
         scheduleId: selectedRequest.id,
         status: newStatus
       })
 
       setSuccessMessage(
-        actionType === 'approve' 
-          ? 'Đã duyệt yêu cầu hủy lịch thành công!' 
+        actionType === 'approve'
+          ? 'Đã duyệt yêu cầu hủy lịch thành công!'
           : 'Đã từ chối yêu cầu hủy lịch thành công!'
       )
       setShowSuccessMessage(true)
@@ -200,27 +200,27 @@ const ScheduleRequests = () => {
 
   const formatTimeRange = (startTime?: string, endTime?: string) => {
     if (!startTime && !endTime) return '—'
-    
-return `${startTime || '—'} - ${endTime || '—'}`
+
+    return `${startTime || '—'} - ${endTime || '—'}`
   }
 
   return (
     <Box>
       <Card sx={{ mb: 4 }}>
-        <CardHeader 
-          title="Quản lý yêu cầu xin nghỉ" 
+        <CardHeader
+          title="Quản lý yêu cầu đổi lịch"
           subheader="Duyệt hoặc từ chối các yêu cầu hủy lịch học của học sinh"
         />
         <CardContent>
           <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
             <StyledTabs value={tabValue} onChange={handleTabChange} aria-label="schedule requests tabs">
-              <Tab 
-                label={`Đang chờ (${pendingRequests?.length || 0})`} 
+              <Tab
+                label={`Đang chờ (${pendingRequests?.length || 0})`}
                 icon={<i className="ri-time-line" />}
                 iconPosition="start"
               />
-              <Tab 
-                label={`Đã duyệt (${cancelledRequests?.length || 0})`} 
+              <Tab
+                label={`Đã duyệt (${cancelledRequests?.length || 0})`}
                 icon={<i className="ri-check-line" />}
                 iconPosition="start"
               />
@@ -322,7 +322,7 @@ return `${startTime || '—'} - ${endTime || '—'}`
                     </Table>
                   </TableContainer>
                 ) : (
-                  <Alert severity="info">Không có yêu cầu xin nghỉ nào đang chờ duyệt.</Alert>
+                  <Alert severity="info">Không có yêu cầu đổi lịch nào đang chờ duyệt.</Alert>
                 )}
               </Box>
             )}
@@ -395,7 +395,7 @@ return `${startTime || '—'} - ${endTime || '—'}`
                     </Table>
                   </TableContainer>
                 ) : (
-                  <Alert severity="info">Không có yêu cầu xin nghỉ nào đã được duyệt.</Alert>
+                  <Alert severity="info">Không có yêu cầu đổi lịch nào đã được duyệt.</Alert>
                 )}
               </Box>
             )}
@@ -407,12 +407,12 @@ return `${startTime || '—'} - ${endTime || '—'}`
       <Dialog open={showConfirmDialog} onClose={handleCloseConfirmDialog} maxWidth="sm" fullWidth>
         <DialogTitle>
           <Box display="flex" alignItems="center" gap={2}>
-            <i 
-              className={actionType === 'approve' ? 'ri-check-line' : 'ri-close-line'} 
-              style={{ 
-                fontSize: '24px', 
-                color: actionType === 'approve' ? '#2e7d32' : '#c62828' 
-              }} 
+            <i
+              className={actionType === 'approve' ? 'ri-check-line' : 'ri-close-line'}
+              style={{
+                fontSize: '24px',
+                color: actionType === 'approve' ? '#2e7d32' : '#c62828'
+              }}
             />
             <Typography variant="h6" fontWeight={600}>
               {actionType === 'approve' ? 'Duyệt yêu cầu hủy lịch' : 'Từ chối yêu cầu hủy lịch'}
@@ -442,7 +442,7 @@ return `${startTime || '—'} - ${endTime || '—'}`
                 )}
               </Box>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-                {actionType === 'approve' 
+                {actionType === 'approve'
                   ? 'Lịch học sẽ được hủy và học sinh sẽ không cần tham gia buổi học này.'
                   : 'Yêu cầu sẽ bị từ chối và học sinh vẫn cần tham gia buổi học như bình thường.'
                 }
@@ -454,8 +454,8 @@ return `${startTime || '—'} - ${endTime || '—'}`
           <Button onClick={handleCloseConfirmDialog} variant="outlined">
             Hủy
           </Button>
-          <Button 
-            onClick={handleConfirmAction} 
+          <Button
+            onClick={handleConfirmAction}
             variant="contained"
             color={actionType === 'approve' ? 'success' : 'error'}
             disabled={updateScheduleMutation.isPending}
@@ -467,8 +467,8 @@ return `${startTime || '—'} - ${endTime || '—'}`
               )
             }
           >
-            {updateScheduleMutation.isPending 
-              ? 'Đang xử lý...' 
+            {updateScheduleMutation.isPending
+              ? 'Đang xử lý...'
               : (actionType === 'approve' ? 'Duyệt' : 'Từ chối')
             }
           </Button>
@@ -482,9 +482,9 @@ return `${startTime || '—'} - ${endTime || '—'}`
         onClose={() => setShowSuccessMessage(false)}
         anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
-        <Alert 
-          onClose={() => setShowSuccessMessage(false)} 
-          severity="success" 
+        <Alert
+          onClose={() => setShowSuccessMessage(false)}
+          severity="success"
           sx={{ width: '100%' }}
         >
           {successMessage}

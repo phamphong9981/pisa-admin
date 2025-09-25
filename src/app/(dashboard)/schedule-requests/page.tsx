@@ -7,8 +7,8 @@ import type { Metadata } from 'next'
 import ScheduleRequests from '@views/schedule/schedule-requests'
 
 export const metadata: Metadata = {
-  title: 'Xin nghỉ',
-  description: 'Quản lý yêu cầu xin nghỉ của học sinh'
+  title: 'Yêu cầu đổi lịch',
+  description: 'Quản lý yêu cầu đổi lịch của học sinh'
 }
 
 const ScheduleRequestsPage = () => {

@@ -44,13 +44,13 @@ const VerticalMenu = ({ scrollMenu }: { scrollMenu: (container: any, isPerfectSc
     <ScrollWrapper
       {...(isBreakpointReached
         ? {
-            className: 'bs-full overflow-y-auto overflow-x-hidden',
-            onScroll: container => scrollMenu(container, false)
-          }
+          className: 'bs-full overflow-y-auto overflow-x-hidden',
+          onScroll: container => scrollMenu(container, false)
+        }
         : {
-            options: { wheelPropagation: false, suppressScrollX: true },
-            onScrollY: container => scrollMenu(container, true)
-          })}
+          options: { wheelPropagation: false, suppressScrollX: true },
+          onScrollY: container => scrollMenu(container, true)
+        })}
     >
       {/* Incase you also want to scroll NavHeader to scroll with Vertical Menu, remove NavHeader from above and paste it below this comment */}
       {/* Vertical Menu */}
@@ -66,7 +66,7 @@ const VerticalMenu = ({ scrollMenu }: { scrollMenu: (container: any, isPerfectSc
         <SubMenu label='Quản lý lịch học' icon={<i className='ri-calendar-schedule-line' />}>
           <MenuItem href='/edit-schedule' icon={<i className='ri-calendar-edit-line' />}>Chỉnh sửa lịch</MenuItem>
           <MenuItem href='/schedule-planner' icon={<i className='ri-calendar-event-line' />}>Xếp lịch học</MenuItem>
-          <MenuItem href='/schedule-requests' icon={<i className='ri-user-forbid-line' />}>Xin nghỉ</MenuItem>
+          <MenuItem href='/schedule-requests' icon={<i className='ri-user-forbid-line' />}>Yêu cầu đổi lịch</MenuItem>
           <MenuItem href='/unscheduled-students' icon={<i className='ri-user-forbid-line' />}>Danh sách học sinh đang thiếu</MenuItem>
         </SubMenu>
         <SubMenu label='Quản lý giáo viên' icon={<i className='ri-user-star-line' />}>
