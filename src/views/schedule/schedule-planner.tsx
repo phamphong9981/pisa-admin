@@ -249,7 +249,7 @@ const SchedulePlanner = () => {
 
     for (let i = 1; i <= SCHEDULE_TIME.length; i++) {
       map[i] = profiles
-        .filter(p => !(p.busyScheduleArr || []).includes(i))
+        .filter(p => (p.busyScheduleArr || []).includes(i))
         .map(p => ({ id: p.id, fullname: p.fullname }))
     }
 
