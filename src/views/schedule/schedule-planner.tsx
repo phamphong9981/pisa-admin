@@ -34,6 +34,7 @@ import {
 // Hooks
 import { useCourseInfo, useCourseList } from '@/@core/hooks/useCourse'
 import { SCHEDULE_TIME, useAutoScheduleCourse, useGetAllSchedule } from '@/@core/hooks/useSchedule'
+import { useGetWeeks, WeekResponseDto } from '@/@core/hooks/useWeek'
 import CreateLessonSchedule from './CreateLessonSchedule'
 
 const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
@@ -121,8 +122,30 @@ const SchedulePlanner = () => {
   const [selectedCourseId, setSelectedCourseId] = useState<string>('')
   const { data: courseInfo, isLoading: isCourseInfoLoading, error: courseInfoError } = useCourseInfo(selectedCourseId)
   const [classSearch, setClassSearch] = useState<string>('')
-  const { data: courseSchedules } = useGetAllSchedule(selectedCourseId)
+
+  // Week selection
+  const { data: weeksData, isLoading: isWeeksLoading } = useGetWeeks()
+  const [selectedWeekId, setSelectedWeekId] = useState<string>('')
+
+  const { data: courseSchedules } = useGetAllSchedule(selectedCourseId, selectedWeekId)
   const autoScheduleCourseMutation = useAutoScheduleCourse()
+
+  // Get weeks list
+  const weeks = useMemo(() => {
+    console.log('weeksData:', weeksData)
+    return weeksData || []
+  }, [weeksData])
+
+  // Set default week (most recent or first available)
+  useMemo(() => {
+    if (weeks.length > 0 && !selectedWeekId) {
+      // Sort by startDate descending and take the most recent
+      const sortedWeeks = [...weeks].sort((a: WeekResponseDto, b: WeekResponseDto) =>
+        new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+      )
+      setSelectedWeekId(sortedWeeks[0].id)
+    }
+  }, [weeks, selectedWeekId])
 
   // Reset selected course when region changes
   useMemo(() => {
@@ -430,8 +453,8 @@ const SchedulePlanner = () => {
           }
         />
         <CardContent>
-          {/* Region Selection */}
-          <Box sx={{ mb: 3 }}>
+          {/* Region and Week Selection */}
+          <Box sx={{ mb: 3, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
             <FormControl size="small" sx={{ minWidth: 200 }}>
               <InputLabel>Khu vực</InputLabel>
               <Select
@@ -451,6 +474,43 @@ const SchedulePlanner = () => {
                     <span>Uông Bí</span>
                   </Box>
                 </MenuItem>
+              </Select>
+            </FormControl>
+
+            <FormControl size="small" sx={{ minWidth: 250 }}>
+              <InputLabel>Tuần học</InputLabel>
+              <Select
+                value={selectedWeekId}
+                onChange={(e) => setSelectedWeekId(e.target.value)}
+                label="Tuần học"
+                disabled={isWeeksLoading}
+              >
+                {isWeeksLoading ? (
+                  <MenuItem disabled>Đang tải...</MenuItem>
+                ) : weeks.length === 0 ? (
+                  <MenuItem disabled>Không có dữ liệu</MenuItem>
+                ) : (
+                  weeks.map((week: WeekResponseDto) => (
+                    <MenuItem key={week.id} value={week.id}>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <i className="ri-calendar-line" style={{ color: '#1976d2' }} />
+                        <Box>
+                          <Typography variant="body2">
+                            {new Date(week.startDate).toLocaleDateString('vi-VN', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric'
+                            })}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {week.scheduleStatus === 'open' ? 'Mở' :
+                              week.scheduleStatus === 'closed' ? 'Đóng' : 'Chờ duyệt'}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </MenuItem>
+                  ))
+                )}
               </Select>
             </FormControl>
           </Box>
@@ -811,7 +871,7 @@ const SchedulePlanner = () => {
           return index > 0 ? (freeStudentsByIndex[index] || []) : []
         })()}
         courseClasses={courseInfo?.classes || []}
-        weekId="08a60c9a-b3f8-42f8-8ff8-c7015d4ef3e7"
+        weekId={selectedWeekId}
         editMode={createLessonModal.editMode}
         editData={createLessonModal.editData}
         teacherId={createLessonModal.teacherId}
