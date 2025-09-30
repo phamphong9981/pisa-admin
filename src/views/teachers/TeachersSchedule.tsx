@@ -8,6 +8,7 @@ import { useMemo, useState } from 'react'
 // MUI Imports
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Card,
@@ -157,7 +158,7 @@ const TeachersSchedule = () => {
   })
 
   // States for filtering
-  const [teacherSearch, setTeacherSearch] = useState('')
+  const [selectedTeachers, setSelectedTeachers] = useState<any[]>([])
   const [selectedDay, setSelectedDay] = useState<string>('all')
 
   // States for schedule detail popup
@@ -196,19 +197,16 @@ const TeachersSchedule = () => {
     return slots
   }, [])
 
-  // Filter teachers based on search term
+  // Filter teachers based on selected teachers
   const filteredTeachers = useMemo(() => {
     if (!teachers) return []
 
-    if (!teacherSearch.trim()) return teachers
+    if (selectedTeachers.length === 0) return teachers
 
     return teachers.filter(teacher =>
-      teacher.name.toLowerCase().includes(teacherSearch.toLowerCase()) ||
-      teacher.skills.some(skill =>
-        skill.toLowerCase().includes(teacherSearch.toLowerCase())
-      )
+      selectedTeachers.some(selected => selected.id === teacher.id)
     )
-  }, [teachers, teacherSearch])
+  }, [teachers, selectedTeachers])
 
   // Filter time slots based on selected day
   const filteredTimeSlots = useMemo(() => {
@@ -418,42 +416,79 @@ const TeachersSchedule = () => {
           <Box sx={{ mb: 3 }}>
             <Grid container spacing={2} alignItems="center">
               <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  placeholder="Tìm kiếm theo tên giáo viên hoặc kỹ năng..."
-                  value={teacherSearch}
-                  onChange={(e) => setTeacherSearch(e.target.value)}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <i className="ri-search-line" style={{ color: '#666' }} />
-                      </InputAdornment>
-                    ),
-                    endAdornment: teacherSearch && (
-                      <InputAdornment position="end">
-                        <i
-                          className="ri-close-line"
-                          style={{
-                            color: '#666',
-                            cursor: 'pointer',
-                            fontSize: '18px'
-                          }}
-                          onClick={() => setTeacherSearch('')}
-                        />
-                      </InputAdornment>
+                <Autocomplete
+                  multiple
+                  options={teachers || []}
+                  getOptionLabel={(option) => option.name}
+                  value={selectedTeachers}
+                  onChange={(event, newValue) => {
+                    setSelectedTeachers(newValue)
+                  }}
+                  filterOptions={(options, { inputValue }) => {
+                    return options.filter(option =>
+                      option.name.toLowerCase().includes(inputValue.toLowerCase()) ||
+                      option.skills.some((skill: string) =>
+                        skill.toLowerCase().includes(inputValue.toLowerCase())
+                      )
                     )
                   }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      backgroundColor: 'white',
-                      '&:hover fieldset': {
-                        borderColor: '#1976d2',
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: '#1976d2',
-                      },
-                    }
-                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      placeholder="Chọn giáo viên để lọc..."
+                      InputProps={{
+                        ...params.InputProps,
+                        startAdornment: (
+                          <>
+                            <i className="ri-search-line" style={{ color: '#666', marginRight: 8 }} />
+                            {params.InputProps.startAdornment}
+                          </>
+                        ),
+                      }}
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          backgroundColor: 'white',
+                          '&:hover fieldset': {
+                            borderColor: '#1976d2',
+                          },
+                          '&.Mui-focused fieldset': {
+                            borderColor: '#1976d2',
+                          },
+                        }
+                      }}
+                    />
+                  )}
+                  renderTags={(value, getTagProps) =>
+                    value.map((option, index) => (
+                      <Chip
+                        {...getTagProps({ index })}
+                        key={option.id}
+                        label={option.name}
+                        size="small"
+                        sx={{
+                          backgroundColor: '#e3f2fd',
+                          color: '#1976d2',
+                          border: '1px solid #bbdefb'
+                        }}
+                      />
+                    ))
+                  }
+                  renderOption={(props, option) => (
+                    <Box component="li" {...props}>
+                      <Box>
+                        <Typography variant="body2" fontWeight={600}>
+                          {option.name}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {option.skills?.length || 0} kỹ năng: {option.skills?.join(', ') || 'Không có'}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  )}
+                  noOptionsText="Không tìm thấy giáo viên"
+                  clearOnBlur={false}
+                  selectOnFocus
+                  handleHomeEndKeys
                 />
               </Grid>
               <Grid item xs={12} md={6}>
@@ -474,28 +509,58 @@ const TeachersSchedule = () => {
               </Grid>
             </Grid>
 
+            {/* Selected Teachers Display */}
+            {selectedTeachers.length > 0 && (
+              <Box sx={{ mt: 2, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                  <i className="ri-filter-line" style={{ marginRight: 8 }} />
+                  Giáo viên đã chọn ({selectedTeachers.length}):
+                </Typography>
+                <Box display="flex" gap={1} flexWrap="wrap">
+                  {selectedTeachers.map((teacher) => (
+                    <Chip
+                      key={teacher.id}
+                      label={teacher.name}
+                      size="small"
+                      onDelete={() => {
+                        setSelectedTeachers(prev => prev.filter(t => t.id !== teacher.id))
+                      }}
+                      sx={{
+                        backgroundColor: '#e3f2fd',
+                        color: '#1976d2',
+                        border: '1px solid #bbdefb'
+                      }}
+                    />
+                  ))}
+                  <Chip
+                    label="Xóa tất cả"
+                    size="small"
+                    variant="outlined"
+                    onClick={() => setSelectedTeachers([])}
+                    sx={{
+                      color: '#d32f2f',
+                      borderColor: '#d32f2f',
+                      '&:hover': {
+                        backgroundColor: '#ffebee'
+                      }
+                    }}
+                  />
+                </Box>
+              </Box>
+            )}
+
             {/* Filter Summary */}
-            {(teacherSearch || selectedDay !== 'all') && (
+            {selectedDay !== 'all' && (
               <Box sx={{ mt: 2, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
                 <Typography variant="body2" color="text.secondary">
                   <i className="ri-filter-line" style={{ marginRight: 8 }} />
                   Đang lọc:
-                  {teacherSearch && (
-                    <Chip
-                      label={`Giáo viên: "${teacherSearch}"`}
-                      size="small"
-                      sx={{ ml: 1, mr: 1 }}
-                      onDelete={() => setTeacherSearch('')}
-                    />
-                  )}
-                  {selectedDay !== 'all' && (
-                    <Chip
-                      label={`Ngày: ${selectedDay}`}
-                      size="small"
-                      sx={{ ml: 1 }}
-                      onDelete={() => setSelectedDay('all')}
-                    />
-                  )}
+                  <Chip
+                    label={`Ngày: ${selectedDay}`}
+                    size="small"
+                    sx={{ ml: 1 }}
+                    onDelete={() => setSelectedDay('all')}
+                  />
                 </Typography>
               </Box>
             )}
