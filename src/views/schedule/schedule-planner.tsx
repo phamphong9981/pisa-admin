@@ -685,7 +685,21 @@ const SchedulePlanner = () => {
                                     <ClassBoxSubHeader>
                                       <Box display="flex" flexDirection="column" gap={0.5} width="100%">
                                         <Typography variant="caption">GV: {s.teacher_name}</Typography>
-
+                                        {(s.start_time || s.end_time) && (
+                                          <Typography variant="caption" sx={{
+                                            color: 'primary.main',
+                                            fontWeight: 600,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 0.5
+                                          }}>
+                                            <i className="ri-time-line" style={{ fontSize: '0.75rem' }} />
+                                            {s.start_time && s.end_time
+                                              ? `${s.start_time} - ${s.end_time}`
+                                              : s.start_time || s.end_time
+                                            }
+                                          </Typography>
+                                        )}
                                       </Box>
                                     </ClassBoxSubHeader>
                                     <ClassBoxBody>
