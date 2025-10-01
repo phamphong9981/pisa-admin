@@ -141,6 +141,9 @@ const SchedulePlanner = () => {
     message: ''
   })
 
+  // State for export
+  const [isExporting, setIsExporting] = useState(false)
+
   // State for create lesson schedule modal
   const [createLessonModal, setCreateLessonModal] = useState<{
     open: boolean
@@ -394,6 +397,143 @@ const SchedulePlanner = () => {
     }
   }
 
+  // Handle export to CSV
+  const handleExportToCSV = () => {
+    if (!selectedCourseId || !courseInfo) {
+      setAutoScheduleMessage({
+        type: 'error',
+        message: 'Vui lòng chọn một khóa học trước khi export'
+      })
+      return
+    }
+
+    setIsExporting(true)
+
+    try {
+      // Prepare CSV data
+      const csvData: string[][] = []
+
+      // Add header row
+      const headerRow = ['Thứ', ...times]
+      csvData.push(headerRow)
+
+      // Add data rows for each day
+      days.forEach(day => {
+        const row: string[] = [day]
+
+        times.forEach(time => {
+          const index = indexFromDayTime(day, time)
+          const scheduled = schedulesByKey[`${day}|${time}`] || []
+          const free = index > 0 ? (freeStudentsByIndex[index] || []) : []
+
+          // Filter out scheduled students from free list
+          let availableFree = free
+          if (index > 0 && scheduledStudentIdsByIndex[index]) {
+            const scheduledIds = scheduledStudentIdsByIndex[index]
+            availableFree = free.filter(s => !scheduledIds.has(s.id))
+          }
+
+          // Create cell content
+          let cellContent = ''
+
+          // Add scheduled classes
+          if (scheduled.length > 0) {
+            const scheduledInfo = scheduled.map(s => {
+              const students = Array.isArray(s.students) ? s.students : []
+              const studentNames = students.map((st: any) => {
+                const coursename = st.coursename ? ` - ${st.coursename}` : ''
+                return `${st.fullname}${coursename}`
+              }).join('\n')
+
+              return `${s.class_name} (Buổi ${s.lesson}) - GV: ${s.teacher_name}${s.note ? ` - Ghi chú: ${s.note}` : ''}${studentNames ? `\nHS:\n${studentNames}` : ''}`
+            }).join('\n\n')
+
+            cellContent += `[LỊCH HỌC]\n${scheduledInfo}`
+          }
+
+          // Add free students
+          if (availableFree.length > 0) {
+            const freeNames = availableFree.map(s => s.fullname).join('\n')
+            if (cellContent) cellContent += '\n\n'
+            cellContent += `[HS RẢNH]\n${freeNames}`
+          }
+
+          // If no content, show empty
+          if (!cellContent) {
+            cellContent = 'Trống'
+          }
+
+          row.push(cellContent)
+        })
+
+        csvData.push(row)
+      })
+
+      // Add summary section
+      csvData.push([]) // Empty row
+      csvData.push(['TỔNG KẾT'])
+      csvData.push(['Khóa học', courseInfo.name])
+      csvData.push(['Tổng số lớp', String(courseInfo.classes?.length || 0)])
+      csvData.push(['Tổng số học sinh', String(courseInfo.profileCourses?.length || 0)])
+
+      // Count scheduled classes
+      const totalScheduledClasses = Object.values(schedulesByKey).reduce((total, schedules) => total + schedules.length, 0)
+      csvData.push(['Số lớp đã xếp lịch', String(totalScheduledClasses)])
+
+      // Convert to CSV string
+      const csvString = csvData.map(row =>
+        row.map(cell => {
+          // Escape quotes and wrap in quotes if contains newlines
+          const escapedCell = cell.replace(/"/g, '""')
+          return escapedCell.includes('\n') ? `"${escapedCell}"` : `"${escapedCell}"`
+        }).join(',')
+      ).join('\n')
+
+      // Add BOM for UTF-8 support in Excel
+      const BOM = '\uFEFF'
+      const csvWithBOM = BOM + csvString
+
+      // Create and download file
+      const blob = new Blob([csvWithBOM], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      const url = URL.createObjectURL(blob)
+
+      link.setAttribute('href', url)
+      link.setAttribute('download', `Lich_Hoc_${courseInfo.name.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`)
+      link.style.visibility = 'hidden'
+
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+      URL.revokeObjectURL(url)
+
+      setAutoScheduleMessage({
+        type: 'success',
+        message: 'Export CSV thành công! File đã được tải về.'
+      })
+
+      // Clear message after 3 seconds
+      setTimeout(() => {
+        setAutoScheduleMessage({ type: null, message: '' })
+      }, 3000)
+
+    } catch (error) {
+      console.error('Error exporting CSV:', error)
+      setAutoScheduleMessage({
+        type: 'error',
+        message: 'Có lỗi xảy ra khi export CSV. Vui lòng thử lại.'
+      })
+
+      // Clear error message after 3 seconds
+      setTimeout(() => {
+        setAutoScheduleMessage({ type: null, message: '' })
+      }, 3000)
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   return (
     <Box>
       <Card sx={{ mb: 4 }}>
@@ -406,6 +546,25 @@ const SchedulePlanner = () => {
                 <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
                   Khóa học: {courses?.find(c => c.id === selectedCourseId)?.name}
                 </Typography>
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  startIcon={
+                    isExporting ?
+                      <CircularProgress size={16} color="inherit" /> :
+                      <i className="ri-download-line" />
+                  }
+                  onClick={handleExportToCSV}
+                  disabled={isExporting}
+                  sx={{
+                    minWidth: 'auto',
+                    px: 2,
+                    py: 1,
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  {isExporting ? 'Đang export...' : 'Export CSV'}
+                </Button>
                 <Button
                   variant="contained"
                   color="success"
