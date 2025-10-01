@@ -179,6 +179,8 @@ interface allScheduleResponse {
         coursename?: string
     },
     note?: string
+    start_time?: string
+    end_time?: string
 }
 
 const getAllSchedule = async (courseId?: string, weekId?: string): Promise<allScheduleResponse[]> => {

@@ -8,6 +8,7 @@ import { useMemo, useState } from 'react'
 // MUI Imports
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Card,
@@ -80,15 +81,15 @@ const ScheduleCell = styled(TableCell, {
   cursor: isTeaching ? 'pointer' : 'default',
   minWidth: '120px',
   minHeight: '60px',
-  backgroundColor: isTeaching 
+  backgroundColor: isTeaching
     ? '#e3f2fd' // Light blue for teaching
-    : isBusy 
+    : isBusy
       ? '#ffebee' // Light red for busy
       : '#f1f8e9', // Light green for free
   '&:hover': {
-    backgroundColor: isTeaching 
+    backgroundColor: isTeaching
       ? '#bbdefb' // Darker blue on hover
-      : isBusy 
+      : isBusy
         ? '#ffcdd2' // Darker red on hover
         : '#dcedc8', // Darker green on hover
   },
@@ -127,7 +128,7 @@ const TeachingInfo = styled(Box)(({ theme }) => ({
 const getDayInVietnamese = (englishDay: string) => {
   const dayMap: { [key: string]: string } = {
     'Monday': 'Thứ 2',
-    'Tuesday': 'Thứ 3', 
+    'Tuesday': 'Thứ 3',
     'Wednesday': 'Thứ 4',
     'Thursday': 'Thứ 5',
     'Friday': 'Thứ 6',
@@ -142,7 +143,7 @@ const TeachersSchedule = () => {
   const { data: teachers, isLoading, error } = useTeacherList()
   const { data: schedules, isLoading: isSchedulesLoading } = useGetAllSchedule()
   const { exportToExcel, exportToCSV, exportSummary } = useExport()
-  
+
   // States for export menu
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
 
@@ -157,7 +158,7 @@ const TeachersSchedule = () => {
   })
 
   // States for filtering
-  const [teacherSearch, setTeacherSearch] = useState('')
+  const [selectedTeachers, setSelectedTeachers] = useState<any[]>([])
   const [selectedDay, setSelectedDay] = useState<string>('all')
 
   // States for schedule detail popup
@@ -180,40 +181,37 @@ const TeachersSchedule = () => {
   // Generate time slots for all 7 days
   const allTimeSlots = useMemo(() => {
     const slots: { day: string; time: string; slot: number }[] = []
-    
+
     SCHEDULE_TIME.forEach((timeSlot, index) => {
       const parts = timeSlot.split(' ')
       const time = parts[0] // "8:00-10:00"
       const englishDay = parts[1] // "Monday"
-      
+
       slots.push({
         day: getDayInVietnamese(englishDay),
         time: time,
         slot: index
       })
     })
-    
+
     return slots
   }, [])
 
-  // Filter teachers based on search term
+  // Filter teachers based on selected teachers
   const filteredTeachers = useMemo(() => {
     if (!teachers) return []
-    
-    if (!teacherSearch.trim()) return teachers
-    
-    return teachers.filter(teacher => 
-      teacher.name.toLowerCase().includes(teacherSearch.toLowerCase()) ||
-      teacher.skills.some(skill => 
-        skill.toLowerCase().includes(teacherSearch.toLowerCase())
-      )
+
+    if (selectedTeachers.length === 0) return teachers
+
+    return teachers.filter(teacher =>
+      selectedTeachers.some(selected => selected.id === teacher.id)
     )
-  }, [teachers, teacherSearch])
+  }, [teachers, selectedTeachers])
 
   // Filter time slots based on selected day
   const filteredTimeSlots = useMemo(() => {
     if (selectedDay === 'all') return allTimeSlots
-    
+
     return allTimeSlots.filter(slot => slot.day === selectedDay)
   }, [allTimeSlots, selectedDay])
 
@@ -221,20 +219,20 @@ const TeachersSchedule = () => {
   const uniqueDays = useMemo(() => {
     const days = allTimeSlots.map(slot => slot.day)
 
-    
-return ['all', ...Array.from(new Set(days))]
+
+    return ['all', ...Array.from(new Set(days))]
   }, [allTimeSlots])
 
   // Check if teacher is busy at specific slot
   const isTeacherBusy = (teacherSchedule: number[], slotIndex: number) => {
-    return teacherSchedule.includes(slotIndex)
+    return teacherSchedule.includes(slotIndex + 1)
   }
 
   // Check if teacher is teaching at specific slot
   const isTeacherTeaching = (teacherId: string, slotIndex: number) => {
     if (!schedules) return false
 
-    return schedules.some(schedule => 
+    return schedules.some(schedule =>
       schedule.teacher_id === teacherId && schedule.schedule_time === slotIndex + 1
     )
   }
@@ -243,7 +241,7 @@ return ['all', ...Array.from(new Set(days))]
   const getTeachingInfo = (teacherId: string, slotIndex: number) => {
     if (!schedules) return null
 
-    return schedules.find(schedule => 
+    return schedules.find(schedule =>
       schedule.teacher_id === teacherId && schedule.schedule_time === slotIndex + 1
     )
   }
@@ -260,7 +258,7 @@ return ['all', ...Array.from(new Set(days))]
   // Export handlers
   const handleExportExcel = () => {
     if (!teachers) return
-    
+
     const result = exportToExcel(teachers)
 
     setNotification({
@@ -273,7 +271,7 @@ return ['all', ...Array.from(new Set(days))]
 
   const handleExportCSV = () => {
     if (!teachers) return
-    
+
     const result = exportToCSV(teachers)
 
     setNotification({
@@ -286,7 +284,7 @@ return ['all', ...Array.from(new Set(days))]
 
   const handleExportSummary = () => {
     if (!teachers) return
-    
+
     const result = exportSummary(teachers)
 
     setNotification({
@@ -345,34 +343,34 @@ return ['all', ...Array.from(new Set(days))]
           subheader="Quản lý lịch rảnh của tất cả giáo viên theo từng khung giờ trong tuần"
           action={
             <Box display="flex" gap={1} alignItems="center">
-              <Chip 
-                size="small" 
-                label="Rảnh" 
-                sx={{ 
+              <Chip
+                size="small"
+                label="Rảnh"
+                sx={{
                   backgroundColor: '#f1f8e9',
                   color: '#2e7d32',
                   border: '1px solid #c8e6c9'
                 }}
               />
-              <Chip 
-                size="small" 
-                label="Bận" 
-                sx={{ 
+              <Chip
+                size="small"
+                label="Bận"
+                sx={{
                   backgroundColor: '#ffebee',
                   color: '#c62828',
                   border: '1px solid #ffcdd2'
                 }}
               />
-              <Chip 
-                size="small" 
-                label="Đang dạy" 
-                sx={{ 
+              <Chip
+                size="small"
+                label="Đang dạy"
+                sx={{
                   backgroundColor: '#e3f2fd',
                   color: '#1976d2',
                   border: '1px solid #bbdefb'
                 }}
               />
-              
+
               {/* Export Button */}
               <Button
                 variant="contained"
@@ -382,7 +380,7 @@ return ['all', ...Array.from(new Set(days))]
               >
                 Xuất file
               </Button>
-              
+
               {/* Export Menu */}
               <Menu
                 anchorEl={anchorEl}
@@ -418,42 +416,79 @@ return ['all', ...Array.from(new Set(days))]
           <Box sx={{ mb: 3 }}>
             <Grid container spacing={2} alignItems="center">
               <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  placeholder="Tìm kiếm theo tên giáo viên hoặc kỹ năng..."
-                  value={teacherSearch}
-                  onChange={(e) => setTeacherSearch(e.target.value)}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <i className="ri-search-line" style={{ color: '#666' }} />
-                      </InputAdornment>
-                    ),
-                    endAdornment: teacherSearch && (
-                      <InputAdornment position="end">
-                        <i 
-                          className="ri-close-line" 
-                          style={{ 
-                            color: '#666', 
-                            cursor: 'pointer',
-                            fontSize: '18px'
-                          }}
-                          onClick={() => setTeacherSearch('')}
-                        />
-                      </InputAdornment>
+                <Autocomplete
+                  multiple
+                  options={teachers || []}
+                  getOptionLabel={(option) => option.name}
+                  value={selectedTeachers}
+                  onChange={(event, newValue) => {
+                    setSelectedTeachers(newValue)
+                  }}
+                  filterOptions={(options, { inputValue }) => {
+                    return options.filter(option =>
+                      option.name.toLowerCase().includes(inputValue.toLowerCase()) ||
+                      option.skills.some((skill: string) =>
+                        skill.toLowerCase().includes(inputValue.toLowerCase())
+                      )
                     )
                   }}
-                  sx={{ 
-                    '& .MuiOutlinedInput-root': {
-                      backgroundColor: 'white',
-                      '&:hover fieldset': {
-                        borderColor: '#1976d2',
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: '#1976d2',
-                      },
-                    }
-                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      placeholder="Chọn giáo viên để lọc..."
+                      InputProps={{
+                        ...params.InputProps,
+                        startAdornment: (
+                          <>
+                            <i className="ri-search-line" style={{ color: '#666', marginRight: 8 }} />
+                            {params.InputProps.startAdornment}
+                          </>
+                        ),
+                      }}
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          backgroundColor: 'white',
+                          '&:hover fieldset': {
+                            borderColor: '#1976d2',
+                          },
+                          '&.Mui-focused fieldset': {
+                            borderColor: '#1976d2',
+                          },
+                        }
+                      }}
+                    />
+                  )}
+                  renderTags={(value, getTagProps) =>
+                    value.map((option, index) => (
+                      <Chip
+                        {...getTagProps({ index })}
+                        key={option.id}
+                        label={option.name}
+                        size="small"
+                        sx={{
+                          backgroundColor: '#e3f2fd',
+                          color: '#1976d2',
+                          border: '1px solid #bbdefb'
+                        }}
+                      />
+                    ))
+                  }
+                  renderOption={(props, option) => (
+                    <Box component="li" {...props}>
+                      <Box>
+                        <Typography variant="body2" fontWeight={600}>
+                          {option.name}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {option.skills?.length || 0} kỹ năng: {option.skills?.join(', ') || 'Không có'}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  )}
+                  noOptionsText="Không tìm thấy giáo viên"
+                  clearOnBlur={false}
+                  selectOnFocus
+                  handleHomeEndKeys
                 />
               </Grid>
               <Grid item xs={12} md={6}>
@@ -473,36 +508,66 @@ return ['all', ...Array.from(new Set(days))]
                 </FormControl>
               </Grid>
             </Grid>
-            
+
+            {/* Selected Teachers Display */}
+            {selectedTeachers.length > 0 && (
+              <Box sx={{ mt: 2, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                  <i className="ri-filter-line" style={{ marginRight: 8 }} />
+                  Giáo viên đã chọn ({selectedTeachers.length}):
+                </Typography>
+                <Box display="flex" gap={1} flexWrap="wrap">
+                  {selectedTeachers.map((teacher) => (
+                    <Chip
+                      key={teacher.id}
+                      label={teacher.name}
+                      size="small"
+                      onDelete={() => {
+                        setSelectedTeachers(prev => prev.filter(t => t.id !== teacher.id))
+                      }}
+                      sx={{
+                        backgroundColor: '#e3f2fd',
+                        color: '#1976d2',
+                        border: '1px solid #bbdefb'
+                      }}
+                    />
+                  ))}
+                  <Chip
+                    label="Xóa tất cả"
+                    size="small"
+                    variant="outlined"
+                    onClick={() => setSelectedTeachers([])}
+                    sx={{
+                      color: '#d32f2f',
+                      borderColor: '#d32f2f',
+                      '&:hover': {
+                        backgroundColor: '#ffebee'
+                      }
+                    }}
+                  />
+                </Box>
+              </Box>
+            )}
+
             {/* Filter Summary */}
-            {(teacherSearch || selectedDay !== 'all') && (
+            {selectedDay !== 'all' && (
               <Box sx={{ mt: 2, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
                 <Typography variant="body2" color="text.secondary">
                   <i className="ri-filter-line" style={{ marginRight: 8 }} />
-                  Đang lọc: 
-                  {teacherSearch && (
-                    <Chip 
-                      label={`Giáo viên: "${teacherSearch}"`} 
-                      size="small" 
-                      sx={{ ml: 1, mr: 1 }}
-                      onDelete={() => setTeacherSearch('')}
-                    />
-                  )}
-                  {selectedDay !== 'all' && (
-                    <Chip 
-                      label={`Ngày: ${selectedDay}`} 
-                      size="small" 
-                      sx={{ ml: 1 }}
-                      onDelete={() => setSelectedDay('all')}
-                    />
-                  )}
+                  Đang lọc:
+                  <Chip
+                    label={`Ngày: ${selectedDay}`}
+                    size="small"
+                    sx={{ ml: 1 }}
+                    onDelete={() => setSelectedDay('all')}
+                  />
                 </Typography>
               </Box>
             )}
           </Box>
 
-          <TableContainer sx={{ 
-            maxHeight: '70vh', 
+          <TableContainer sx={{
+            maxHeight: '70vh',
             overflow: 'auto',
             border: '1px solid #e0e0e0',
             borderRadius: '8px'
@@ -566,7 +631,7 @@ return ['all', ...Array.from(new Set(days))]
                         const isBusy = isTeacherBusy(teacher.registeredBusySchedule, slot.slot)
                         const isTeaching = isTeacherTeaching(teacher.id, slot.slot)
                         const teachingInfo = getTeachingInfo(teacher.id, slot.slot)
-                        
+
                         return (
                           <ScheduleCell
                             key={`${teacher.id}-${slot.slot}`}
@@ -590,9 +655,9 @@ return ['all', ...Array.from(new Set(days))]
                                 </Box>
                               </TeachingInfo>
                             ) : (
-                              <Tooltip 
+                              <Tooltip
                                 title={
-                                  isBusy 
+                                  isBusy
                                     ? `${teacher.name} bận vào ${slot.day} ${slot.time}`
                                     : `${teacher.name} rảnh vào ${slot.day} ${slot.time}`
                                 }
@@ -615,7 +680,7 @@ return ['all', ...Array.from(new Set(days))]
               </TableBody>
             </Table>
           </TableContainer>
-          
+
           {/* Summary */}
           <Box mt={3}>
             <Typography variant="h6" gutterBottom>
@@ -627,7 +692,7 @@ return ['all', ...Array.from(new Set(days))]
                 const teachingSlots = schedules?.filter(s => s.teacher_id === teacher.id).length || 0
                 const totalSlots = SCHEDULE_TIME.length
                 const freeSlots = totalSlots - busySlots - teachingSlots
-                
+
                 return (
                   <Card key={teacher.id} variant="outlined" sx={{ minWidth: 200 }}>
                     <CardContent sx={{ p: 2 }}>
@@ -649,10 +714,10 @@ return ['all', ...Array.from(new Set(days))]
                       </Box>
                       <Box display="flex" gap={0.5} mt={1}>
                         {teacher.skills.map((skill, index) => (
-                          <Chip 
+                          <Chip
                             key={index}
-                            label={skill} 
-                            size="small" 
+                            label={skill}
+                            size="small"
                             variant="outlined"
                           />
                         ))}
@@ -673,8 +738,8 @@ return ['all', ...Array.from(new Set(days))]
         onClose={handleCloseNotification}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
       >
-        <Alert 
-          onClose={handleCloseNotification} 
+        <Alert
+          onClose={handleCloseNotification}
           severity={notification.severity}
           variant="filled"
         >

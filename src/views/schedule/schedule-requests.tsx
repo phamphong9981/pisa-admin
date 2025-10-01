@@ -64,7 +64,7 @@ const StatusChip = styled(Chip)<{ status: string }>(({ status }) => ({
   borderRadius: '8px',
   padding: '4px 8px',
   minHeight: '24px',
-  ...(status === 'on_request_cancel' && {
+  ...(status === ScheduleStatus.ON_REQUEST_CHANGE && {
     backgroundColor: '#fff3e0',
     color: '#ef6c00',
     border: '1px solid #ff9800'
@@ -116,7 +116,7 @@ const ScheduleRequests = () => {
     data: pendingRequests,
     isLoading: isPendingLoading,
     error: pendingError
-  } = useGetScheduleByFields(ScheduleStatus.ON_REQUEST_CANCEL, "08a60c9a-b3f8-42f8-8ff8-c7015d4ef3e7")
+  } = useGetScheduleByFields(ScheduleStatus.ON_REQUEST_CHANGE, "08a60c9a-b3f8-42f8-8ff8-c7015d4ef3e7")
 
   // Fetch cancelled requests
   const {
@@ -133,7 +133,7 @@ const ScheduleRequests = () => {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case ScheduleStatus.ON_REQUEST_CANCEL:
+      case ScheduleStatus.ON_REQUEST_CHANGE:
         return 'Đang chờ duyệt'
       case ScheduleStatus.CANCELLED:
         return 'Đã hủy'
