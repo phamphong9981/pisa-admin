@@ -136,6 +136,13 @@ const SchedulePlanner = () => {
     return weeksData || []
   }, [weeksData])
 
+  // Calculate end date for a week (startDate + 6 days)
+  const calculateEndDate = (startDate: Date): Date => {
+    const endDate = new Date(startDate)
+    endDate.setDate(endDate.getDate() + 6) // Add 6 days to get the end of the week
+    return endDate
+  }
+
   // Set default week (most recent or first available)
   useMemo(() => {
     if (weeks.length > 0 && !selectedWeekId) {
@@ -649,26 +656,35 @@ const SchedulePlanner = () => {
                 ) : weeks.length === 0 ? (
                   <MenuItem disabled>Không có dữ liệu</MenuItem>
                 ) : (
-                  weeks.map((week: WeekResponseDto) => (
-                    <MenuItem key={week.id} value={week.id}>
-                      <Box display="flex" alignItems="center" gap={1}>
-                        <i className="ri-calendar-line" style={{ color: '#1976d2' }} />
-                        <Box>
-                          <Typography variant="body2">
-                            {new Date(week.startDate).toLocaleDateString('vi-VN', {
-                              day: '2-digit',
-                              month: '2-digit',
-                              year: 'numeric'
-                            })}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {week.scheduleStatus === 'open' ? 'Mở' :
-                              week.scheduleStatus === 'closed' ? 'Đóng' : 'Chờ duyệt'}
-                          </Typography>
+                  weeks.map((week: WeekResponseDto) => {
+                    const startDate = new Date(week.startDate)
+                    const endDate = calculateEndDate(startDate)
+
+                    return (
+                      <MenuItem key={week.id} value={week.id}>
+                        <Box display="flex" alignItems="center" gap={1}>
+                          <i className="ri-calendar-line" style={{ color: '#1976d2' }} />
+                          <Box>
+                            <Typography variant="body2">
+                              {startDate.toLocaleDateString('vi-VN', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric'
+                              })} - {endDate.toLocaleDateString('vi-VN', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric'
+                              })}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {week.scheduleStatus === 'open' ? 'Mở' :
+                                week.scheduleStatus === 'closed' ? 'Đóng' : 'Chờ duyệt'}
+                            </Typography>
+                          </Box>
                         </Box>
-                      </Box>
-                    </MenuItem>
-                  ))
+                      </MenuItem>
+                    )
+                  })
                 )}
               </Select>
             </FormControl>
