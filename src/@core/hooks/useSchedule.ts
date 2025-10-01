@@ -6,6 +6,8 @@ export enum ScheduleStatus {
     ACTIVE = 'active',
     ON_REQUEST_CANCEL = 'on_request_cancel',
     CANCELLED = 'cancelled',
+    ON_REQUEST_CHANGE = 'on_request_change',
+    CHANGED = 'changed',
 }
 
 export const SCHEDULE_TIME = [

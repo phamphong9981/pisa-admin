@@ -74,6 +74,8 @@ const CreateLessonSchedule = ({
   editData = null,
   teacherId: propTeacherId
 }: CreateLessonScheduleProps) => {
+  console.log('selectedSlot', selectedSlot)
+
   const createLessonScheduleMutation = useCreateLessonSchedule()
   const updateUserScheduleMutation = useUpdateUserSchedule()
   const updateLessonScheduleMutation = useUpdateLessonSchedule()
@@ -257,8 +259,6 @@ const CreateLessonSchedule = ({
   // Check if there are changes in edit mode
   const hasChanges = useMemo(() => {
     if (!editMode || !originalValues) {
-      console.log('hasChanges: editMode or originalValues not available', { editMode, originalValues: !!originalValues })
-
       return false
     }
 
@@ -275,24 +275,6 @@ const CreateLessonSchedule = ({
       startTime !== originalValues.startTime ||
       endTime !== originalValues.endTime ||
       note !== originalValues.note
-
-    // Debug log for troubleshooting
-    console.log('Debug hasChanges:', {
-      selectedTeacherId,
-      originalTeacherId: originalValues.teacherId,
-      teacherChanged: selectedTeacherId !== originalValues.teacherId,
-      startTime,
-      originalStartTime: originalValues.startTime,
-      startTimeChanged: startTime !== originalValues.startTime,
-      endTime,
-      originalEndTime: originalValues.endTime,
-      endTimeChanged: endTime !== originalValues.endTime,
-      note,
-      originalNote: originalValues.note,
-      noteChanged: note !== originalValues.note,
-      otherFieldsChanged,
-      hasChanges: studentsChanged || otherFieldsChanged
-    })
 
     return studentsChanged || otherFieldsChanged
   }, [editMode, originalValues, selectedStudents, selectedClassId, selectedTeacherId, lessonNumber, startTime, endTime, note])
