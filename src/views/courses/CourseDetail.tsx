@@ -15,9 +15,13 @@ import {
   Chip,
   Dialog,
   DialogContent,
+  FormControl,
   Grid,
   IconButton,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Snackbar,
   Table,
   TableBody,
@@ -33,6 +37,7 @@ import { styled } from '@mui/material/styles'
 
 import { useCourseInfo, useRegisterCourse, useUnregisterCourse } from '@/@core/hooks/useCourse'
 import { useStudentList } from '@/@core/hooks/useStudent'
+import { useGetWeeks } from '@/@core/hooks/useWeek'
 import CreateClassForm from '@/views/classes/CreateClassForm'
 
 const StyledCard = styled(Card)(({ theme }) => ({
@@ -100,6 +105,7 @@ const CourseDetail = ({ courseName }: CourseDetailProps) => {
   const [studentToUnregister, setStudentToUnregister] = useState<{ id: string; name: string } | null>(null)
   const [searchStudent, setSearchStudent] = useState('')
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([])
+  const [selectedWeekId, setSelectedWeekId] = useState<string>('')
 
   const [notification, setNotification] = useState<{
     open: boolean
@@ -111,10 +117,11 @@ const CourseDetail = ({ courseName }: CourseDetailProps) => {
     severity: 'success'
   })
 
-  const { data: course, isLoading: isLoadingCourses, error: coursesError } = useCourseInfo(courseName)
+  const { data: course, isLoading: isLoadingCourses, error: coursesError } = useCourseInfo(courseName, selectedWeekId || 'all')
   const { mutate: registerCourse, isPending: isRegistering } = useRegisterCourse()
   const { mutate: unregisterCourse, isPending: isUnregistering } = useUnregisterCourse()
   const { data: studentListData, isLoading: isStudentListLoading } = useStudentList(searchStudent)
+  const { data: weeksData, isLoading: isLoadingWeeks } = useGetWeeks()
 
   // Get registered student IDs
   const registeredStudentIds = useMemo(() => {
@@ -223,14 +230,79 @@ const CourseDetail = ({ courseName }: CourseDetailProps) => {
               Lớp học: {courseName}
             </Typography>
           </Box>
-          <Button
-            variant="outlined"
-            startIcon={<i className="ri-arrow-left-line" />}
-            onClick={() => router.push('/courses')}
-          >
-            Quay lại
-          </Button>
+          <Box display="flex" alignItems="center" gap={2}>
+            <FormControl size="small" sx={{ minWidth: 200 }}>
+              <InputLabel>Chọn tuần</InputLabel>
+              <Select
+                value={selectedWeekId}
+                onChange={(e) => setSelectedWeekId(e.target.value)}
+                label="Chọn tuần"
+                disabled={isLoadingWeeks}
+              >
+                <MenuItem value="">
+                  <em>Tất cả tuần</em>
+                </MenuItem>
+                {weeksData?.map((week) => (
+                  <MenuItem key={week.id} value={week.id}>
+                    <Box display="flex" flexDirection="column" alignItems="flex-start">
+                      <Typography variant="body2">
+                        Tuần từ {new Date(week.startDate).toLocaleDateString('vi-VN')}
+                      </Typography>
+                      <Chip
+                        label={week.scheduleStatus === 'open' ? 'Mở' : week.scheduleStatus === 'closed' ? 'Đóng' : 'Chờ'}
+                        color={week.scheduleStatus === 'open' ? 'success' : week.scheduleStatus === 'closed' ? 'error' : 'warning'}
+                        size="small"
+                        sx={{ mt: 0.5 }}
+                      />
+                    </Box>
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Button
+              variant="outlined"
+              startIcon={<i className="ri-arrow-left-line" />}
+              onClick={() => router.push('/courses')}
+            >
+              Quay lại
+            </Button>
+          </Box>
         </Box>
+
+        {/* Thông tin tuần được chọn */}
+        {selectedWeekId && weeksData && (
+          <StyledCard>
+            <CardContent>
+              <Box display="flex" alignItems="center" gap={2}>
+                <i className="ri-calendar-line" style={{ fontSize: 24, color: '#1976d2' }} />
+                <Box>
+                  <Typography variant="h6" gutterBottom>
+                    Tuần được chọn
+                  </Typography>
+                  {(() => {
+                    const selectedWeek = weeksData.find(week => week.id === selectedWeekId)
+                    if (!selectedWeek) return null
+                    return (
+                      <Box display="flex" alignItems="center" gap={2}>
+                        <Typography variant="body1">
+                          Tuần từ {new Date(selectedWeek.startDate).toLocaleDateString('vi-VN')}
+                        </Typography>
+                        <Chip
+                          label={selectedWeek.scheduleStatus === 'open' ? 'Mở' : selectedWeek.scheduleStatus === 'closed' ? 'Đóng' : 'Chờ'}
+                          color={selectedWeek.scheduleStatus === 'open' ? 'success' : selectedWeek.scheduleStatus === 'closed' ? 'error' : 'warning'}
+                          size="small"
+                        />
+                        <Typography variant="body2" color="text.secondary">
+                          Tạo lúc: {new Date(selectedWeek.createdAt).toLocaleDateString('vi-VN')}
+                        </Typography>
+                      </Box>
+                    )
+                  })()}
+                </Box>
+              </Box>
+            </CardContent>
+          </StyledCard>
+        )}
 
         {/* Thông tin cơ bản khóa học */}
         <StyledCard>
