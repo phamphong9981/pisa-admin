@@ -55,11 +55,11 @@ interface CourseInfo {
     }[]
 }
 
-export const useCourseInfo = (courseId: string) => {
+export const useCourseInfo = (courseId: string, weekId: string) => {
     return useQuery<CourseInfo, Error>({
-        queryKey: ['courseInfo', courseId],
+        queryKey: ['courseInfo', courseId, weekId],
         queryFn: async () => {
-            const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/courses/${courseId}`);
+            const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/courses/${courseId}/${weekId}`);
 
             return data.data;
         },

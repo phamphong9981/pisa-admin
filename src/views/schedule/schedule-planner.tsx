@@ -120,12 +120,13 @@ const SchedulePlanner = () => {
   const [selectedRegion, setSelectedRegion] = useState<number>(1) // Default to HALONG
   const { data: courses, isLoading: isCoursesLoading, error: coursesError } = useCourseList(selectedRegion)
   const [selectedCourseId, setSelectedCourseId] = useState<string>('')
-  const { data: courseInfo, isLoading: isCourseInfoLoading, error: courseInfoError } = useCourseInfo(selectedCourseId)
   const [classSearch, setClassSearch] = useState<string>('')
 
   // Week selection
   const { data: weeksData, isLoading: isWeeksLoading } = useGetWeeks()
   const [selectedWeekId, setSelectedWeekId] = useState<string>('')
+
+  const { data: courseInfo, isLoading: isCourseInfoLoading, error: courseInfoError } = useCourseInfo(selectedCourseId, selectedWeekId)
 
   const { data: courseSchedules } = useGetAllSchedule(selectedCourseId, selectedWeekId)
   const autoScheduleCourseMutation = useAutoScheduleCourse()
@@ -154,10 +155,10 @@ const SchedulePlanner = () => {
     }
   }, [weeks, selectedWeekId])
 
-  // Reset selected course when region changes
+  // Reset selected course when region or week changes
   useMemo(() => {
     setSelectedCourseId('')
-  }, [selectedRegion])
+  }, [selectedRegion, selectedWeekId])
 
   // State for highlighting teacher's free schedule
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>('')
