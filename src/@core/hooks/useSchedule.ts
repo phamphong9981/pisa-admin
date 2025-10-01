@@ -201,7 +201,7 @@ export const useGetAllSchedule = (courseId?: string, weekId?: string) => {
         queryKey: ['schedules', courseId, weekId],
         queryFn: () => getAllSchedule(courseId, weekId),
 
-        // enabled: !!courseId,
+        enabled: !!courseId,
         staleTime: 5 * 60 * 1000, // 5 phút
         gcTime: 10 * 60 * 1000, // 10 phút
         retry: 1,

@@ -377,7 +377,7 @@ const CreateLessonSchedule = ({
         // Create mode
         await createLessonScheduleMutation.mutateAsync({
           weekId,
-          scheduleTime: selectedSlot!.slotIndex + 1, // Convert to 1-based index
+          scheduleTime: selectedSlot!.slotIndex, // Convert to 1-based index
           startTime: formatTimeToHHMM(startTime), // Format to HH:MM
           endTime: formatTimeToHHMM(endTime), // Format to HH:MM
           classId: selectedClassId,
