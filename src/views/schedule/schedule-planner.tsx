@@ -17,6 +17,7 @@ import {
   Chip,
   CircularProgress,
   FormControl,
+  InputAdornment,
   InputLabel,
   MenuItem,
   Paper,
@@ -35,6 +36,7 @@ import {
 import { useCourseInfo, useCourseList } from '@/@core/hooks/useCourse'
 import { SCHEDULE_TIME, useAutoScheduleCourse, useGetAllSchedule } from '@/@core/hooks/useSchedule'
 import { useGetWeeks, WeekResponseDto } from '@/@core/hooks/useWeek'
+import { useTeacherList, TeacherListResponse } from '@/@core/hooks/useTeacher'
 import CreateLessonSchedule from './CreateLessonSchedule'
 
 const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
@@ -123,6 +125,10 @@ const SchedulePlanner = () => {
   const [selectedCourseId, setSelectedCourseId] = useState<string>('')
   const [classSearch, setClassSearch] = useState<string>('')
 
+  // State for teacher search
+  const [teacherSearchTerm, setTeacherSearchTerm] = useState<string>('')
+  const [selectedTeacher, setSelectedTeacher] = useState<TeacherListResponse | null>(null)
+
   // Week selection
   const { data: weeksData, isLoading: isWeeksLoading } = useGetWeeks()
 
@@ -131,6 +137,9 @@ const SchedulePlanner = () => {
 
   const { data: courseSchedules } = useGetAllSchedule(selectedCourseId, selectedWeekId)
   const autoScheduleCourseMutation = useAutoScheduleCourse()
+
+  // Teacher search
+  const { data: teachers, isLoading: isTeachersLoading } = useTeacherList(teacherSearchTerm)
 
   // Get weeks list
   const weeks = useMemo(() => {
@@ -344,6 +353,22 @@ const SchedulePlanner = () => {
     })
   }, [courses])
 
+  // Calculate teacher's available time slots for highlighting
+  const teacherAvailableSlots = useMemo(() => {
+    if (!selectedTeacher) return new Set<number>()
+
+    const teacherBusySlots = selectedTeacher.registeredBusySchedule || []
+    const availableSlots = new Set<number>()
+
+    // Add all slots that teacher is NOT busy (0-based)
+    for (let i = 0; i < SCHEDULE_TIME.length; i++) {
+      if (!teacherBusySlots.includes(i)) {
+        availableSlots.add(i + 1) // Convert to 1-based for display
+      }
+    }
+
+    return availableSlots
+  }, [selectedTeacher])
 
   // Helper function to check if teacher is busy at specific time slot
   const isTeacherBusy = (teacherId: string, slotIndex: number) => {
@@ -780,6 +805,169 @@ const SchedulePlanner = () => {
             </Box>
           </Box>
 
+          {/* Teacher Search */}
+          {selectedCourseId && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                Tìm kiếm giáo viên để xem lịch khớp trên lưới:
+              </Typography>
+              <Box sx={{ maxWidth: 400 }}>
+                {/* Teacher Search */}
+                <TextField
+                  fullWidth
+                  placeholder="Tìm kiếm giáo viên..."
+                  value={teacherSearchTerm}
+                  onChange={(e) => setTeacherSearchTerm(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <i className="ri-search-line" style={{ color: '#666', marginRight: 8 }} />
+                    ),
+                    endAdornment: teacherSearchTerm && (
+                      <i
+                        className="ri-close-line"
+                        style={{
+                          color: '#666',
+                          cursor: 'pointer',
+                          fontSize: '18px'
+                        }}
+                        onClick={() => setTeacherSearchTerm('')}
+                      />
+                    )
+                  }}
+                  sx={{ mb: 1 }}
+                />
+
+                {/* Teacher Search Results */}
+                {teacherSearchTerm && (
+                  <Box sx={{
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                    border: '1px solid #eee',
+                    borderRadius: 1,
+                    p: 1,
+                    backgroundColor: '#f8f9fa',
+                    mb: 1
+                  }}>
+                    {isTeachersLoading ? (
+                      <Box display="flex" justifyContent="center" p={2}>
+                        <CircularProgress size={20} />
+                      </Box>
+                    ) : teachers && teachers.length > 0 ? (
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" display="block" mb={1}>
+                          Kết quả tìm kiếm ({teachers.length} giáo viên):
+                        </Typography>
+                        {teachers.map((teacher) => {
+                          const isTeacherBusy = teacher.registeredBusySchedule?.includes(0) // Check if teacher is busy at any slot
+                          const isSelected = selectedTeacher?.id === teacher.id
+
+                          return (
+                            <Box
+                              key={teacher.id}
+                              sx={{
+                                p: 1,
+                                borderBottom: '1px solid #eee',
+                                '&:last-child': { borderBottom: 'none' },
+                                cursor: 'pointer',
+                                '&:hover': { backgroundColor: '#e3f2fd' },
+                                borderRadius: 1,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                backgroundColor: isSelected ? '#e3f2fd' : 'transparent'
+                              }}
+                              onClick={() => setSelectedTeacher(teacher)}
+                            >
+                              <Box sx={{ flex: 1 }}>
+                                <Typography variant="body2" fontWeight={500}>
+                                  {teacher.name}
+                                </Typography>
+                                {teacher.skills && teacher.skills.length > 0 && (
+                                  <Typography variant="caption" color="text.secondary" display="block">
+                                    <i className="ri-award-line" style={{ marginRight: 4, fontSize: '12px' }} />
+                                    {teacher.skills.join(', ')}
+                                  </Typography>
+                                )}
+                              </Box>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Chip
+                                  size="small"
+                                  label="Rảnh"
+                                  color="success"
+                                  variant="outlined"
+                                  sx={{ fontSize: '0.7rem' }}
+                                />
+                                {isSelected && (
+                                  <Chip
+                                    size="small"
+                                    label="Đã chọn"
+                                    color="primary"
+                                    variant="filled"
+                                    sx={{ fontSize: '0.7rem' }}
+                                  />
+                                )}
+                              </Box>
+                            </Box>
+                          )
+                        })}
+                      </Box>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary" textAlign="center" p={2}>
+                        Không tìm thấy giáo viên nào
+                      </Typography>
+                    )}
+                  </Box>
+                )}
+
+                {/* Selected Teacher Display */}
+                {selectedTeacher && !teacherSearchTerm && (
+                  <Box sx={{
+                    p: 1.5,
+                    backgroundColor: '#e8f5e8',
+                    borderRadius: 1,
+                    border: '1px solid #c8e6c9',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="body2" fontWeight={600}>
+                        {selectedTeacher.name}
+                      </Typography>
+                      {selectedTeacher.skills && selectedTeacher.skills.length > 0 && (
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          <i className="ri-award-line" style={{ marginRight: 4, fontSize: '12px' }} />
+                          {selectedTeacher.skills.join(', ')}
+                        </Typography>
+                      )}
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Chip
+                        size="small"
+                        label="Rảnh"
+                        color="success"
+                        variant="outlined"
+                        sx={{ fontSize: '0.7rem' }}
+                      />
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="inherit"
+                        onClick={() => {
+                          setTeacherSearchTerm('')
+                          setSelectedTeacher(null)
+                        }}
+                        sx={{ fontSize: '0.7rem', py: 0.25, px: 1 }}
+                      >
+                        Bỏ chọn
+                      </Button>
+                    </Box>
+                  </Box>
+                )}
+              </Box>
+            </Box>
+          )}
+
           {/* Auto schedule info */}
           {selectedCourseId && (
             <Box sx={{ mt: 2, p: 1.5, backgroundColor: '#e8f5e8', borderRadius: 1, border: '1px solid #c8e6c9' }}>
@@ -906,6 +1094,10 @@ const SchedulePlanner = () => {
                             !isTeacherBusy(selectedTeacherId, index - 1) &&
                             !isTeacherTeaching(selectedTeacherId, index - 1)
 
+                          // Check if this time slot is available for the searched teacher
+                          const isTeacherAvailable = selectedTeacher && index > 0 &&
+                            teacherAvailableSlots.has(index)
+
 
                           return (
                             <GridCell
@@ -925,6 +1117,21 @@ const SchedulePlanner = () => {
                                     background: '#1976d2',
                                     zIndex: 2
                                   }
+                                }),
+                                ...(isTeacherAvailable && !shouldHighlight && {
+                                  backgroundColor: '#e8f5e8',
+                                  border: '2px solid #4caf50',
+                                  position: 'relative',
+                                  '&::before': {
+                                    content: '""',
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    right: 0,
+                                    height: 4,
+                                    background: '#4caf50',
+                                    zIndex: 2
+                                  }
                                 })
                               }}
                             >
@@ -940,6 +1147,22 @@ const SchedulePlanner = () => {
                                   <Typography variant="caption" color="primary" fontWeight={600}>
                                     <i className="ri-time-line" style={{ marginRight: 4 }} />
                                     GV rảnh
+                                  </Typography>
+                                </Box>
+                              )}
+
+                              {isTeacherAvailable && !shouldHighlight && (
+                                <Box sx={{
+                                  textAlign: 'center',
+                                  mb: 1,
+                                  p: 0.5,
+                                  backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                                  borderRadius: 1,
+                                  border: '1px solid rgba(76, 175, 80, 0.3)'
+                                }}>
+                                  <Typography variant="caption" color="success.main" fontWeight={600}>
+                                    <i className="ri-check-line" style={{ marginRight: 4 }} />
+                                    {selectedTeacher?.name} rảnh
                                   </Typography>
                                 </Box>
                               )}
@@ -1062,7 +1285,7 @@ const SchedulePlanner = () => {
                                       variant="outlined"
                                       color="primary"
                                       startIcon={<i className="ri-add-line" />}
-                                      onClick={() => handleOpenCreateLessonModal(day, time, index)}
+                                      onClick={() => handleOpenCreateLessonModal(day, time, index, selectedTeacher?.id)}
                                       sx={{
                                         fontSize: '0.75rem',
                                         py: 0.5,
