@@ -18,13 +18,24 @@ interface CourseListResponse {
     },
     classes: {
         id: string,
+        startTime: string | null,
+        endTime: string | null,
     }[],
     region: number
 }
 
-const fetchCourseList = async (region?: number): Promise<CourseListResponse[]> => {
-    const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/courses${region ? `?region=${region}` : ''}`);
+const fetchCourseList = async (region?: number, weekId?: string): Promise<CourseListResponse[]> => {
+    let url = `${process.env.NEXT_PUBLIC_BASE_API}/courses`;
+    const params = new URLSearchParams();
 
+    if (region) params.append('region', region.toString());
+    if (weekId) params.append('weekId', weekId);
+
+    if (params.toString()) {
+        url += `?${params.toString()}`;
+    }
+
+    const { data } = await axios.get(url);
     return data.data;
 }
 
@@ -33,10 +44,10 @@ const enum Region {
     UONGBI = 2
 }
 
-export const useCourseList = (region?: number) => {
+export const useCourseList = (region?: number, weekId?: string) => {
     return useQuery<CourseListResponse[], Error>({
-        queryKey: ['courses', region],
-        queryFn: () => fetchCourseList(region),
+        queryKey: ['courses', region, weekId],
+        queryFn: () => fetchCourseList(region, weekId),
         staleTime: 5 * 60 * 1000,
         gcTime: 10 * 60 * 1000,
         retry: 1,

@@ -118,13 +118,14 @@ const ClassBoxSubHeader = styled('div')(({ theme }) => ({
 
 const SchedulePlanner = () => {
   const [selectedRegion, setSelectedRegion] = useState<number>(1) // Default to HALONG
-  const { data: courses, isLoading: isCoursesLoading, error: coursesError } = useCourseList(selectedRegion)
+  const [selectedWeekId, setSelectedWeekId] = useState<string>('')
+  const { data: courses, isLoading: isCoursesLoading, error: coursesError } = useCourseList(selectedRegion, selectedWeekId)
   const [selectedCourseId, setSelectedCourseId] = useState<string>('')
   const [classSearch, setClassSearch] = useState<string>('')
 
   // Week selection
   const { data: weeksData, isLoading: isWeeksLoading } = useGetWeeks()
-  const [selectedWeekId, setSelectedWeekId] = useState<string>('')
+
 
   const { data: courseInfo, isLoading: isCourseInfoLoading, error: courseInfoError } = useCourseInfo(selectedCourseId, selectedWeekId)
 
@@ -312,6 +313,37 @@ const SchedulePlanner = () => {
 
     return scheduledClassIds
   }, [schedulesByKey])
+
+  // Calculate classes with complete schedule (all 42 time slots filled)
+  const classesWithCompleteSchedule = useMemo(() => {
+    if (!courses) return []
+
+    return courses.map(course => {
+      const classesWithSchedule = course.classes.filter(cls => {
+        // Check if class has both startTime and endTime (indicating it's scheduled for all time slots)
+        return cls.startTime && cls.endTime
+      })
+
+      const totalClasses = course.classes.length
+      const scheduledClasses = classesWithSchedule.length
+      const isComplete = scheduledClasses === totalClasses && totalClasses > 0
+
+      return {
+        courseId: course.id,
+        courseName: course.name,
+        totalClasses,
+        scheduledClasses,
+        isComplete,
+        classes: course.classes.map(cls => ({
+          id: cls.id,
+          startTime: cls.startTime,
+          endTime: cls.endTime,
+          isScheduled: !!(cls.startTime && cls.endTime)
+        }))
+      }
+    })
+  }, [courses])
+
 
   // Helper function to check if teacher is busy at specific time slot
   const isTeacherBusy = (teacherId: string, slotIndex: number) => {
@@ -701,15 +733,50 @@ const SchedulePlanner = () => {
                 <CircularProgress size={20} />
               ) : coursesError ? (
                 <Alert severity="error">Lỗi tải danh sách khóa học: {coursesError.message}</Alert>
-              ) : (courses || []).map(course => (
-                <Chip
-                  key={course.id}
-                  label={course.name}
-                  color={selectedCourseId === course.id ? 'primary' : 'default'}
-                  variant={selectedCourseId === course.id ? 'filled' : 'outlined'}
-                  onClick={() => setSelectedCourseId(course.id)}
-                />
-              ))}
+              ) : (courses || []).map(course => {
+                // Check if this course has all classes scheduled
+                const courseScheduleInfo = classesWithCompleteSchedule.find(c => c.courseId === course.id)
+                const isFullyScheduled = courseScheduleInfo?.isComplete || false
+
+                return (
+                  <Chip
+                    key={course.id}
+                    label={course.name}
+                    onClick={() => setSelectedCourseId(course.id)}
+                    sx={{
+                      backgroundColor: selectedCourseId === course.id
+                        ? 'primary.main'
+                        : isFullyScheduled
+                          ? '#e8f5e8'
+                          : '#fff3e0',
+                      color: selectedCourseId === course.id
+                        ? 'white'
+                        : isFullyScheduled
+                          ? '#2e7d32'
+                          : '#f57c00',
+                      border: selectedCourseId === course.id
+                        ? 'none'
+                        : `1px solid ${isFullyScheduled ? '#4caf50' : '#ff9800'}`,
+                      fontWeight: 600,
+                      '&:hover': {
+                        backgroundColor: selectedCourseId === course.id
+                          ? 'primary.dark'
+                          : isFullyScheduled
+                            ? '#c8e6c9'
+                            : '#ffe0b2',
+                      }
+                    }}
+                    icon={
+                      selectedCourseId === course.id ? undefined : (
+                        <i
+                          className={isFullyScheduled ? "ri-check-line" : "ri-time-line"}
+                          style={{ fontSize: '12px' }}
+                        />
+                      )
+                    }
+                  />
+                )
+              })}
             </Box>
           </Box>
 
@@ -739,6 +806,7 @@ const SchedulePlanner = () => {
           )}
         </CardContent>
       </Card>
+
 
       {selectedCourseId ? (
         <Card>
