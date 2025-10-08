@@ -36,6 +36,7 @@ import {
 
 // Hooks
 import { ScheduleStatus, useGetScheduleByFields, useUpdateUserSchedule } from '@/@core/hooks/useSchedule'
+import { useGetWeeks, ScheduleStatus as WeekStatus } from '@/@core/hooks/useWeek'
 
 const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
   fontWeight: 700,
@@ -111,19 +112,29 @@ const ScheduleRequests = () => {
   const [showSuccessMessage, setShowSuccessMessage] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
 
+  // Fetch weeks to get the open week ID
+  const {
+    data: weeks,
+    isLoading: isWeeksLoading,
+    error: weeksError
+  } = useGetWeeks()
+
+  // Get the first open week ID
+  const openWeekId = weeks?.find(week => week.scheduleStatus === WeekStatus.OPEN)?.id
+
   // Fetch pending requests
   const {
     data: pendingRequests,
     isLoading: isPendingLoading,
     error: pendingError
-  } = useGetScheduleByFields(ScheduleStatus.ON_REQUEST_CHANGE, "08a60c9a-b3f8-42f8-8ff8-c7015d4ef3e7")
+  } = useGetScheduleByFields(ScheduleStatus.ON_REQUEST_CHANGE, openWeekId || "")
 
   // Fetch cancelled requests
   const {
     data: cancelledRequests,
     isLoading: isCancelledLoading,
     error: cancelledError
-  } = useGetScheduleByFields(ScheduleStatus.CANCELLED, "08a60c9a-b3f8-42f8-8ff8-c7015d4ef3e7")
+  } = useGetScheduleByFields(ScheduleStatus.CANCELLED, openWeekId || "")
 
   const updateScheduleMutation = useUpdateUserSchedule()
 
@@ -232,10 +243,14 @@ const ScheduleRequests = () => {
             {/* Pending Requests Tab */}
             {tabValue === 0 && (
               <Box>
-                {isPendingLoading ? (
+                {isWeeksLoading || isPendingLoading ? (
                   <Box display="flex" justifyContent="center" alignItems="center" minHeight={200}>
                     <CircularProgress />
                   </Box>
+                ) : weeksError ? (
+                  <Alert severity="error">Lỗi tải danh sách tuần: {weeksError.message}</Alert>
+                ) : !openWeekId ? (
+                  <Alert severity="warning">Không có tuần nào đang mở để xem yêu cầu đổi lịch.</Alert>
                 ) : pendingError ? (
                   <Alert severity="error">Lỗi tải danh sách yêu cầu đang chờ: {pendingError.message}</Alert>
                 ) : pendingRequests && pendingRequests.length > 0 ? (
@@ -330,10 +345,14 @@ const ScheduleRequests = () => {
             {/* Cancelled Requests Tab */}
             {tabValue === 1 && (
               <Box>
-                {isCancelledLoading ? (
+                {isWeeksLoading || isCancelledLoading ? (
                   <Box display="flex" justifyContent="center" alignItems="center" minHeight={200}>
                     <CircularProgress />
                   </Box>
+                ) : weeksError ? (
+                  <Alert severity="error">Lỗi tải danh sách tuần: {weeksError.message}</Alert>
+                ) : !openWeekId ? (
+                  <Alert severity="warning">Không có tuần nào đang mở để xem yêu cầu đổi lịch.</Alert>
                 ) : cancelledError ? (
                   <Alert severity="error">Lỗi tải danh sách yêu cầu đã duyệt: {cancelledError.message}</Alert>
                 ) : cancelledRequests && cancelledRequests.length > 0 ? (
