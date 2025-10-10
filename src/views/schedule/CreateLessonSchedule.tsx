@@ -84,7 +84,8 @@ const CreateLessonSchedule = ({
   const { data: scheduleDetail, isLoading: isLoadingScheduleDetail } = useGetScheduleDetail(
     editData?.classId || '',
     editData?.lesson || 0,
-    weekId
+    weekId,
+    (selectedSlot?.slotIndex || 0) + 1
   )
 
   // Define student type
@@ -291,7 +292,8 @@ const CreateLessonSchedule = ({
         weekId,
         classId: selectedClassId,
         lesson: lessonNumber,
-        action: 'delete'
+        action: 'delete',
+        scheduleTime: selectedSlot!.slotIndex + 1
       })
 
       setSuccessMessage('Xóa lịch học thành công!')

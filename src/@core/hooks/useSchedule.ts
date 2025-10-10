@@ -338,22 +338,23 @@ export interface ScheduleDetailResponseDto {
     }
 }
 
-const getScheduleDetail = async (classId: string, lesson: number, weekId: string = "08a60c9a-b3f8-42f8-8ff8-c7015d4ef3e7"): Promise<ScheduleDetailResponseDto> => {
+const getScheduleDetail = async (classId: string, lesson: number, weekId: string = "08a60c9a-b3f8-42f8-8ff8-c7015d4ef3e7", scheduleTime?: number): Promise<ScheduleDetailResponseDto> => {
     const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/schedule-detail`, {
         params: {
             classId,
             lesson,
-            weekId
+            weekId,
+            scheduleTime
         }
     })
 
     return data.data;
 }
 
-export const useGetScheduleDetail = (classId: string, lesson: number, weekId: string) => {
+export const useGetScheduleDetail = (classId: string, lesson: number, weekId: string, scheduleTime: number) => {
     return useQuery({
-        queryKey: ['schedule-detail', classId, lesson, weekId],
-        queryFn: () => getScheduleDetail(classId, lesson, weekId),
+        queryKey: ['schedule-detail', classId, lesson, weekId, scheduleTime],
+        queryFn: () => getScheduleDetail(classId, lesson, weekId, scheduleTime),
         enabled: !!classId && !!lesson,
         staleTime: 5 * 60 * 1000, // 5 phút
         gcTime: 10 * 60 * 1000, // 10 phút
