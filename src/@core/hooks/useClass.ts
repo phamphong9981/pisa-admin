@@ -42,7 +42,8 @@ interface CreateClassDto {
     total_lesson_per_week: number
     class_type: ClassType
     teacher_id: string,
-    course_id: string
+    course_id: string,
+    auto_schedule: boolean,
     fixedSchedule?: number[]
 }
 
@@ -86,13 +87,6 @@ const createClass = async (classInfo: CreateClassDto) => {
 
 const updateClass = async (id: string, classInfo: UpdateClassDto) => {
     const { data } = await axios.put(`${process.env.NEXT_PUBLIC_BASE_API}/classes/${id}`, classInfo);
-
-
-    return data.data;
-}
-
-const deleteClass = async (id: string) => {
-    const { data } = await axios.delete(`${process.env.NEXT_PUBLIC_BASE_API}/classes/${id}`);
 
 
     return data.data;
@@ -174,27 +168,6 @@ export const useClass = (id: string) => {
     })
 }
 
-// Hook với tùy chọn bổ sung
-export const useClassWithOptions = (
-    id: string,
-    options?: {
-        enabled?: boolean
-        refetchOnWindowFocus?: boolean
-        staleTime?: number
-    }
-) => {
-    return useQuery<ClassInfo, Error>({
-        queryKey: ['class', id],
-        queryFn: () => fetchClassInfo(id),
-        enabled: options?.enabled ?? !!id,
-        refetchOnWindowFocus: options?.refetchOnWindowFocus ?? true,
-        staleTime: options?.staleTime ?? 5 * 60 * 1000,
-        gcTime: 10 * 60 * 1000,
-        retry: 1,
-        retryDelay: (attemptIndex) => Math.min(1000 * 1 ** attemptIndex, 30000),
-    })
-}
-
 // Hook để tạo class mới
 export const useCreateClass = (courseId: string) => {
     const queryClient = useQueryClient()
@@ -207,21 +180,6 @@ export const useCreateClass = (courseId: string) => {
         },
         onError: (error) => {
             console.error('Error creating class:', error)
-        }
-    })
-}
-
-export const useDeleteClass = () => {
-    const queryClient = useQueryClient()
-
-    return useMutation({
-        mutationFn: deleteClass,
-        onSuccess: () => {
-            // Invalidate và refetch classes list
-            queryClient.invalidateQueries({ queryKey: ['classes'] })
-        },
-        onError: (error) => {
-            console.error('Error deleting class:', error)
         }
     })
 }

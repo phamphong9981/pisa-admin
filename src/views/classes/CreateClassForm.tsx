@@ -17,7 +17,8 @@ import {
   Chip,
   FormControlLabel,
   Radio,
-  RadioGroup
+  RadioGroup,
+  Checkbox
 } from '@mui/material'
 
 import { ClassType } from '@/types/classes'
@@ -41,6 +42,7 @@ const CreateClassForm = ({ courseId, onSuccess }: CreateClassFormProps) => {
     class_type: ClassType.FT_LISTENING,
     teacher_id: '',
     course_id: courseId || '',
+    auto_schedule: true,
     fixedSchedule: []
   })
 
@@ -78,6 +80,7 @@ const CreateClassForm = ({ courseId, onSuccess }: CreateClassFormProps) => {
         class_type: ClassType.FT_LISTENING,
         teacher_id: '',
         course_id: courseId || '',
+        auto_schedule: true,
         fixedSchedule: []
       })
 
@@ -199,6 +202,30 @@ const CreateClassForm = ({ courseId, onSuccess }: CreateClassFormProps) => {
                 )}
               </Select>
             </FormControl>
+          </Grid>
+
+          <Grid item xs={12}>
+            <Box sx={{ display: 'flex', alignItems: 'center', p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={formData.auto_schedule}
+                    onChange={(e) => handleChange('auto_schedule', e.target.checked)}
+                    color="primary"
+                  />
+                }
+                label={
+                  <Box>
+                    <Typography variant="body2" fontWeight={500}>
+                      Tự động xếp lịch
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Hệ thống sẽ tự động sắp xếp lịch học cho lớp này dựa trên lịch trống của giáo viên và học sinh
+                    </Typography>
+                  </Box>
+                }
+              />
+            </Box>
           </Grid>
 
           <Grid item xs={12}>

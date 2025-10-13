@@ -324,16 +324,20 @@ const SchedulePlanner = () => {
   }, [schedulesByKey])
 
   // Calculate classes with complete schedule (all 42 time slots filled)
+  // Only count classes with autoSchedule: true
   const classesWithCompleteSchedule = useMemo(() => {
     if (!courses) return []
 
     return courses.map(course => {
-      const classesWithSchedule = course.classes.filter(cls => {
+      // Filter only classes with autoSchedule: true
+      const autoScheduleClasses = course.classes.filter(cls => cls.autoSchedule !== false)
+
+      const classesWithSchedule = autoScheduleClasses.filter(cls => {
         // Check if class has both startTime and endTime (indicating it's scheduled for all time slots)
         return cls.startTime && cls.endTime
       })
 
-      const totalClasses = course.classes.length
+      const totalClasses = autoScheduleClasses.length
       const scheduledClasses = classesWithSchedule.length
       const isComplete = scheduledClasses === totalClasses && totalClasses > 0
 
@@ -347,7 +351,8 @@ const SchedulePlanner = () => {
           id: cls.id,
           startTime: cls.startTime,
           endTime: cls.endTime,
-          isScheduled: !!(cls.startTime && cls.endTime)
+          isScheduled: !!(cls.startTime && cls.endTime),
+          autoSchedule: cls.autoSchedule
         }))
       }
     })

@@ -111,31 +111,6 @@ export const useClassSchedule = (id: string) => {
     })
 }
 
-// const updateLessonSchedule = async (classId: string, lesson: number, scheduleTime?: number, teacherId?: string) => {
-//     const { data } = await axios.put(`${process.env.NEXT_PUBLIC_BASE_API}/schedule`, {
-//         schedule_time: scheduleTime,
-//         teacher_id: teacherId,
-//         class_id: classId,
-//         lesson
-//     });
-
-//     return data.data;
-// }
-
-// export const useUpdateLessonSchedule = () => {
-//     const queryClient = useQueryClient()
-
-//     return useMutation({
-//         mutationFn: ({ classId, lesson, scheduleTime, teacherId }: { classId: string, lesson: number, scheduleTime?: number, teacherId?: string }) => updateLessonSchedule(classId, lesson, scheduleTime, teacherId),
-//         onSuccess: () => {
-//             queryClient.invalidateQueries({ queryKey: ['class-schedule'] })
-//         },
-//         onError: (error) => {
-//             console.error('Error updating lesson schedule:', error)
-//         }
-//     })
-// }
-
 export const updateUserSchedule = async (scheduleId: string, start_time?: string, end_time?: string, note?: string, status?: ScheduleStatus) => {
     const { data } = await axios.put(`${process.env.NEXT_PUBLIC_BASE_API}/user-schedule`, {
         schedule_id: scheduleId,
@@ -202,23 +177,6 @@ export const useGetAllSchedule = (courseId?: string, weekId?: string) => {
         queryFn: () => getAllSchedule(courseId, weekId),
 
         enabled: !!courseId,
-        staleTime: 5 * 60 * 1000, // 5 phút
-        gcTime: 10 * 60 * 1000, // 10 phút
-        retry: 1,
-        retryDelay: (attemptIndex) => Math.min(1000 * 1 ** attemptIndex, 30000),
-    })
-}
-
-const getMakeupSchedule = async (): Promise<allScheduleResponse[]> => {
-    const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/makeup-schedules`)
-
-    return data.data;
-}
-
-export const useGetMakeupSchedule = () => {
-    return useQuery({
-        queryKey: ['makeup-schedules'],
-        queryFn: getMakeupSchedule,
         staleTime: 5 * 60 * 1000, // 5 phút
         gcTime: 10 * 60 * 1000, // 10 phút
         retry: 1,
