@@ -147,6 +147,16 @@ const SchedulePlanner = () => {
     return weeksData || []
   }, [weeksData])
 
+  // Get selected week object
+  const selectedWeek = useMemo(() => {
+    return weeks.find(week => week.id === selectedWeekId)
+  }, [weeks, selectedWeekId])
+
+  // Check if selected week is open
+  const isWeekOpen = useMemo(() => {
+    return selectedWeek?.scheduleStatus === 'open'
+  }, [selectedWeek])
+
   // Calculate end date for a week (startDate + 6 days)
   const calculateEndDate = (startDate: Date): Date => {
     const endDate = new Date(startDate)
@@ -658,25 +668,27 @@ const SchedulePlanner = () => {
                 >
                   {isExporting ? 'Đang export...' : 'Export CSV'}
                 </Button>
-                <Button
-                  variant="contained"
-                  color="success"
-                  startIcon={
-                    autoScheduleCourseMutation.isPending ?
-                      <CircularProgress size={16} color="inherit" /> :
-                      <i className="ri-magic-line" />
-                  }
-                  onClick={handleAutoScheduleCourse}
-                  disabled={autoScheduleCourseMutation.isPending}
-                  sx={{
-                    minWidth: 'auto',
-                    px: 2,
-                    py: 1,
-                    fontSize: '0.875rem'
-                  }}
-                >
-                  {autoScheduleCourseMutation.isPending ? 'Đang xếp lịch...' : 'Xếp lịch tự động'}
-                </Button>
+                {isWeekOpen && (
+                  <Button
+                    variant="contained"
+                    color="success"
+                    startIcon={
+                      autoScheduleCourseMutation.isPending ?
+                        <CircularProgress size={16} color="inherit" /> :
+                        <i className="ri-magic-line" />
+                    }
+                    onClick={handleAutoScheduleCourse}
+                    disabled={autoScheduleCourseMutation.isPending}
+                    sx={{
+                      minWidth: 'auto',
+                      px: 2,
+                      py: 1,
+                      fontSize: '0.875rem'
+                    }}
+                  >
+                    {autoScheduleCourseMutation.isPending ? 'Đang xếp lịch...' : 'Xếp lịch tự động'}
+                  </Button>
+                )}
               </Box>
             )
           }
@@ -974,7 +986,7 @@ const SchedulePlanner = () => {
           )}
 
           {/* Auto schedule info */}
-          {selectedCourseId && (
+          {selectedCourseId && isWeekOpen && (
             <Box sx={{ mt: 2, p: 1.5, backgroundColor: '#e8f5e8', borderRadius: 1, border: '1px solid #c8e6c9' }}>
               <Typography variant="caption" color="success.main" display="block" mb={0.5}>
                 <i className="ri-information-line" style={{ marginRight: 4 }} />
@@ -982,6 +994,19 @@ const SchedulePlanner = () => {
               </Typography>
               <Typography variant="caption" color="text.secondary" display="block">
                 Nhấn nút &quot;Xếp lịch tự động&quot; ở góc trên bên phải để hệ thống tự động sắp xếp lịch học cho khóa học này dựa trên thời gian rảnh của học sinh và giáo viên.
+              </Typography>
+            </Box>
+          )}
+
+          {/* Week closed info */}
+          {selectedCourseId && !isWeekOpen && (
+            <Box sx={{ mt: 2, p: 1.5, backgroundColor: '#fff3e0', borderRadius: 1, border: '1px solid #ff9800' }}>
+              <Typography variant="caption" color="warning.main" display="block" mb={0.5}>
+                <i className="ri-information-line" style={{ marginRight: 4 }} />
+                <strong>Tuần học đã đóng:</strong>
+              </Typography>
+              <Typography variant="caption" color="text.secondary" display="block">
+                Chức năng xếp lịch tự động chỉ khả dụng khi tuần học đang ở trạng thái &quot;Mở&quot;. Vui lòng chọn tuần học khác hoặc liên hệ quản trị viên.
               </Typography>
             </Box>
           )}
