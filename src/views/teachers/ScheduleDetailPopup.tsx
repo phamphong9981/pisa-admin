@@ -220,7 +220,7 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
   onClose,
   classId,
   lesson,
-  weekId = "08a60c9a-b3f8-42f8-8ff8-c7015d4ef3e7",
+  weekId = "08a60c9a-b3f8-42f8-8ff8-c7015d4ef3e7", // Fallback weekId
   teacherName,
   className,
   scheduleTime

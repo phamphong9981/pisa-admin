@@ -40,6 +40,7 @@ import { styled } from '@mui/material/styles'
 import { useExport } from '@/@core/hooks/useExport'
 import { SCHEDULE_TIME, useGetAllSchedule } from '@/@core/hooks/useSchedule'
 import { useTeacherList } from '@/@core/hooks/useTeacher'
+import { useGetWeeks, WeekResponseDto, ScheduleStatus as WeekStatus } from '@/@core/hooks/useWeek'
 
 // Components
 import ScheduleDetailPopup from './ScheduleDetailPopup'
@@ -141,7 +142,36 @@ const getDayInVietnamese = (englishDay: string) => {
 
 const TeachersSchedule = () => {
   const { data: teachers, isLoading, error } = useTeacherList()
-  const { data: schedules, isLoading: isSchedulesLoading } = useGetAllSchedule(true)
+
+  // Week selection
+  const { data: weeksData, isLoading: isWeeksLoading } = useGetWeeks()
+  const [selectedWeekId, setSelectedWeekId] = useState<string>('')
+
+  // Get weeks list and find open week
+  const weeks = useMemo(() => {
+    return weeksData || []
+  }, [weeksData])
+
+  const openWeek = useMemo(() => {
+    return weeks.find(week => week.scheduleStatus === WeekStatus.OPEN)
+  }, [weeks])
+
+  // Set default week (open week or most recent)
+  useMemo(() => {
+    if (weeks.length > 0 && !selectedWeekId) {
+      if (openWeek) {
+        setSelectedWeekId(openWeek.id)
+      } else {
+        // Sort by startDate descending and take the most recent
+        const sortedWeeks = [...weeks].sort((a: WeekResponseDto, b: WeekResponseDto) =>
+          new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+        )
+        setSelectedWeekId(sortedWeeks[0].id)
+      }
+    }
+  }, [weeks, selectedWeekId, openWeek])
+
+  const { data: schedules, isLoading: isSchedulesLoading } = useGetAllSchedule(true, undefined, selectedWeekId || undefined)
   const { exportToExcel, exportToCSV, exportSummary } = useExport()
 
   // States for export menu
@@ -412,6 +442,57 @@ const TeachersSchedule = () => {
           }
         />
         <CardContent>
+          {/* Week Selection */}
+          <Box sx={{ mb: 3 }}>
+            <FormControl size="small" sx={{ minWidth: 300 }}>
+              <InputLabel>Tuần học</InputLabel>
+              <Select
+                value={selectedWeekId}
+                onChange={(e) => setSelectedWeekId(e.target.value)}
+                label="Tuần học"
+                disabled={isWeeksLoading}
+              >
+                {isWeeksLoading ? (
+                  <MenuItem disabled>Đang tải...</MenuItem>
+                ) : weeks.length === 0 ? (
+                  <MenuItem disabled>Không có dữ liệu</MenuItem>
+                ) : (
+                  weeks.map((week: WeekResponseDto) => {
+                    const startDate = new Date(week.startDate)
+                    const endDate = new Date(startDate)
+                    endDate.setDate(endDate.getDate() + 6)
+
+                    return (
+                      <MenuItem key={week.id} value={week.id}>
+                        <Box display="flex" alignItems="center" gap={1}>
+                          <i className="ri-calendar-line" style={{ color: '#1976d2' }} />
+                          <Box>
+                            <Typography variant="body2">
+                              {startDate.toLocaleDateString('vi-VN', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric'
+                              })} - {endDate.toLocaleDateString('vi-VN', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric'
+                              })}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {week.scheduleStatus === WeekStatus.OPEN ? 'Mở' :
+                                week.scheduleStatus === WeekStatus.CLOSED ? 'Đóng' : 'Chờ duyệt'}
+                              {openWeek?.id === week.id && ' (Đang chọn)'}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </MenuItem>
+                    )
+                  })
+                )}
+              </Select>
+            </FormControl>
+          </Box>
+
           {/* Filter Section */}
           <Box sx={{ mb: 3 }}>
             <Grid container spacing={2} alignItems="center">
@@ -753,6 +834,7 @@ const TeachersSchedule = () => {
         onClose={handleCloseScheduleDetailPopup}
         classId={scheduleDetailPopup.classId}
         lesson={scheduleDetailPopup.lesson}
+        weekId={selectedWeekId}
         teacherName={scheduleDetailPopup.teacherName}
         className={scheduleDetailPopup.className}
         scheduleTime={scheduleDetailPopup.scheduleTime}
