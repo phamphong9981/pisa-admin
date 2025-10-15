@@ -135,7 +135,7 @@ const SchedulePlanner = () => {
 
   const { data: courseInfo, isLoading: isCourseInfoLoading, error: courseInfoError } = useCourseInfo(selectedCourseId, selectedWeekId)
 
-  const { data: courseSchedules } = useGetAllSchedule(selectedCourseId, selectedWeekId)
+  const { data: courseSchedules } = useGetAllSchedule(false, selectedCourseId, selectedWeekId)
   const autoScheduleCourseMutation = useAutoScheduleCourse()
 
   // Teacher search

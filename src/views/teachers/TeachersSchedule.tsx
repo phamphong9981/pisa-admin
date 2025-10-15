@@ -141,7 +141,7 @@ const getDayInVietnamese = (englishDay: string) => {
 
 const TeachersSchedule = () => {
   const { data: teachers, isLoading, error } = useTeacherList()
-  const { data: schedules, isLoading: isSchedulesLoading } = useGetAllSchedule()
+  const { data: schedules, isLoading: isSchedulesLoading } = useGetAllSchedule(true)
   const { exportToExcel, exportToCSV, exportSummary } = useExport()
 
   // States for export menu
