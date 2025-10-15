@@ -23,7 +23,9 @@ import {
   Chip,
   FormControlLabel,
   Radio,
-  RadioGroup
+  RadioGroup,
+  Autocomplete,
+  InputAdornment
 } from '@mui/material'
 import { styled } from '@mui/material/styles'
 
@@ -44,6 +46,8 @@ interface EditClassFormProps {
 const EditClassForm = ({ classId }: EditClassFormProps) => {
   const router = useRouter()
   const { data: classData, isLoading: isClassLoading, error: classError } = useClass(classId)
+
+  // Load all teachers once, no search term needed
   const { data: teachers, isLoading: isTeachersLoading, error: teachersError } = useTeacherList()
   const updateClassMutation = useUpdateClass()
 
@@ -236,36 +240,69 @@ const EditClassForm = ({ classId }: EditClassFormProps) => {
               </Grid>
 
               <Grid item xs={12} md={6}>
-                <FormControl fullWidth required>
-                  <InputLabel>Giáo viên</InputLabel>
-                  <Select
-                    value={formData.teacher_id}
-                    onChange={(e) => handleChange('teacher_id', e.target.value)}
-                    label="Giáo viên"
-                    disabled={!teachers || teachers.length === 0}
-                  >
-                    {teachers && teachers.length > 0 ? (
-                      teachers.map((teacher) => (
-                        <MenuItem key={teacher.id} value={teacher.id}>
-                          <Box display="flex" flexDirection="column" alignItems="flex-start">
-                            <Typography variant="body2" fontWeight={500}>
-                              {teacher.name}
-                            </Typography>
-                            {teacher.skills.length > 0 && (
-                              <Typography variant="caption" color="text.secondary">
-                                Kỹ năng: {teacher.skills.join(', ')}
-                              </Typography>
-                            )}
-                          </Box>
-                        </MenuItem>
-                      ))
-                    ) : (
-                      <MenuItem disabled>
-                        {teachersError ? 'Lỗi tải danh sách giáo viên' : 'Không có giáo viên nào'}
-                      </MenuItem>
-                    )}
-                  </Select>
-                </FormControl>
+                <Autocomplete
+                  options={teachers || []}
+                  getOptionLabel={(option) => option.name}
+                  value={teachers?.find(teacher => teacher.id === formData.teacher_id) || null}
+                  onChange={(event, newValue) => {
+                    handleChange('teacher_id', newValue?.id || '')
+                  }}
+                  filterOptions={(options, { inputValue }) => {
+                    return options.filter(option =>
+                      option.name.toLowerCase().includes(inputValue.toLowerCase()) ||
+                      option.skills.some((skill: string) =>
+                        skill.toLowerCase().includes(inputValue.toLowerCase())
+                      )
+                    )
+                  }}
+                  loading={isTeachersLoading}
+                  disabled={!!teachersError}
+                  freeSolo={false}
+                  clearOnBlur={false}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Giáo viên"
+                      required
+                      InputProps={{
+                        ...params.InputProps,
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <i className="ri-search-line" style={{ color: '#666' }} />
+                          </InputAdornment>
+                        ),
+                        endAdornment: (
+                          <>
+                            {isTeachersLoading ? <i className="ri-loader-line animate-spin" /> : null}
+                            {params.InputProps.endAdornment}
+                          </>
+                        ),
+                      }}
+                      placeholder="Tìm kiếm theo tên giáo viên..."
+                    />
+                  )}
+                  renderOption={(props, option) => (
+                    <Box component="li" {...props}>
+                      <Box display="flex" flexDirection="column" alignItems="flex-start" width="100%">
+                        <Typography variant="body2" fontWeight={500}>
+                          {option.name}
+                        </Typography>
+                        {option.skills.length > 0 && (
+                          <Typography variant="caption" color="text.secondary">
+                            Kỹ năng: {option.skills.join(', ')}
+                          </Typography>
+                        )}
+                      </Box>
+                    </Box>
+                  )}
+                  noOptionsText={
+                    teachersError ? 'Lỗi tải danh sách giáo viên' :
+                      'Không tìm thấy giáo viên nào'
+                  }
+                  clearOnEscape
+                  selectOnFocus
+                  handleHomeEndKeys
+                />
               </Grid>
 
               <Grid item xs={12}>
