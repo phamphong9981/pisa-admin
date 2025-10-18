@@ -10,41 +10,41 @@ import { styled } from '@mui/material/styles'
 
 // MUI Imports
 import {
-    Alert,
-    Avatar,
-    Box,
-    Button,
-    Checkbox,
-    Chip,
-    CircularProgress,
-    Dialog,
-    DialogActions,
-    DialogContent,
-    DialogTitle,
-    Divider,
-    Fab,
-    FormControl,
-    Grid,
-    IconButton,
-    InputAdornment,
-    InputLabel,
-    MenuItem,
-    Paper,
-    Select,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TablePagination,
-    TableRow,
-    TextField,
-    Tooltip,
-    Typography
+  Alert,
+  Avatar,
+  Box,
+  Button,
+  Checkbox,
+  Chip,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  Fab,
+  FormControl,
+  Grid,
+  IconButton,
+  InputAdornment,
+  InputLabel,
+  MenuItem,
+  Paper,
+  Select,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TablePagination,
+  TableRow,
+  TextField,
+  Tooltip,
+  Typography
 } from '@mui/material'
 
 // Hooks
-import { SCHEDULE_TIME, useCreateSchedule, useUnscheduleList } from '@/@core/hooks/useSchedule'
+import { SCHEDULE_TIME, useCreateSchedule, useMissingSchedulesList, MissingSchedulesDto } from '@/@core/hooks/useSchedule'
 import { useTeacherList } from '@/@core/hooks/useTeacher'
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
@@ -67,9 +67,9 @@ const StyledChip = styled(Chip)(() => ({
 
 const UnscheduledStudents = () => {
   const router = useRouter()
-  
-  // Hooks for unscheduled students
-  const { data: unscheduledStudents, isLoading: isUnscheduledLoading, error: unscheduledError } = useUnscheduleList()
+
+  // Hooks for missing schedules (unscheduled students)
+  const { data: missingSchedules, isLoading: isUnscheduledLoading, error: unscheduledError } = useMissingSchedulesList()
 
   // Hooks for teachers and create schedule
   const { data: teachers, isLoading: isTeachersLoading } = useTeacherList()
@@ -77,8 +77,6 @@ const UnscheduledStudents = () => {
 
   // States for unscheduled students section
   const [studentSearch, setStudentSearch] = useState('')
-  const [studentPage, setStudentPage] = useState(0)
-  const [studentRowsPerPage, setStudentRowsPerPage] = useState(10)
 
   // States for makeup class dialog
   const [openMakeupDialog, setOpenMakeupDialog] = useState(false)
@@ -88,23 +86,37 @@ const UnscheduledStudents = () => {
   const [createSuccess, setCreateSuccess] = useState('')
   const [createError, setCreateError] = useState('')
 
-  // Filtered and paginated data for unscheduled students
+  // Filtered and grouped data for missing schedules (unscheduled students)
   const filteredStudents = useMemo(() => {
-    if (!unscheduledStudents) return []
-    
-    return unscheduledStudents.filter(student => 
-      student.fullname.toLowerCase().includes(studentSearch.toLowerCase()) ||
-      student.email.toLowerCase().includes(studentSearch.toLowerCase()) ||
-      student.className.toLowerCase().includes(studentSearch.toLowerCase()) ||
-      student.teacherName.toLowerCase().includes(studentSearch.toLowerCase())
+    if (!missingSchedules) return []
+
+    return missingSchedules.filter(schedule =>
+      schedule.fullname.toLowerCase().includes(studentSearch.toLowerCase()) ||
+      schedule.email.toLowerCase().includes(studentSearch.toLowerCase()) ||
+      schedule.className.toLowerCase().includes(studentSearch.toLowerCase()) ||
+      schedule.courseName.toLowerCase().includes(studentSearch.toLowerCase())
     )
-  }, [unscheduledStudents, studentSearch])
+  }, [missingSchedules, studentSearch])
 
-  const paginatedStudents = useMemo(() => {
-    const startIndex = studentPage * studentRowsPerPage
+  // Group schedules by week
+  const groupedSchedules = useMemo(() => {
+    if (!filteredStudents) return {}
 
-    return filteredStudents.slice(startIndex, startIndex + studentRowsPerPage)
-  }, [filteredStudents, studentPage, studentRowsPerPage])
+    const grouped: { [weekId: string]: MissingSchedulesDto[] } = {}
+
+    filteredStudents.forEach(schedule => {
+      const weekId = schedule.weekId
+
+      if (!grouped[weekId]) {
+        grouped[weekId] = []
+      }
+      grouped[weekId].push(schedule)
+    })
+
+    return grouped
+  }, [filteredStudents])
+
+  const weekIds = Object.keys(groupedSchedules).sort()
 
   // Helper functions
   const formatScheduleTime = (scheduleTimeIndex: number) => {
@@ -114,7 +126,7 @@ const UnscheduledStudents = () => {
   const getClassTypeLabel = (type: string) => {
     const typeMap: { [key: string]: string } = {
       'FT_listening': 'Nghe',
-      'FT_writing': 'Viết', 
+      'FT_writing': 'Viết',
       'FT_reading': 'Đọc',
       'FT_speaking': 'Nói'
     }
@@ -122,32 +134,23 @@ const UnscheduledStudents = () => {
     return typeMap[type] || type
   }
 
-  const getInitials = (name: string) => { 
-    return (name|| '').split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)
+  const getInitials = (name: string) => {
+    return (name || '').split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)
   }
 
-  // Handle pagination for students
-  const handleStudentPageChange = (event: unknown, newPage: number) => {
-    setStudentPage(newPage)
-  }
-
-  const handleStudentRowsPerPageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setStudentRowsPerPage(parseInt(event.target.value, 10))
-    setStudentPage(0)
-  }
 
   // Handle makeup class creation
   const handleCreateMakeupClass = async () => {
     if (selectedStudents.length === 0) {
       setCreateError('Vui lòng chọn ít nhất một học sinh')
-      
-return
+
+      return
     }
-    
+
     if (!selectedTeacher) {
       setCreateError('Vui lòng chọn giáo viên')
-      
-return
+
+      return
     }
 
     try {
@@ -156,21 +159,21 @@ return
         teacherId: selectedTeacher,
         scheduleTime: selectedTimeSlot
       })
-      
+
       setCreateSuccess('Tạo lớp học bù thành công!')
       setCreateError('')
-      
+
       // Reset form
       setSelectedStudents([])
       setSelectedTeacher('')
       setSelectedTimeSlot(1)
-      
+
       // Close dialog after 2 seconds
       setTimeout(() => {
         setOpenMakeupDialog(false)
         setCreateSuccess('')
       }, 2000)
-      
+
     } catch (error) {
       setCreateError('Có lỗi xảy ra khi tạo lớp học bù')
       setCreateSuccess('')
@@ -182,22 +185,22 @@ return
     const teacher = teachers?.find(t => t.id === teacherId)
 
     if (!teacher) return false
-    
-return !teacher.registeredBusySchedule.includes(timeSlot - 1)
+
+    return !teacher.registeredBusySchedule.includes(timeSlot - 1)
   }
 
   // Get students that can be scheduled at selected time slot
   const getAvailableStudents = () => {
-    if (!unscheduledStudents) return []
-    
-return unscheduledStudents.filter(student => 
-      !student.busySchedule.includes(selectedTimeSlot - 1)
-    )
+    if (!missingSchedules) return []
+
+    // For missing schedules, we can schedule them if they don't have a schedule time yet
+    return missingSchedules.filter(schedule => !schedule.scheduleTime)
   }
 
   // Check if student is available at selected time slot
-  const isStudentAvailable = (student: any) => {
-    return !student.busySchedule.includes(selectedTimeSlot - 1)
+  const isStudentAvailable = (schedule: MissingSchedulesDto) => {
+    // For missing schedules, they are available if they don't have a schedule time yet
+    return !schedule.scheduleTime
   }
 
   return (
@@ -205,11 +208,11 @@ return unscheduledStudents.filter(student =>
       {/* Header */}
       <Box sx={{ mb: 6 }}>
         <Box display="flex" alignItems="center" gap={2} mb={2}>
-          <Box 
-            sx={{ 
-              width: 48, 
-              height: 48, 
-              borderRadius: 2, 
+          <Box
+            sx={{
+              width: 48,
+              height: 48,
+              borderRadius: 2,
               background: 'linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)',
               display: 'flex',
               alignItems: 'center',
@@ -261,7 +264,7 @@ return unscheduledStudents.filter(student =>
       </Fab>
 
       {/* Section Header */}
-      <Box sx={{ 
+      <Box sx={{
         background: 'linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)',
         color: '#fff',
         p: 3,
@@ -288,10 +291,10 @@ return unscheduledStudents.filter(student =>
           ),
           endAdornment: studentSearch && (
             <InputAdornment position="end">
-              <i 
-                className="ri-close-line" 
-                style={{ 
-                  color: '#666', 
+              <i
+                className="ri-close-line"
+                style={{
+                  color: '#666',
                   cursor: 'pointer',
                   fontSize: '18px'
                 }}
@@ -300,7 +303,7 @@ return unscheduledStudents.filter(student =>
             </InputAdornment>
           )
         }}
-        sx={{ 
+        sx={{
           mb: 3,
           '& .MuiOutlinedInput-root': {
             backgroundColor: 'white',
@@ -324,236 +327,189 @@ return unscheduledStudents.filter(student =>
         </Alert>
       ) : (
         <>
-          <TableContainer component={Paper} sx={{ 
-            borderRadius: 2,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-          }}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <StyledTableCell>Học sinh</StyledTableCell>
-                  <StyledTableCell>Lớp học</StyledTableCell>
-                  <StyledTableCell>Buổi học</StyledTableCell>
-                  <StyledTableCell>Giáo viên</StyledTableCell>
-                  <StyledTableCell>Lịch bận</StyledTableCell>
-                  <StyledTableCell align="center">Hành động</StyledTableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {paginatedStudents.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
-                      <Box display="flex" flexDirection="column" alignItems="center" gap={2}>
-                        <i className="ri-user-forbid-line" style={{ fontSize: '48px', color: '#ccc' }} />
-                        <Typography variant="h6" color="text.secondary">
-                          {filteredStudents.length === 0 && studentSearch 
-                            ? 'Không tìm thấy học sinh nào phù hợp'
-                            : 'Tất cả học sinh đã có lịch học'
-                          }
+          {/* Render schedules grouped by week */}
+          {weekIds.length === 0 ? (
+            <Box textAlign="center" py={4}>
+              <i className="ri-user-forbid-line" style={{ fontSize: '48px', color: '#ccc' }} />
+              <Typography variant="h6" color="text.secondary" gutterBottom sx={{ mt: 2 }}>
+                {filteredStudents.length === 0 && studentSearch
+                  ? 'Không tìm thấy học sinh nào phù hợp'
+                  : 'Tất cả học sinh đã có lịch học'
+                }
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {filteredStudents.length === 0 && studentSearch
+                  ? 'Thử thay đổi từ khóa tìm kiếm'
+                  : 'Không có học sinh nào đang thiếu lịch học'
+                }
+              </Typography>
+            </Box>
+          ) : (
+            weekIds.map((weekId) => {
+              const weekSchedules = groupedSchedules[weekId]
+              const weekTotal = weekSchedules.length
+
+              // Get week start date from first schedule in this week
+              const firstSchedule = weekSchedules[0]
+              const weekStartDate = firstSchedule?.startDate || weekId
+
+              return (
+                <Box key={weekId} sx={{ mb: 4 }}>
+                  {/* Week Header */}
+                  <Box sx={{
+                    p: 2,
+                    backgroundColor: '#f5f5f5',
+                    borderRadius: 2,
+                    border: '1px solid #e0e0e0',
+                    mb: 2
+                  }}>
+                    <Box display="flex" alignItems="center" gap={2}>
+                      <i className="ri-calendar-line" style={{ color: '#1976d2', fontSize: '20px' }} />
+                      <Box>
+                        <Typography variant="h6" fontWeight={600}>
+                          Tuần học
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                          {filteredStudents.length === 0 && studentSearch 
-                            ? 'Thử thay đổi từ khóa tìm kiếm'
-                            : 'Không có học sinh nào đang thiếu lịch học'
-                          }
+                          {new Date(weekStartDate).toLocaleDateString('vi-VN', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric'
+                          })} - {weekTotal} học sinh thiếu lịch
                         </Typography>
                       </Box>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  paginatedStudents.map((student) => (
-                    <TableRow key={student.profileLessonClassId} hover>
-                      <TableCell>
-                        <Box>
-                          <Typography variant="body2" fontWeight={600}>
-                            {student.fullname}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {student.email}
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Box>
-                          <Typography variant="body2" fontWeight={600}>
-                            {student.className}
-                          </Typography>
-                          <Chip 
-                            label={getClassTypeLabel(student.classType)}
-                            size="small"
-                            color="primary"
-                            variant="outlined"
-                          />
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={`Buổi ${student.lesson}`}
-                          size="small"
-                          sx={{ 
-                            backgroundColor: '#fff3e0',
-                            color: '#e65100',
-                            border: '1px solid #ffcc02'
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">
-                          {student.teacherName}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Box display="flex" flexWrap="wrap" gap={0.5} maxWidth="200px">
-                          {student.busySchedule.length > 0 ? (
-                            student.busySchedule.slice(0, 2).map((scheduleIndex, index) => (
-                              <StyledChip
-                                key={index}
-                                label={formatScheduleTime(scheduleIndex + 1)}
-                                size="small"
-                                className="busy-chip"
-                              />
-                            ))
-                          ) : (
-                            <Typography variant="caption" color="text.secondary">
-                              Không có lịch bận
-                            </Typography>
-                          )}
-                          {student.busySchedule.length > 2 && (
-                            <Tooltip 
-                              title={
-                                <Box sx={{ p: 1, maxWidth: 280 }}>
-                                  <Typography 
-                                    variant="subtitle2" 
-                                    sx={{ 
-                                      fontWeight: 600, 
-                                      color: '#222',
-                                      mb: 1,
-                                      borderBottom: '1px solid #eee',
-                                      pb: 0.5
+                    </Box>
+                  </Box>
+
+                  {/* Students Table for this week */}
+                  <TableContainer component={Paper} sx={{
+                    borderRadius: 2,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                  }}>
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <StyledTableCell>Học sinh</StyledTableCell>
+                          <StyledTableCell>Lớp học</StyledTableCell>
+                          <StyledTableCell>Lịch học</StyledTableCell>
+                          <StyledTableCell>Trạng thái</StyledTableCell>
+                          <StyledTableCell>Thời gian</StyledTableCell>
+                          <StyledTableCell align="center">Hành động</StyledTableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {weekSchedules.map((student) => (
+                          <TableRow key={student.scheduleId || student.classId} hover>
+                            <TableCell>
+                              <Box>
+                                <Typography variant="body2" fontWeight={600}>
+                                  {student.fullname}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {student.email}
+                                </Typography>
+                              </Box>
+                            </TableCell>
+                            <TableCell>
+                              <Box>
+                                <Typography variant="body2" fontWeight={600}>
+                                  {student.className}
+                                </Typography>
+                                <Chip
+                                  label={getClassTypeLabel(student.classType)}
+                                  size="small"
+                                  color="primary"
+                                  variant="outlined"
+                                />
+                              </Box>
+                            </TableCell>
+                            <TableCell>
+                              <Box>
+                                {student.scheduleTime ? (
+                                  <>
+                                    <Chip
+                                      label={`Buổi ${student.scheduleTime}`}
+                                      size="small"
+                                      sx={{
+                                        backgroundColor: '#e3f2fd',
+                                        color: '#1976d2',
+                                        border: '1px solid #bbdefb',
+                                        mb: 0.5
+                                      }}
+                                    />
+                                    <Typography variant="caption" color="text.secondary" display="block">
+                                      {formatScheduleTime(student.scheduleTime)}
+                                    </Typography>
+                                  </>
+                                ) : (
+                                  <Chip
+                                    label="Chưa có lịch"
+                                    size="small"
+                                    sx={{
+                                      backgroundColor: '#fff3e0',
+                                      color: '#e65100',
+                                      border: '1px solid #ffcc02'
+                                    }}
+                                  />
+                                )}
+                              </Box>
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body2">
+                                {student.reasonStatus || 'Chưa có thông tin'}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Box>
+                                <Typography variant="body2" color="text.secondary">
+                                  {student.startDate}
+                                </Typography>
+                                {student.replaceSchedule && (
+                                  <Chip
+                                    label="Có lớp bù"
+                                    size="small"
+                                    color="success"
+                                    sx={{ mt: 0.5 }}
+                                  />
+                                )}
+                              </Box>
+                            </TableCell>
+                            <TableCell align="center">
+                              <Box display="flex" gap={1} justifyContent="center">
+                                <Tooltip title="Xem chi tiết lớp học">
+                                  <IconButton
+                                    size="small"
+                                    color="primary"
+                                    onClick={() => router.push(`/classes/${student.classId}`)}
+                                  >
+                                    <i className="ri-eye-line" />
+                                  </IconButton>
+                                </Tooltip>
+                                <Tooltip title="Sắp xếp lịch học">
+                                  <IconButton
+                                    size="small"
+                                    color="success"
+                                    onClick={() => {
+                                      // TODO: Implement schedule assignment
+                                      console.log('Schedule lesson for:', student)
                                     }}
                                   >
-                                    Các khung giờ bận khác:
-                                  </Typography>
-                                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                                    {student.busySchedule.slice(2).map((scheduleIndex, index) => {
-                                      const scheduleText = formatScheduleTime(scheduleIndex + 1)
-                                      const [timeRange, day] = scheduleText.split(' ')
+                                    <i className="ri-calendar-schedule-line" />
+                                  </IconButton>
+                                </Tooltip>
+                              </Box>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Box>
+              )
+            })
+          )}
 
-                                      return (
-                                        <Box 
-                                          key={index} 
-                                          sx={{ 
-                                            display: 'flex', 
-                                            alignItems: 'center', 
-                                            gap: 1,
-                                            p: 0.5,
-                                            borderRadius: 1,
-                                            backgroundColor: '#f9f9f9',
-                                            border: '1px solid #eee'
-                                          }}
-                                        >
-                                          <Box 
-                                            sx={{ 
-                                              width: 8, 
-                                              height: 8, 
-                                              borderRadius: '50%', 
-                                              backgroundColor: '#ff5722',
-                                              flexShrink: 0
-                                            }} 
-                                          />
-                                          <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                                            <Typography 
-                                              variant="caption" 
-                                              sx={{ 
-                                                fontWeight: 600, 
-                                                color: '#222',
-                                                fontSize: '0.75rem'
-                                              }}
-                                            >
-                                              {timeRange}
-                                            </Typography>
-                                            <Typography 
-                                              variant="caption" 
-                                              sx={{ 
-                                                color: '#666',
-                                                fontSize: '0.7rem'
-                                              }}
-                                            >
-                                              {day}
-                                            </Typography>
-                                          </Box>
-                                        </Box>
-                                      )
-                                    })}
-                                  </Box>
-                                </Box>
-                              }
-                              arrow
-                              componentsProps={{
-                                tooltip: {
-                                  sx: {
-                                    backgroundColor: '#fff',
-                                    color: '#222',
-                                    border: '1px solid #eee',
-                                    boxShadow: '0 4px 24px rgba(0,0,0,0.10)',
-                                    borderRadius: 2,
-                                    maxWidth: 'none !important',
-                                    p: 0
-                                  }
-                                },
-                                arrow: {
-                                  sx: {
-                                    color: '#fff',
-                                    '&::before': {
-                                      border: '1px solid #eee',
-                                      backgroundColor: '#fff',
-                                    }
-                                  }
-                                }
-                              }}
-                            >
-                              <StyledChip
-                                label={`+${student.busySchedule.length - 2}`}
-                                size="small"
-                                className="busy-chip"
-                              />
-                            </Tooltip>
-                          )}
-                        </Box>
-                      </TableCell>
-                      <TableCell align="center">
-                        <Box display="flex" gap={1} justifyContent="center">
-                          <Tooltip title="Xem chi tiết lớp học">
-                            <IconButton 
-                              size="small" 
-                              color="primary"
-                              onClick={() => router.push(`/classes/${student.classId}`)}
-                            >
-                              <i className="ri-eye-line" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Sắp xếp lịch học">
-                            <IconButton 
-                              size="small" 
-                              color="success"
-                              onClick={() => {
-                                // TODO: Implement schedule assignment
-                                console.log('Schedule lesson for:', student)
-                              }}
-                            >
-                              <i className="ri-calendar-schedule-line" />
-                            </IconButton>
-                          </Tooltip>
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-
-          <Box sx={{ 
+          {/* Summary Stats */}
+          <Box sx={{
             mt: 3,
             p: 3,
             backgroundColor: '#f8f9fa',
@@ -561,78 +517,37 @@ return unscheduledStudents.filter(student =>
             border: '1px solid #e9ecef',
             boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
           }}>
-            <TablePagination
-              component="div"
-              count={filteredStudents.length}
-              page={studentPage}
-              onPageChange={handleStudentPageChange}
-              rowsPerPage={studentRowsPerPage}
-              onRowsPerPageChange={handleStudentRowsPerPageChange}
-              labelRowsPerPage="Số hàng mỗi trang:"
-              labelDisplayedRows={({ from, to, count }) => `${from}-${to} trong ${count}`}
-              sx={{
-                '& .MuiTablePagination-toolbar': {
-                  padding: 0,
-                  minHeight: 'auto',
-                  '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
-                    fontWeight: 600,
-                    color: '#495057',
-                    fontSize: '0.875rem'
-                  },
-                  '& .MuiTablePagination-select': {
-                    fontWeight: 600,
-                    backgroundColor: '#fff',
-                    border: '1px solid #dee2e6',
-                    borderRadius: 1,
-                    padding: '4px 8px',
-                    '&:hover': {
-                      borderColor: '#1976d2',
-                      backgroundColor: '#f8f9fa'
-                    },
-                    '&:focus': {
-                      borderColor: '#1976d2',
-                      boxShadow: '0 0 0 2px rgba(25, 118, 210, 0.2)'
-                    }
-                  }
-                },
-                '& .MuiTablePagination-actions': {
-                  '& .MuiIconButton-root': {
-                    backgroundColor: '#fff',
-                    border: '1px solid #dee2e6',
-                    borderRadius: 1,
-                    margin: '0 4px',
-                    width: 40,
-                    height: 40,
-                    color: '#6c757d',
-                    transition: 'all 0.2s ease-in-out',
-                    '&:hover': {
-                      backgroundColor: '#1976d2',
-                      borderColor: '#1976d2',
-                      color: '#fff',
-                      transform: 'translateY(-1px)',
-                      boxShadow: '0 4px 12px rgba(25, 118, 210, 0.3)'
-                    },
-                    '&:disabled': {
-                      backgroundColor: '#f8f9fa',
-                      borderColor: '#e9ecef',
-                      color: '#adb5bd'
-                    },
-                    '&.Mui-selected': {
-                      backgroundColor: '#1976d2',
-                      borderColor: '#1976d2',
-                      color: '#fff'
-                    }
-                  }
-                }
-              }}
-            />
+            <Box display="flex" justifyContent="space-between" alignItems="center">
+              <Box>
+                <Typography variant="h6" fontWeight={600} color="text.primary">
+                  Tổng kết
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {filteredStudents.length} học sinh thiếu lịch trong {weekIds.length} tuần học
+                </Typography>
+              </Box>
+              <Box display="flex" gap={2}>
+                {weekIds.map((weekId) => {
+                  const weekCount = groupedSchedules[weekId].length
+                  return (
+                    <Chip
+                      key={weekId}
+                      label={`Tuần ${weekId.slice(-4)}: ${weekCount}`}
+                      color="primary"
+                      variant="outlined"
+                      size="small"
+                    />
+                  )
+                })}
+              </Box>
+            </Box>
           </Box>
         </>
       )}
 
       {/* Makeup Class Creation Dialog */}
-      <Dialog 
-        open={openMakeupDialog} 
+      <Dialog
+        open={openMakeupDialog}
         onClose={() => setOpenMakeupDialog(false)}
         maxWidth="md"
         fullWidth
@@ -676,8 +591,8 @@ return unscheduledStudents.filter(student =>
                     disabled={isTeachersLoading}
                   >
                     {teachers?.map((teacher) => (
-                      <MenuItem 
-                        key={teacher.id} 
+                      <MenuItem
+                        key={teacher.id}
                         value={teacher.id}
                         disabled={!isTeacherAvailable(teacher.id, selectedTimeSlot)}
                       >
@@ -712,25 +627,25 @@ return unscheduledStudents.filter(student =>
             <Typography variant="h6" gutterBottom>
               Chọn học sinh ({selectedStudents.length} đã chọn)
             </Typography>
-            
+
             <Box sx={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid #eee', borderRadius: 1 }}>
               {getAvailableStudents().map((student) => (
-                <Box 
-                  key={student.profileLessonClassId}
-                  sx={{ 
-                    p: 2, 
+                <Box
+                  key={student.scheduleId || student.classId}
+                  sx={{
+                    p: 2,
                     borderBottom: '1px solid #f0f0f0',
                     '&:last-child': { borderBottom: 'none' }
                   }}
                 >
                   <Box display="flex" alignItems="center" gap={2}>
                     <Checkbox
-                      checked={selectedStudents.includes(student.profileLessonClassId)}
+                      checked={selectedStudents.includes(student.scheduleId || student.classId)}
                       onChange={(e) => {
                         if (e.target.checked) {
-                          setSelectedStudents(prev => [...prev, student.profileLessonClassId])
+                          setSelectedStudents(prev => [...prev, student.scheduleId || student.classId])
                         } else {
-                          setSelectedStudents(prev => prev.filter(id => id !== student.profileLessonClassId))
+                          setSelectedStudents(prev => prev.filter(id => id !== (student.scheduleId || student.classId)))
                         }
                       }}
                       disabled={!isStudentAvailable(student)}
@@ -743,14 +658,14 @@ return unscheduledStudents.filter(student =>
                         {student.fullname}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        {student.className} - Buổi {student.lesson}
+                        {student.className} - {student.courseName}
                       </Typography>
                       <Typography variant="caption" display="block" color="text.secondary">
-                        GV: {student.teacherName}
+                        {student.scheduleStatus || 'Chưa có trạng thái'}
                       </Typography>
                     </Box>
                     <Box>
-                      <Chip 
+                      <Chip
                         label={getClassTypeLabel(student.classType)}
                         size="small"
                         color="primary"
@@ -758,7 +673,7 @@ return unscheduledStudents.filter(student =>
                       />
                     </Box>
                   </Box>
-                  
+
                   {!isStudentAvailable(student) && (
                     <Alert severity="warning" sx={{ mt: 1 }}>
                       Học sinh bận trong khung giờ này
@@ -785,8 +700,8 @@ return unscheduledStudents.filter(student =>
           <Button onClick={() => setOpenMakeupDialog(false)}>
             Hủy
           </Button>
-          <Button 
-            variant="contained" 
+          <Button
+            variant="contained"
             onClick={handleCreateMakeupClass}
             disabled={createScheduleMutation.isPending || selectedStudents.length === 0 || !selectedTeacher}
             startIcon={createScheduleMutation.isPending ? <CircularProgress size={16} /> : <i className="ri-save-line" />}
