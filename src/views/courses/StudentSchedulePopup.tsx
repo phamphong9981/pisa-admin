@@ -48,6 +48,8 @@ const StatusChip = styled(Chip)(({ theme, status }: { theme: any; status: string
                 return { color: 'info', bgcolor: '#e3f2fd', borderColor: '#bbdefb' }
             case 'on_request_change':
                 return { color: 'secondary', bgcolor: '#f3e5f5', borderColor: '#ce93d8' }
+            case 'no_schedule':
+                return { color: 'default', bgcolor: '#f0f0f0', borderColor: '#bdbdbd' }
             default:
                 return { color: 'default', bgcolor: '#f5f5f5', borderColor: '#e0e0e0' }
         }
@@ -125,6 +127,8 @@ const StudentSchedulePopup = ({
                 return 'Yêu cầu hủy'
             case 'on_request_change':
                 return 'Yêu cầu thay đổi'
+            case 'no_schedule':
+                return 'Chưa xếp lịch'
             default:
                 return status
         }
@@ -140,6 +144,8 @@ const StudentSchedulePopup = ({
                 return 'ri-time-line'
             case 'on_request_change':
                 return 'ri-time-line'
+            case 'no_schedule':
+                return 'ri-calendar-todo-line'
             default:
                 return 'ri-information-line'
         }
@@ -481,6 +487,9 @@ const StudentSchedulePopup = ({
 
                                     {/* On Request Change Schedules */}
                                     {weekSchedules['on_request_change'] && renderScheduleList(weekSchedules['on_request_change'], 'on_request_change', 'Yêu cầu thay đổi')}
+
+                                    {/* No Schedule Schedules */}
+                                    {weekSchedules['no_schedule'] && renderScheduleList(weekSchedules['no_schedule'], 'no_schedule', 'Chưa xếp lịch')}
                                 </Box>
                             )
                         })}
