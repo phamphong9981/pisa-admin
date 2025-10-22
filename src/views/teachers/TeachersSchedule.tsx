@@ -101,27 +101,53 @@ const ScheduleCell = styled(TableCell, {
 const TeachingInfo = styled(Box)(({ theme }) => ({
   display: 'flex',
   flexDirection: 'column',
-  alignItems: 'center',
-  gap: theme.spacing(0.5),
-  padding: theme.spacing(0.5),
-  '& .class-name': {
-    fontSize: '0.75rem',
-    fontWeight: 600,
-    color: '#1976d2',
-    textAlign: 'center',
-    lineHeight: 1.2,
-    maxWidth: '100%',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap'
+  borderRadius: '8px',
+  overflow: 'hidden',
+  border: '1px solid #e0e0e0',
+  backgroundColor: '#fff',
+  '& .lesson-header': {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: theme.spacing(0.5, 0.75),
+    backgroundColor: '#e3f2fd',
+    borderBottom: '1px solid #bbdefb',
+    '& .class-name': {
+      fontSize: '0.7rem',
+      fontWeight: 600,
+      color: '#1976d2',
+      lineHeight: 1.2,
+      flex: 1,
+      marginRight: theme.spacing(0.5)
+    },
+    '& .lesson-badge': {
+      fontSize: '0.6rem',
+      color: '#1976d2',
+      backgroundColor: '#fff',
+      padding: '2px 6px',
+      borderRadius: '6px',
+      border: '1px solid #bbdefb',
+      fontWeight: 600
+    }
   },
-  '& .lesson-info': {
-    fontSize: '0.65rem',
-    color: '#666',
-    backgroundColor: '#fff',
-    padding: '2px 6px',
-    borderRadius: '8px',
-    border: '1px solid #e0e0e0'
+  '& .students-content': {
+    padding: theme.spacing(0.5),
+    '& .students-list': {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: theme.spacing(0.25),
+      '& .student-item': {
+        fontSize: '0.65rem',
+        color: '#333',
+        padding: '2px 4px',
+        backgroundColor: '#f8f9fa',
+        borderRadius: '4px',
+        border: '1px solid #e9ecef',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis'
+      }
+    }
   }
 }))
 
@@ -728,12 +754,36 @@ const TeachersSchedule = () => {
                           >
                             {isTeaching && teachingInfo ? (
                               <TeachingInfo>
-                                <Box className="class-name" title={teachingInfo.class_name}>
-                                  {teachingInfo.class_name}
+                                <Box className="lesson-header">
+                                  <Box className="class-name" title={teachingInfo.class_name}>
+                                    {teachingInfo.class_name}
+                                  </Box>
+                                  <Box className="lesson-badge">
+                                    Buổi {teachingInfo.lesson}
+                                  </Box>
                                 </Box>
-                                <Box className="lesson-info">
-                                  Buổi {teachingInfo.lesson}
-                                </Box>
+                                {teachingInfo.students && Array.isArray(teachingInfo.students) && teachingInfo.students.length > 0 && (
+                                  <Box className="students-content">
+                                    <Box className="students-list">
+                                      {teachingInfo.students.map((student: any) => {
+                                        const coursename = student.coursename ? ` - ${student.coursename}` : '';
+                                        const displayLabel = student.note
+                                          ? `${student.fullname}${coursename} (${student.note})`
+                                          : `${student.fullname}${coursename}`;
+
+                                        return (
+                                          <Box
+                                            key={student.id}
+                                            className="student-item"
+                                            title={displayLabel}
+                                          >
+                                            {displayLabel}
+                                          </Box>
+                                        );
+                                      })}
+                                    </Box>
+                                  </Box>
+                                )}
                               </TeachingInfo>
                             ) : (
                               <Tooltip
@@ -791,6 +841,18 @@ const TeachersSchedule = () => {
                       <Box display="flex" justifyContent="space-between" mt={0.5}>
                         <Typography variant="body2" sx={{ color: '#1976d2' }}>
                           Đang dạy: {teachingSlots}/{totalSlots}
+                        </Typography>
+                      </Box>
+                      <Box display="flex" justifyContent="space-between" mt={0.5}>
+                        <Typography variant="body2" sx={{ color: '#666', fontSize: '0.75rem' }}>
+                          Tổng HS: {(() => {
+                            const totalStudents = schedules?.filter(s => s.teacher_id === teacher.id)
+                              .reduce((total, schedule) => {
+                                const students = Array.isArray(schedule.students) ? schedule.students : [];
+                                return total + students.length;
+                              }, 0) || 0;
+                            return totalStudents;
+                          })()}
                         </Typography>
                       </Box>
                       <Box display="flex" gap={0.5} mt={1}>
