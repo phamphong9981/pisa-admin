@@ -70,7 +70,8 @@ const StyledTimeCell = styled(TableCell)(({ theme }) => ({
   minWidth: '100px',
   position: 'sticky',
   left: 0,
-  zIndex: 1
+  top: 0,
+  zIndex: 2
 }))
 
 const ScheduleCell = styled(TableCell, {
@@ -682,7 +683,13 @@ const TeachersSchedule = () => {
             <Table stickyHeader>
               <TableHead>
                 <TableRow>
-                  <StyledHeaderCell sx={{ minWidth: '150px' }}>
+                  <StyledHeaderCell sx={{
+                    minWidth: '150px',
+                    position: 'sticky',
+                    left: 0,
+                    top: 0,
+                    zIndex: 3
+                  }}>
                     <Box>
                       <Typography variant="body2" fontWeight={600}>
                         Khung giờ

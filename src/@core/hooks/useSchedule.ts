@@ -481,3 +481,46 @@ export const useGetScheduleByFields = (status: ScheduleStatus, weekId: string) =
         retryDelay: (attemptIndex) => Math.min(1000 * 1 ** attemptIndex, 30000),
     })
 }
+
+export interface MissingSchedulesDto {
+    profileId: string
+    fullname: string
+    email: string
+    phone: string
+    scheduleId?: string
+    scheduleTime?: number
+    scheduleStatus?: string
+    classId: string
+    className: string
+    classType: string
+    courseName: string
+    weekId: string
+    startDate: string
+    reasonStatus?: string
+    replaceSchedule?: {
+        id: string
+        scheduleTime: number
+        startDate: string
+    }
+}
+
+const missingSchedulesList = async (profileId?: string): Promise<MissingSchedulesDto[]> => {
+    const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/missing-schedules`, {
+        params: {
+            profileId
+        }
+    })
+
+    return data.data;
+}
+
+export const useMissingSchedulesList = (profileId?: string) => {
+    return useQuery({
+        queryKey: ['missing-schedules', profileId],
+        queryFn: () => missingSchedulesList(profileId),
+        staleTime: 5 * 60 * 1000, // 5 phút
+        gcTime: 10 * 60 * 1000, // 10 phút
+        retry: 1,
+        retryDelay: (attemptIndex) => Math.min(1000 * 1 ** attemptIndex, 30000),
+    })
+}

@@ -39,6 +39,7 @@ import { useCourseInfo, useRegisterCourse, useUnregisterCourse } from '@/@core/h
 import { useStudentList } from '@/@core/hooks/useStudent'
 import { useGetWeeks } from '@/@core/hooks/useWeek'
 import CreateClassForm from '@/views/classes/CreateClassForm'
+import StudentSchedulePopup from '@/views/courses/StudentSchedulePopup'
 
 const StyledCard = styled(Card)(({ theme }) => ({
   marginBottom: theme.spacing(3)
@@ -106,6 +107,17 @@ const CourseDetail = ({ courseName }: CourseDetailProps) => {
   const [searchStudent, setSearchStudent] = useState('')
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([])
   const [selectedWeekId, setSelectedWeekId] = useState<string>('')
+
+  // States for student schedule popup
+  const [studentSchedulePopup, setStudentSchedulePopup] = useState<{
+    open: boolean
+    studentId: string
+    studentName: string
+  }>({
+    open: false,
+    studentId: '',
+    studentName: ''
+  })
 
   const [notification, setNotification] = useState<{
     open: boolean
@@ -452,11 +464,15 @@ const CourseDetail = ({ courseName }: CourseDetailProps) => {
                           </TableCell>
                           <TableCell align="center">
                             <Box display="flex" gap={1} justifyContent="center">
-                              <Tooltip title="Xem chi tiết học sinh">
+                              <Tooltip title="Xem lịch bị thay đổi">
                                 <IconButton
                                   size="small"
                                   color="primary"
-                                  onClick={() => router.push(`/students/${student.id}`)}
+                                  onClick={() => setStudentSchedulePopup({
+                                    open: true,
+                                    studentId: student.id,
+                                    studentName: student.fullname
+                                  })}
                                 >
                                   <i className="ri-eye-line" />
                                 </IconButton>
@@ -765,6 +781,15 @@ const CourseDetail = ({ courseName }: CourseDetailProps) => {
           <Typography variant="body2">{notification.message}</Typography>
         </Box>
       </Snackbar>
+
+      {/* Student Schedule Popup */}
+      <StudentSchedulePopup
+        open={studentSchedulePopup.open}
+        onClose={() => setStudentSchedulePopup(prev => ({ ...prev, open: false }))}
+        studentId={studentSchedulePopup.studentId}
+        studentName={studentSchedulePopup.studentName}
+        weekId={selectedWeekId || "08a60c9a-b3f8-42f8-8ff8-c7015d4ef3e7"}
+      />
     </>
   )
 }
