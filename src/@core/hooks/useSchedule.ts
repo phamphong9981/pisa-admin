@@ -4,10 +4,14 @@ import axios from 'axios'
 
 export enum ScheduleStatus {
     ACTIVE = 'active',
+    ON_REQUEST_ACTIVE = 'on_request_active',
     ON_REQUEST_CANCEL = 'on_request_cancel',
     CANCELLED = 'cancelled',
+    MAKEUP = 'makeup',
     ON_REQUEST_CHANGE = 'on_request_change',
     CHANGED = 'changed',
+    NO_SCHEDULE = 'no_schedule', // no schedule for this week
+    APPROVED_ACTIVE = 'approved_active'
 }
 
 export const SCHEDULE_TIME = [
@@ -234,7 +238,6 @@ export const useCreateSchedule = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['unschedule-list'] })
             queryClient.invalidateQueries({ queryKey: ['schedules'] })
-            queryClient.invalidateQueries({ queryKey: ['makeup-schedules'] })
         },
         onError: (error) => {
             console.error('Error creating schedule:', error)
@@ -378,7 +381,6 @@ export const useCreateLessonSchedule = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['unschedule-list'] })
             queryClient.invalidateQueries({ queryKey: ['schedules'] })
-            queryClient.invalidateQueries({ queryKey: ['makeup-schedules'] })
         },
     })
 }
@@ -400,7 +402,6 @@ export const useAutoScheduleCourse = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['unschedule-list'] })
             queryClient.invalidateQueries({ queryKey: ['schedules'] })
-            queryClient.invalidateQueries({ queryKey: ['makeup-schedules'] })
         },
     })
 }

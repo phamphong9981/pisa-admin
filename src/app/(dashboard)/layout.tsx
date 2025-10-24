@@ -10,6 +10,7 @@ import Providers from '@components/Providers'
 import Navigation from '@components/layout/vertical/Navigation'
 import Navbar from '@components/layout/vertical/Navbar'
 import VerticalFooter from '@components/layout/vertical/Footer'
+import ProtectedRoute from '@components/ProtectedRoute'
 import { getMode, getSettingsFromCookie } from '@core/utils/serverHelpers'
 
 const Layout = async ({ children }: ChildrenType) => {
@@ -18,16 +19,17 @@ const Layout = async ({ children }: ChildrenType) => {
   const mode = getMode()
   const settingsCookie = getSettingsFromCookie()
 
-  
-return (
+  return (
     <Providers direction={direction} mode={mode} settingsCookie={settingsCookie}>
-      <LayoutWrapper
-        verticalLayout={
-          <VerticalLayout navigation={<Navigation />} navbar={<Navbar />} footer={<VerticalFooter />}>
-            {children}
-          </VerticalLayout>
-        }
-      />
+      <ProtectedRoute requireAdmin={true}>
+        <LayoutWrapper
+          verticalLayout={
+            <VerticalLayout navigation={<Navigation />} navbar={<Navbar />} footer={<VerticalFooter />}>
+              {children}
+            </VerticalLayout>
+          }
+        />
+      </ProtectedRoute>
     </Providers>
   )
 }

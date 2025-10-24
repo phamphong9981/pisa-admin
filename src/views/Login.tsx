@@ -19,6 +19,8 @@ import Checkbox from '@mui/material/Checkbox'
 import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Divider from '@mui/material/Divider'
+import Alert from '@mui/material/Alert'
+import CircularProgress from '@mui/material/CircularProgress'
 
 // Type Imports
 import type { Mode } from '@core/types'
@@ -32,10 +34,15 @@ import themeConfig from '@configs/themeConfig'
 
 // Hook Imports
 import { useImageVariant } from '@core/hooks/useImageVariant'
+import useAuth from '@core/hooks/useAuth'
 
 const Login = ({ mode }: { mode: Mode }) => {
   // States
   const [isPasswordShown, setIsPasswordShown] = useState(false)
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [rememberMe, setRememberMe] = useState(false)
 
   // Vars
   const darkImg = '/images/pages/auth-v1-mask-dark.png'
@@ -44,12 +51,26 @@ const Login = ({ mode }: { mode: Mode }) => {
   // Hooks
   const router = useRouter()
   const authBackground = useImageVariant(mode, lightImg, darkImg)
+  const { login, isLoading } = useAuth()
 
   const handleClickShowPassword = () => setIsPasswordShown(show => !show)
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    router.push('/')
+    setError('')
+
+    if (!username.trim() || !password.trim()) {
+      setError('Please enter both username and password')
+      return
+    }
+
+    const result = await login({ username: username.trim(), password })
+
+    if (result.success) {
+      router.push('/')
+    } else {
+      setError(result.message)
+    }
   }
 
   return (
@@ -64,13 +85,30 @@ const Login = ({ mode }: { mode: Mode }) => {
               <Typography variant='h4'>{`Welcome to ${themeConfig.templateName}!👋🏻`}</Typography>
               <Typography className='mbs-1'>Please sign-in to your account and start the adventure</Typography>
             </div>
+            {error && (
+              <Alert severity='error' className='mb-4'>
+                {error}
+              </Alert>
+            )}
             <form noValidate autoComplete='off' onSubmit={handleSubmit} className='flex flex-col gap-5'>
-              <TextField autoFocus fullWidth label='Email' />
+              <TextField
+                autoFocus
+                fullWidth
+                label='Username'
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                disabled={isLoading}
+                required
+              />
               <TextField
                 fullWidth
                 label='Password'
                 id='outlined-adornment-password'
                 type={isPasswordShown ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
+                required
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position='end'>
@@ -79,6 +117,7 @@ const Login = ({ mode }: { mode: Mode }) => {
                         edge='end'
                         onClick={handleClickShowPassword}
                         onMouseDown={e => e.preventDefault()}
+                        disabled={isLoading}
                       >
                         <i className={isPasswordShown ? 'ri-eye-off-line' : 'ri-eye-line'} />
                       </IconButton>
@@ -87,13 +126,28 @@ const Login = ({ mode }: { mode: Mode }) => {
                 }}
               />
               <div className='flex justify-between items-center gap-x-3 gap-y-1 flex-wrap'>
-                <FormControlLabel control={<Checkbox />} label='Remember me' />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      disabled={isLoading}
+                    />
+                  }
+                  label='Remember me'
+                />
                 <Typography className='text-end' color='primary' component={Link} href='/forgot-password'>
                   Forgot password?
                 </Typography>
               </div>
-              <Button fullWidth variant='contained' type='submit'>
-                Log In
+              <Button
+                fullWidth
+                variant='contained'
+                type='submit'
+                disabled={isLoading}
+                startIcon={isLoading ? <CircularProgress size={20} /> : null}
+              >
+                {isLoading ? 'Logging in...' : 'Log In'}
               </Button>
               <div className='flex justify-center items-center flex-wrap gap-2'>
                 <Typography>New on our platform?</Typography>
