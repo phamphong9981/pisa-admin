@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
+import { apiClient } from './apiClient';
 
 export interface TotalStudyHoursResponse {
     username: string,
@@ -13,7 +13,7 @@ export interface TotalStudyHoursResponse {
 
 const api = {
     getTotalStudyHours: async (search?: string): Promise<TotalStudyHoursResponse[]> => {
-        const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/total-study-hours`, {
+        const { data } = await apiClient.get('/total-study-hours', {
             params: {
                 search: search
             }

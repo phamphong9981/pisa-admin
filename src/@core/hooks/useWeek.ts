@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
+import { apiClient } from './apiClient';
 
 export enum ScheduleStatus {
     OPEN = 'open',
@@ -16,7 +16,7 @@ export interface WeekResponseDto {
 
 const api = {
     getWeeks: async (): Promise<WeekResponseDto[]> => {
-        const response = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/weeks`)
+        const response = await apiClient.get('/weeks')
         console.log('Weeks API response:', response.data)
         return response.data
     }

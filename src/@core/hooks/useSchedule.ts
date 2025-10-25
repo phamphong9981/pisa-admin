@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import axios from 'axios'
+import { apiClient } from './apiClient'
 
 export enum ScheduleStatus {
     ACTIVE = 'active',
@@ -94,7 +94,7 @@ const fetchClassScheduleInfo = async (id: string): Promise<ClassScheduleDto> => 
         throw new Error('Class ID is required')
     }
 
-    const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/schedule/class/${id}`);
+    const { data } = await apiClient.get(`/schedule/class/${id}`);
 
 
     // Thêm một chút delay để thấy trạng thái loading
@@ -116,7 +116,7 @@ export const useClassSchedule = (id: string) => {
 }
 
 export const updateUserSchedule = async (scheduleId: string, start_time?: string, end_time?: string, note?: string, status?: ScheduleStatus) => {
-    const { data } = await axios.put(`${process.env.NEXT_PUBLIC_BASE_API}/user-schedule`, {
+    const { data } = await apiClient.put('/user-schedule', {
         schedule_id: scheduleId,
         start_time: start_time,
         end_time: end_time,
@@ -165,7 +165,7 @@ interface allScheduleResponse {
 }
 
 const getAllSchedule = async (courseId?: string, weekId?: string): Promise<allScheduleResponse[]> => {
-    const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/schedules`, {
+    const { data } = await apiClient.get('/schedules', {
         params: {
             weekId,
             courseId,
@@ -204,7 +204,7 @@ interface unscheduleQueryResponse {
 }
 
 const unscheduleList = async (): Promise<unscheduleQueryResponse[]> => {
-    const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/unscheduled-lessons`)
+    const { data } = await apiClient.get('/unscheduled-lessons')
 
     return data.data?.unscheduledLessons || []
 }
@@ -221,7 +221,7 @@ export const useUnscheduleList = () => {
 }
 
 const createSchedule = async (profileLessonClassIds: string[], teacherId: string, scheduleTime: number) => {
-    const { data } = await axios.post(`${process.env.NEXT_PUBLIC_BASE_API}/schedule`, {
+    const { data } = await apiClient.post('/schedule', {
         profile_lesson_class_ids: profileLessonClassIds,
         teacher_id: teacherId,
         schedule_time: scheduleTime
@@ -300,7 +300,7 @@ export interface ScheduleDetailResponseDto {
 }
 
 const getScheduleDetail = async (classId: string, lesson: number, weekId: string = "08a60c9a-b3f8-42f8-8ff8-c7015d4ef3e7", scheduleTime?: number): Promise<ScheduleDetailResponseDto> => {
-    const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/schedule-detail`, {
+    const { data } = await apiClient.get('/schedule-detail', {
         params: {
             classId,
             lesson,
@@ -329,7 +329,7 @@ const updateRollcallStatus = async (rollcalls: {
     rollcallStatus: RollcallStatus,
     reason?: string
 }[]) => {
-    const { data } = await axios.put(`${process.env.NEXT_PUBLIC_BASE_API}/rollcall-schedule`, {
+    const { data } = await apiClient.put('/rollcall-schedule', {
         rollcalls
     })
 
@@ -368,7 +368,7 @@ export interface CreateLessonScheduleDto {
 }
 
 const createLessonSchedule = async (lessonSchedule: CreateLessonScheduleDto) => {
-    const { data } = await axios.post(`${process.env.NEXT_PUBLIC_BASE_API}/create-lesson-schedule`, lessonSchedule)
+    const { data } = await apiClient.post('/create-lesson-schedule', lessonSchedule)
 
     return data.data;
 }
@@ -386,7 +386,7 @@ export const useCreateLessonSchedule = () => {
 }
 
 const autoScheduleCourse = async (courseId: string) => {
-    const { data } = await axios.post(`${process.env.NEXT_PUBLIC_BASE_API}/auto-schedule-course`, {
+    const { data } = await apiClient.post('/auto-schedule-course', {
         courseId
     })
 
@@ -429,7 +429,7 @@ export interface UpdateLessonScheduleDto {
 }
 
 const updateLessonSchedule = async (lessonSchedule: UpdateLessonScheduleDto) => {
-    const { data } = await axios.put(`${process.env.NEXT_PUBLIC_BASE_API}/update-lesson-schedule`, lessonSchedule)
+    const { data } = await apiClient.put('/update-lesson-schedule', lessonSchedule)
 
     return data.data;
 }
@@ -462,7 +462,7 @@ export interface ScheduleByFieldResponseDto {
 }
 
 const getScheduleByFields = async (status: ScheduleStatus, weekId: string = "08a60c9a-b3f8-42f8-8ff8-c7015d4ef3e7"): Promise<ScheduleByFieldResponseDto[]> => {
-    const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/schedules-by-fields`, {
+    const { data } = await apiClient.get('/schedules-by-fields', {
         params: {
             status,
             weekId
@@ -506,7 +506,7 @@ export interface MissingSchedulesDto {
 }
 
 const missingSchedulesList = async (profileId?: string): Promise<MissingSchedulesDto[]> => {
-    const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/missing-schedules`, {
+    const { data } = await apiClient.get('/missing-schedules', {
         params: {
             profileId
         }
@@ -523,5 +523,27 @@ export const useMissingSchedulesList = (profileId?: string) => {
         gcTime: 10 * 60 * 1000, // 10 phút
         retry: 1,
         retryDelay: (attemptIndex) => Math.min(1000 * 1 ** attemptIndex, 30000),
+    })
+}
+
+
+const requestSchedule = async (status: ScheduleStatus, scheduleId: string, statusReason?: string): Promise<MissingSchedulesDto[]> => {
+    const { data } = await apiClient.put('/request-schedule', {
+        status,
+        schedule_id: scheduleId,
+        status_reason: statusReason
+    })
+
+    return data.data;
+}
+
+export const useRequestSchedule = () => {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: ({ status, scheduleId, statusReason }: { status: ScheduleStatus, scheduleId: string, statusReason?: string }) => requestSchedule(status, scheduleId, statusReason),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['missing-schedules'] })
+            queryClient.invalidateQueries({ queryKey: ['schedule-by-fields'] })
+        },
     })
 }

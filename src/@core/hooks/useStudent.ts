@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import axios from "axios"
+import { apiClient } from './apiClient'
 
 export interface Profile {
     id: string;
@@ -38,7 +38,7 @@ interface ListUsersResponseDto {
 }
 
 const fetchStudentList = async (search: string): Promise<ListUsersResponseDto> => {
-    const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/user/`, {
+    const { data } = await apiClient.get('/user/', {
         params: {
             type: 'user',
             search
@@ -60,7 +60,7 @@ export const useStudentList = (search: string) => {
 }
 
 const updateStudentBusySchedule = async (studentId: string, busySchedule: number[]) => {
-    const { data } = await axios.put(`${process.env.NEXT_PUBLIC_BASE_API}/${studentId}/order-schedule`, {
+    const { data } = await apiClient.put(`/${studentId}/order-schedule`, {
         busy_schedule_arr: busySchedule
     });
 
@@ -70,8 +70,8 @@ const updateStudentBusySchedule = async (studentId: string, busySchedule: number
 export const useUpdateStudentBusySchedule = () => {
     const queryClient = useQueryClient();
 
-    
-return useMutation({
+
+    return useMutation({
         mutationFn: ({ studentId, busySchedule }: { studentId: string, busySchedule: number[] }) => updateStudentBusySchedule(studentId, busySchedule),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['students'] })

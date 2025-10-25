@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
+import { apiClient } from './apiClient';
 
 export interface TeacherListResponse {
     id: string,
@@ -12,7 +12,7 @@ export interface TeacherListResponse {
 
 // Function để gọi API lấy danh sách teacher
 const fetchTeacherList = async (search?: string): Promise<TeacherListResponse[]> => {
-    const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/teachers`, {
+    const { data } = await apiClient.get('/teachers', {
         params: {
             search
         }
@@ -35,7 +35,7 @@ export const useTeacherList = (search?: string) => {
 
 
 const updateTeacherBusySchedule = async (teacherId: string, busySchedule: number[]) => {
-    const { data } = await axios.put(`${process.env.NEXT_PUBLIC_BASE_API}/teachers/${teacherId}/order-schedule`, {
+    const { data } = await apiClient.put(`/teachers/${teacherId}/order-schedule`, {
         registeredBusySchedule: busySchedule
     });
 
@@ -45,8 +45,8 @@ const updateTeacherBusySchedule = async (teacherId: string, busySchedule: number
 export const useUpdateTeacherBusySchedule = () => {
     const queryClient = useQueryClient();
 
-    
-return useMutation({
+
+    return useMutation({
         mutationFn: ({ teacherId, busySchedule }: { teacherId: string; busySchedule: number[] }) =>
             updateTeacherBusySchedule(teacherId, busySchedule),
         onSuccess: () => {

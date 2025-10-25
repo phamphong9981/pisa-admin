@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import axios from 'axios'
+import { apiClient } from './apiClient'
 
 import type { ClassType } from '@/types/classes'
 import type { TeacherListResponse } from './useTeacher'
@@ -57,7 +57,7 @@ interface UpdateClassDto {
 
 // Function để gọi API lấy danh sách class
 const fetchClassList = async (): Promise<ClassListResponse[]> => {
-    const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/classes`);
+    const { data } = await apiClient.get('/classes');
 
     return data.data;
 }
@@ -68,7 +68,7 @@ const fetchClassInfo = async (id: string): Promise<ClassInfo> => {
         throw new Error('Class ID is required')
     }
 
-    const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/classes/${id}`);
+    const { data } = await apiClient.get(`/classes/${id}`);
 
 
     // Thêm một chút delay để thấy trạng thái loading
@@ -79,21 +79,21 @@ const fetchClassInfo = async (id: string): Promise<ClassInfo> => {
 
 const createClass = async (classInfo: CreateClassDto) => {
     console.log(classInfo);
-    const { data } = await axios.post(`${process.env.NEXT_PUBLIC_BASE_API}/classes`, classInfo);
+    const { data } = await apiClient.post('/classes', classInfo);
 
 
     return data.data;
 }
 
 const updateClass = async (id: string, classInfo: UpdateClassDto) => {
-    const { data } = await axios.put(`${process.env.NEXT_PUBLIC_BASE_API}/classes/${id}`, classInfo);
+    const { data } = await apiClient.put(`/classes/${id}`, classInfo);
 
 
     return data.data;
 }
 
 const registerStudentToClass = async (classId: string, username: string) => {
-    const { data } = await axios.post(`${process.env.NEXT_PUBLIC_BASE_API}/classes/register-class-for-user`, {
+    const { data } = await apiClient.post('/classes/register-class-for-user', {
         class_id: classId,
         username: username
     });
@@ -103,7 +103,7 @@ const registerStudentToClass = async (classId: string, username: string) => {
 }
 
 const unregisterStudentFromClass = async (classId: string, username: string) => {
-    const { data } = await axios.post(`${process.env.NEXT_PUBLIC_BASE_API}/classes/unregister-class-for-user`, {
+    const { data } = await apiClient.post('/classes/unregister-class-for-user', {
         class_id: classId,
         username: username
     });

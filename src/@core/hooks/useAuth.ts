@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 
 // Hook Imports
 import { useObjectCookie } from './useObjectCookie'
-import axios from 'axios'
+import { apiClient } from './apiClient'
 // Type Imports
 interface LoginRequest {
     username: string
@@ -79,7 +79,7 @@ const useAuth = () => {
             setAuthState(prev => ({ ...prev, isLoading: true }))
 
             // API call to login endpoint
-            const { data } = await axios.post(`${process.env.NEXT_PUBLIC_BASE_API}/login`, credentials);
+            const { data } = await apiClient.post('/login', credentials);
 
             if (data.error || !data.data) {
                 return { success: false, message: data.error || 'Login failed' }

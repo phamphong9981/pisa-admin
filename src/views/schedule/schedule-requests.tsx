@@ -31,11 +31,12 @@ import {
   TableHead,
   TableRow,
   Tabs,
+  TextField,
   Typography
 } from '@mui/material'
 
 // Hooks
-import { ScheduleStatus, useGetScheduleByFields, useUpdateUserSchedule } from '@/@core/hooks/useSchedule'
+import { ScheduleStatus, useGetScheduleByFields, useRequestSchedule } from '@/@core/hooks/useSchedule'
 import { useGetWeeks, ScheduleStatus as WeekStatus } from '@/@core/hooks/useWeek'
 
 const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
@@ -111,6 +112,7 @@ const ScheduleRequests = () => {
   const [actionType, setActionType] = useState<'approve' | 'reject' | null>(null)
   const [showSuccessMessage, setShowSuccessMessage] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
+  const [statusReason, setStatusReason] = useState('')
 
   // Fetch weeks to get the open week ID
   const {
@@ -122,12 +124,19 @@ const ScheduleRequests = () => {
   // Get the first open week ID
   const openWeekId = weeks?.find(week => week.scheduleStatus === WeekStatus.OPEN)?.id
 
-  // Fetch pending requests
+  // Fetch pending change requests
   const {
-    data: pendingRequests,
-    isLoading: isPendingLoading,
-    error: pendingError
+    data: pendingChangeRequests,
+    isLoading: isPendingChangeLoading,
+    error: pendingChangeError
   } = useGetScheduleByFields(ScheduleStatus.ON_REQUEST_CHANGE, openWeekId || "")
+
+  // Fetch pending active requests
+  const {
+    data: pendingActiveRequests,
+    isLoading: isPendingActiveLoading,
+    error: pendingActiveError
+  } = useGetScheduleByFields(ScheduleStatus.ON_REQUEST_ACTIVE, openWeekId || "")
 
   // Fetch cancelled requests
   const {
@@ -136,7 +145,14 @@ const ScheduleRequests = () => {
     error: cancelledError
   } = useGetScheduleByFields(ScheduleStatus.CANCELLED, openWeekId || "")
 
-  const updateScheduleMutation = useUpdateUserSchedule()
+  // Fetch approved active requests
+  const {
+    data: approvedActiveRequests,
+    isLoading: isApprovedActiveLoading,
+    error: approvedActiveError
+  } = useGetScheduleByFields(ScheduleStatus.APPROVED_ACTIVE, openWeekId || "")
+
+  const requestScheduleMutation = useRequestSchedule()
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue)
@@ -145,9 +161,15 @@ const ScheduleRequests = () => {
   const getStatusText = (status: string) => {
     switch (status) {
       case ScheduleStatus.ON_REQUEST_CHANGE:
-        return 'Đang chờ duyệt'
+        return 'Yêu cầu hủy lịch'
+      case ScheduleStatus.ON_REQUEST_ACTIVE:
+        return 'Yêu cầu kích hoạt lịch'
       case ScheduleStatus.CANCELLED:
         return 'Đã hủy'
+      case ScheduleStatus.APPROVED_ACTIVE:
+        return 'Đã kích hoạt'
+      case ScheduleStatus.NO_SCHEDULE:
+        return 'Không có lịch'
       case ScheduleStatus.ACTIVE:
         return 'Hoạt động'
       default:
@@ -179,23 +201,51 @@ const ScheduleRequests = () => {
   const handleConfirmAction = async () => {
     if (!selectedRequest || !actionType) return
 
-    try {
-      const newStatus = actionType === 'approve' ? ScheduleStatus.CANCELLED : ScheduleStatus.ACTIVE
+    // Validate statusReason for ON_REQUEST_ACTIVE reject
+    if (actionType === 'reject' && selectedRequest.status === ScheduleStatus.ON_REQUEST_ACTIVE && !statusReason.trim()) {
+      setSuccessMessage('Vui lòng nhập lý do từ chối!')
+      setShowSuccessMessage(true)
+      return
+    }
 
-      await updateScheduleMutation.mutateAsync({
+    try {
+      let newStatus: ScheduleStatus
+      let successMsg: string
+
+      if (selectedRequest.status === ScheduleStatus.ON_REQUEST_CHANGE) {
+        // Xử lý yêu cầu hủy lịch
+        if (actionType === 'approve') {
+          newStatus = ScheduleStatus.CANCELLED
+          successMsg = 'Đã duyệt yêu cầu hủy lịch thành công!'
+        } else {
+          newStatus = ScheduleStatus.ACTIVE
+          successMsg = 'Đã từ chối yêu cầu hủy lịch thành công!'
+        }
+      } else if (selectedRequest.status === ScheduleStatus.ON_REQUEST_ACTIVE) {
+        // Xử lý yêu cầu kích hoạt lịch
+        if (actionType === 'approve') {
+          newStatus = ScheduleStatus.APPROVED_ACTIVE
+          successMsg = 'Đã duyệt yêu cầu kích hoạt lịch thành công!'
+        } else {
+          newStatus = ScheduleStatus.NO_SCHEDULE
+          successMsg = 'Đã từ chối yêu cầu kích hoạt lịch thành công!'
+        }
+      } else {
+        throw new Error('Trạng thái yêu cầu không hợp lệ')
+      }
+
+      await requestScheduleMutation.mutateAsync({
+        status: newStatus,
         scheduleId: selectedRequest.id,
-        status: newStatus
+        statusReason: actionType === 'reject' && selectedRequest.status === ScheduleStatus.ON_REQUEST_ACTIVE ? statusReason : undefined
       })
 
-      setSuccessMessage(
-        actionType === 'approve'
-          ? 'Đã duyệt yêu cầu hủy lịch thành công!'
-          : 'Đã từ chối yêu cầu hủy lịch thành công!'
-      )
+      setSuccessMessage(successMsg)
       setShowSuccessMessage(true)
       setShowConfirmDialog(false)
       setSelectedRequest(null)
       setActionType(null)
+      setStatusReason('')
     } catch (error) {
       console.error('Error updating schedule status:', error)
       setSuccessMessage('Có lỗi xảy ra khi cập nhật trạng thái!')
@@ -207,6 +257,7 @@ const ScheduleRequests = () => {
     setShowConfirmDialog(false)
     setSelectedRequest(null)
     setActionType(null)
+    setStatusReason('')
   }
 
   const formatTimeRange = (startTime?: string, endTime?: string) => {
@@ -226,13 +277,23 @@ const ScheduleRequests = () => {
           <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
             <StyledTabs value={tabValue} onChange={handleTabChange} aria-label="schedule requests tabs">
               <Tab
-                label={`Đang chờ (${pendingRequests?.length || 0})`}
-                icon={<i className="ri-time-line" />}
+                label={`Yêu cầu hủy lịch (${pendingChangeRequests?.length || 0})`}
+                icon={<i className="ri-close-circle-line" />}
                 iconPosition="start"
               />
               <Tab
-                label={`Đã duyệt (${cancelledRequests?.length || 0})`}
+                label={`Yêu cầu kích hoạt (${pendingActiveRequests?.length || 0})`}
+                icon={<i className="ri-play-circle-line" />}
+                iconPosition="start"
+              />
+              <Tab
+                label={`Đã hủy (${cancelledRequests?.length || 0})`}
                 icon={<i className="ri-check-line" />}
+                iconPosition="start"
+              />
+              <Tab
+                label={`Đã kích hoạt (${approvedActiveRequests?.length || 0})`}
+                icon={<i className="ri-check-double-line" />}
                 iconPosition="start"
               />
             </StyledTabs>
@@ -240,10 +301,10 @@ const ScheduleRequests = () => {
 
           {/* Tab Content */}
           <Box sx={{ mt: 2 }}>
-            {/* Pending Requests Tab */}
+            {/* Pending Change Requests Tab */}
             {tabValue === 0 && (
               <Box>
-                {isWeeksLoading || isPendingLoading ? (
+                {isWeeksLoading || isPendingChangeLoading ? (
                   <Box display="flex" justifyContent="center" alignItems="center" minHeight={200}>
                     <CircularProgress />
                   </Box>
@@ -251,9 +312,9 @@ const ScheduleRequests = () => {
                   <Alert severity="error">Lỗi tải danh sách tuần: {weeksError.message}</Alert>
                 ) : !openWeekId ? (
                   <Alert severity="warning">Không có tuần nào đang mở để xem yêu cầu đổi lịch.</Alert>
-                ) : pendingError ? (
-                  <Alert severity="error">Lỗi tải danh sách yêu cầu đang chờ: {pendingError.message}</Alert>
-                ) : pendingRequests && pendingRequests.length > 0 ? (
+                ) : pendingChangeError ? (
+                  <Alert severity="error">Lỗi tải danh sách yêu cầu hủy lịch: {pendingChangeError.message}</Alert>
+                ) : pendingChangeRequests && pendingChangeRequests.length > 0 ? (
                   <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
                     <Table>
                       <TableHead>
@@ -268,7 +329,7 @@ const ScheduleRequests = () => {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {pendingRequests.map((request) => (
+                        {pendingChangeRequests.map((request) => (
                           <TableRow key={request.id}>
                             <StyledTableCell>
                               <Box display="flex" alignItems="center" gap={2}>
@@ -337,13 +398,115 @@ const ScheduleRequests = () => {
                     </Table>
                   </TableContainer>
                 ) : (
-                  <Alert severity="info">Không có yêu cầu đổi lịch nào đang chờ duyệt.</Alert>
+                  <Alert severity="info">Không có yêu cầu hủy lịch nào đang chờ duyệt.</Alert>
+                )}
+              </Box>
+            )}
+
+            {/* Pending Active Requests Tab */}
+            {tabValue === 1 && (
+              <Box>
+                {isWeeksLoading || isPendingActiveLoading ? (
+                  <Box display="flex" justifyContent="center" alignItems="center" minHeight={200}>
+                    <CircularProgress />
+                  </Box>
+                ) : weeksError ? (
+                  <Alert severity="error">Lỗi tải danh sách tuần: {weeksError.message}</Alert>
+                ) : !openWeekId ? (
+                  <Alert severity="warning">Không có tuần nào đang mở để xem yêu cầu đổi lịch.</Alert>
+                ) : pendingActiveError ? (
+                  <Alert severity="error">Lỗi tải danh sách yêu cầu kích hoạt lịch: {pendingActiveError.message}</Alert>
+                ) : pendingActiveRequests && pendingActiveRequests.length > 0 ? (
+                  <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <StyledHeaderCell>Học sinh</StyledHeaderCell>
+                          <StyledHeaderCell>Lớp</StyledHeaderCell>
+                          <StyledHeaderCell>Buổi</StyledHeaderCell>
+                          <StyledHeaderCell>Thời gian</StyledHeaderCell>
+                          <StyledHeaderCell>Ghi chú</StyledHeaderCell>
+                          <StyledHeaderCell>Trạng thái</StyledHeaderCell>
+                          <StyledHeaderCell>Thao tác</StyledHeaderCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {pendingActiveRequests.map((request) => (
+                          <TableRow key={request.id}>
+                            <StyledTableCell>
+                              <Box display="flex" alignItems="center" gap={2}>
+                                <Avatar sx={{ width: 32, height: 32, fontSize: '0.75rem' }}>
+                                  {getInitials(request.fullname)}
+                                </Avatar>
+                                <Typography variant="body2" fontWeight={500}>
+                                  {request.fullname}
+                                </Typography>
+                              </Box>
+                            </StyledTableCell>
+                            <StyledTableCell>
+                              <Typography variant="body2">
+                                {request.classname}
+                              </Typography>
+                            </StyledTableCell>
+                            <StyledTableCell>
+                              <Typography variant="body2">
+                                Buổi {request.lesson}
+                              </Typography>
+                            </StyledTableCell>
+                            <StyledTableCell>
+                              <Typography variant="body2">
+                                {formatTimeRange(request.startTime, request.endTime)}
+                              </Typography>
+                            </StyledTableCell>
+                            <StyledTableCell>
+                              <Typography variant="body2" color="text.secondary">
+                                {request.note || '—'}
+                              </Typography>
+                            </StyledTableCell>
+                            <StyledTableCell>
+                              <StatusChip
+                                label={getStatusText(request.status)}
+                                status={request.status}
+                                size="small"
+                              />
+                            </StyledTableCell>
+                            <StyledTableCell>
+                              <Box display="flex" gap={1}>
+                                <Button
+                                  size="small"
+                                  variant="contained"
+                                  color="success"
+                                  onClick={() => handleApprove(request)}
+                                  startIcon={<i className="ri-check-line" />}
+                                  sx={{ fontSize: '0.75rem', py: 0.5 }}
+                                >
+                                  Duyệt
+                                </Button>
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  color="error"
+                                  onClick={() => handleReject(request)}
+                                  startIcon={<i className="ri-close-line" />}
+                                  sx={{ fontSize: '0.75rem', py: 0.5 }}
+                                >
+                                  Từ chối
+                                </Button>
+                              </Box>
+                            </StyledTableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                ) : (
+                  <Alert severity="info">Không có yêu cầu kích hoạt lịch nào đang chờ duyệt.</Alert>
                 )}
               </Box>
             )}
 
             {/* Cancelled Requests Tab */}
-            {tabValue === 1 && (
+            {tabValue === 2 && (
               <Box>
                 {isWeeksLoading || isCancelledLoading ? (
                   <Box display="flex" justifyContent="center" alignItems="center" minHeight={200}>
@@ -434,7 +597,10 @@ const ScheduleRequests = () => {
               }}
             />
             <Typography variant="h6" fontWeight={600}>
-              {actionType === 'approve' ? 'Duyệt yêu cầu hủy lịch' : 'Từ chối yêu cầu hủy lịch'}
+              {selectedRequest?.status === ScheduleStatus.ON_REQUEST_CHANGE
+                ? (actionType === 'approve' ? 'Duyệt yêu cầu hủy lịch' : 'Từ chối yêu cầu hủy lịch')
+                : (actionType === 'approve' ? 'Duyệt yêu cầu kích hoạt lịch' : 'Từ chối yêu cầu kích hoạt lịch')
+              }
             </Typography>
           </Box>
         </DialogTitle>
@@ -442,7 +608,7 @@ const ScheduleRequests = () => {
           {selectedRequest && (
             <Box>
               <Typography variant="body1" gutterBottom>
-                Bạn có chắc chắn muốn {actionType === 'approve' ? 'duyệt' : 'từ chối'} yêu cầu hủy lịch của:
+                Bạn có chắc chắn muốn {actionType === 'approve' ? 'duyệt' : 'từ chối'} yêu cầu {selectedRequest.status === ScheduleStatus.ON_REQUEST_CHANGE ? 'hủy lịch' : 'kích hoạt lịch'} của:
               </Typography>
               <Box sx={{ mt: 2, p: 2, backgroundColor: '#f5f5f5', borderRadius: 1 }}>
                 <Typography variant="body2" fontWeight={600}>
@@ -461,11 +627,32 @@ const ScheduleRequests = () => {
                 )}
               </Box>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-                {actionType === 'approve'
-                  ? 'Lịch học sẽ được hủy và học sinh sẽ không cần tham gia buổi học này.'
-                  : 'Yêu cầu sẽ bị từ chối và học sinh vẫn cần tham gia buổi học như bình thường.'
+                {selectedRequest.status === ScheduleStatus.ON_REQUEST_CHANGE
+                  ? (actionType === 'approve'
+                    ? 'Lịch học sẽ được hủy và học sinh sẽ không cần tham gia buổi học này.'
+                    : 'Yêu cầu sẽ bị từ chối và học sinh vẫn cần tham gia buổi học như bình thường.'
+                  )
+                  : (actionType === 'approve'
+                    ? 'Lịch học sẽ được kích hoạt và học sinh có thể tham gia buổi học này.'
+                    : 'Yêu cầu sẽ bị từ chối và học sinh sẽ không có lịch học cho buổi này.'
+                  )
                 }
               </Typography>
+              {actionType === 'reject' && selectedRequest.status === ScheduleStatus.ON_REQUEST_ACTIVE && (
+                <Box sx={{ mt: 2 }}>
+                  <TextField
+                    fullWidth
+                    label="Lý do từ chối"
+                    placeholder="Nhập lý do từ chối yêu cầu kích hoạt lịch..."
+                    value={statusReason}
+                    onChange={(e) => setStatusReason(e.target.value)}
+                    multiline
+                    rows={3}
+                    variant="outlined"
+                    required
+                  />
+                </Box>
+              )}
             </Box>
           )}
         </DialogContent>
@@ -477,16 +664,16 @@ const ScheduleRequests = () => {
             onClick={handleConfirmAction}
             variant="contained"
             color={actionType === 'approve' ? 'success' : 'error'}
-            disabled={updateScheduleMutation.isPending}
+            disabled={requestScheduleMutation.isPending}
             startIcon={
-              updateScheduleMutation.isPending ? (
+              requestScheduleMutation.isPending ? (
                 <CircularProgress size={16} color="inherit" />
               ) : (
                 <i className={actionType === 'approve' ? 'ri-check-line' : 'ri-close-line'} />
               )
             }
           >
-            {updateScheduleMutation.isPending
+            {requestScheduleMutation.isPending
               ? 'Đang xử lý...'
               : (actionType === 'approve' ? 'Duyệt' : 'Từ chối')
             }

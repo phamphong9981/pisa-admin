@@ -2,7 +2,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 // Axios Import
-import axios from 'axios'
+import { apiClient } from './apiClient'
 
 // Type Imports
 import type { TeacherListResponse } from './useTeacher'
@@ -26,17 +26,14 @@ interface CourseListResponse {
 }
 
 const fetchCourseList = async (region?: number, weekId?: string): Promise<CourseListResponse[]> => {
-    let url = `${process.env.NEXT_PUBLIC_BASE_API}/courses`;
     const params = new URLSearchParams();
 
     if (region) params.append('region', region.toString());
     if (weekId) params.append('weekId', weekId);
 
-    if (params.toString()) {
-        url += `?${params.toString()}`;
-    }
-
-    const { data } = await axios.get(url);
+    const { data } = await apiClient.get('/courses', {
+        params: params.toString() ? Object.fromEntries(params) : undefined
+    });
     return data.data;
 }
 
@@ -71,7 +68,7 @@ export const useCourseInfo = (courseId: string, weekId: string) => {
     return useQuery<CourseInfo, Error>({
         queryKey: ['courseInfo', courseId, weekId],
         queryFn: async () => {
-            const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API}/courses/${courseId}/${weekId}`);
+            const { data } = await apiClient.get(`/courses/${courseId}/${weekId}`);
 
             return data.data;
         },
@@ -100,7 +97,7 @@ interface CreateCourseRequest {
 }
 
 const createCourse = async (createCourseRequest: CreateCourseRequest) => {
-    const { data } = await axios.post(`${process.env.NEXT_PUBLIC_BASE_API}/courses`, createCourseRequest);
+    const { data } = await apiClient.post('/courses', createCourseRequest);
 
     return data.data;
 }
@@ -122,7 +119,7 @@ export const useCreateCourse = () => {
 
 
 const registerCourse = async (courseId: string, profileIds: string[]) => {
-    const { data } = await axios.post(`${process.env.NEXT_PUBLIC_BASE_API}/courses/register-course`, {
+    const { data } = await apiClient.post('/courses/register-course', {
         profile_ids: profileIds,
         course_id: courseId
     });
@@ -145,7 +142,7 @@ export const useRegisterCourse = () => {
 }
 
 const unregisterCourse = async (courseId: string, profileId: string) => {
-    const { data } = await axios.post(`${process.env.NEXT_PUBLIC_BASE_API}/courses/unregister-course`, {
+    const { data } = await apiClient.post('/courses/unregister-course', {
         profile_id: profileId,
         course_id: courseId
     });
