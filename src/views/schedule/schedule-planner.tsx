@@ -47,14 +47,30 @@ const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
   fontSize: '0.9rem',
   position: 'sticky',
   top: 0,
-  zIndex: 1
+  zIndex: 2
+}))
+
+const StyledFirstHeaderCell = styled(TableCell)(({ theme }) => ({
+  fontWeight: 700,
+  backgroundColor: theme.palette.grey[100],
+  color: theme.palette.text.primary,
+  borderBottom: `2px solid ${theme.palette.divider}`,
+  fontSize: '0.9rem',
+  position: 'sticky',
+  top: 0,
+  left: 0,
+  zIndex: 3,
+  minWidth: 140
 }))
 
 const DayCell = styled(TableCell)(({ theme }) => ({
   fontWeight: 600,
   backgroundColor: theme.palette.grey[50],
   borderRight: `1px solid ${theme.palette.divider}`,
-  minWidth: 140
+  minWidth: 140,
+  position: 'sticky',
+  left: 0,
+  zIndex: 1
 }))
 
 const GridCell = styled(TableCell)(({ theme }) => ({
@@ -1094,11 +1110,18 @@ const SchedulePlanner = () => {
             ) : courseInfoError ? (
               <Alert severity="error">Lỗi tải thông tin khóa học: {courseInfoError.message}</Alert>
             ) : (
-              <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
+              <TableContainer
+                component={Paper}
+                sx={{
+                  borderRadius: 2,
+                  maxHeight: '80vh',
+                  overflow: 'auto'
+                }}
+              >
                 <Table stickyHeader size="small">
                   <TableHead>
                     <TableRow>
-                      <StyledHeaderCell>Thứ / Giờ</StyledHeaderCell>
+                      <StyledFirstHeaderCell>Thứ / Giờ</StyledFirstHeaderCell>
                       {times.map(t => (
                         <StyledHeaderCell key={t} align="center">{t}</StyledHeaderCell>
                       ))}
