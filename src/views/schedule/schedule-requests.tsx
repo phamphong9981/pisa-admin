@@ -80,6 +80,16 @@ const StatusChip = styled(Chip)<{ status: string }>(({ status }) => ({
     backgroundColor: '#e8f5e8',
     color: '#2e7d32',
     border: '1px solid #4caf50'
+  }),
+  ...(status === ScheduleStatus.CHANGED && {
+    backgroundColor: '#e3f2fd',
+    color: '#1565c0',
+    border: '1px solid #2196f3'
+  }),
+  ...(status === ScheduleStatus.APPROVED_ACTIVE && {
+    backgroundColor: '#e8f5e8',
+    color: '#2e7d32',
+    border: '1px solid #4caf50'
   })
 }))
 
@@ -152,6 +162,13 @@ const ScheduleRequests = () => {
     error: approvedActiveError
   } = useGetScheduleByFields(ScheduleStatus.APPROVED_ACTIVE, openWeekId || "")
 
+  // Fetch changed requests
+  const {
+    data: changedRequests,
+    isLoading: isChangedLoading,
+    error: changedError
+  } = useGetScheduleByFields(ScheduleStatus.CHANGED, openWeekId || "")
+
   const requestScheduleMutation = useRequestSchedule()
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
@@ -161,13 +178,15 @@ const ScheduleRequests = () => {
   const getStatusText = (status: string) => {
     switch (status) {
       case ScheduleStatus.ON_REQUEST_CHANGE:
-        return 'Yêu cầu hủy lịch'
+        return 'Yêu cầu đổi lịch'
       case ScheduleStatus.ON_REQUEST_ACTIVE:
-        return 'Yêu cầu kích hoạt lịch'
+        return 'Yêu cầu tham gia lớp'
       case ScheduleStatus.CANCELLED:
-        return 'Đã hủy'
+        return 'Đã xin nghỉ'
       case ScheduleStatus.APPROVED_ACTIVE:
-        return 'Đã kích hoạt'
+        return 'Đã chấp thuận tham gia lớp'
+      case ScheduleStatus.CHANGED:
+        return 'Đã đổi lịch'
       case ScheduleStatus.NO_SCHEDULE:
         return 'Không có lịch'
       case ScheduleStatus.ACTIVE:
@@ -215,7 +234,7 @@ const ScheduleRequests = () => {
       if (selectedRequest.status === ScheduleStatus.ON_REQUEST_CHANGE) {
         // Xử lý yêu cầu hủy lịch
         if (actionType === 'approve') {
-          newStatus = ScheduleStatus.CANCELLED
+          newStatus = ScheduleStatus.CHANGED
           successMsg = 'Đã duyệt yêu cầu hủy lịch thành công!'
         } else {
           newStatus = ScheduleStatus.ACTIVE
@@ -277,23 +296,28 @@ const ScheduleRequests = () => {
           <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
             <StyledTabs value={tabValue} onChange={handleTabChange} aria-label="schedule requests tabs">
               <Tab
-                label={`Yêu cầu hủy lịch (${pendingChangeRequests?.length || 0})`}
+                label={`Yêu cầu đổi lịch (${pendingChangeRequests?.length || 0})`}
                 icon={<i className="ri-close-circle-line" />}
                 iconPosition="start"
               />
               <Tab
-                label={`Yêu cầu kích hoạt (${pendingActiveRequests?.length || 0})`}
+                label={`Yêu cầu tham gia lớp (${pendingActiveRequests?.length || 0})`}
                 icon={<i className="ri-play-circle-line" />}
                 iconPosition="start"
               />
               <Tab
-                label={`Đã hủy (${cancelledRequests?.length || 0})`}
+                label={`Đã xin nghỉ (${cancelledRequests?.length || 0})`}
                 icon={<i className="ri-check-line" />}
                 iconPosition="start"
               />
               <Tab
-                label={`Đã kích hoạt (${approvedActiveRequests?.length || 0})`}
+                label={`Đã chấp thuận tham gia lớp (${approvedActiveRequests?.length || 0})`}
                 icon={<i className="ri-check-double-line" />}
+                iconPosition="start"
+              />
+              <Tab
+                label={`Đã đổi lịch (${changedRequests?.length || 0})`}
+                icon={<i className="ri-repeat-line" />}
                 iconPosition="start"
               />
             </StyledTabs>
@@ -533,6 +557,160 @@ const ScheduleRequests = () => {
                       </TableHead>
                       <TableBody>
                         {cancelledRequests.map((request) => (
+                          <TableRow key={request.id}>
+                            <StyledTableCell>
+                              <Box display="flex" alignItems="center" gap={2}>
+                                <Avatar sx={{ width: 32, height: 32, fontSize: '0.75rem' }}>
+                                  {getInitials(request.fullname)}
+                                </Avatar>
+                                <Typography variant="body2" fontWeight={500}>
+                                  {request.fullname}
+                                </Typography>
+                              </Box>
+                            </StyledTableCell>
+                            <StyledTableCell>
+                              <Typography variant="body2">
+                                {request.classname}
+                              </Typography>
+                            </StyledTableCell>
+                            <StyledTableCell>
+                              <Typography variant="body2">
+                                Buổi {request.lesson}
+                              </Typography>
+                            </StyledTableCell>
+                            <StyledTableCell>
+                              <Typography variant="body2">
+                                {formatTimeRange(request.startTime, request.endTime)}
+                              </Typography>
+                            </StyledTableCell>
+                            <StyledTableCell>
+                              <Typography variant="body2" color="text.secondary">
+                                {request.note || '—'}
+                              </Typography>
+                            </StyledTableCell>
+                            <StyledTableCell>
+                              <StatusChip
+                                label={getStatusText(request.status)}
+                                status={request.status}
+                                size="small"
+                              />
+                            </StyledTableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                ) : (
+                  <Alert severity="info">Không có yêu cầu đổi lịch nào đã được duyệt.</Alert>
+                )}
+              </Box>
+            )}
+
+            {/* Approved Active Requests Tab */}
+            {tabValue === 3 && (
+              <Box>
+                {isWeeksLoading || isApprovedActiveLoading ? (
+                  <Box display="flex" justifyContent="center" alignItems="center" minHeight={200}>
+                    <CircularProgress />
+                  </Box>
+                ) : weeksError ? (
+                  <Alert severity="error">Lỗi tải danh sách tuần: {weeksError.message}</Alert>
+                ) : !openWeekId ? (
+                  <Alert severity="warning">Không có tuần nào đang mở để xem yêu cầu đổi lịch.</Alert>
+                ) : approvedActiveError ? (
+                  <Alert severity="error">Lỗi tải danh sách yêu cầu đã kích hoạt: {approvedActiveError.message}</Alert>
+                ) : approvedActiveRequests && approvedActiveRequests.length > 0 ? (
+                  <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <StyledHeaderCell>Học sinh</StyledHeaderCell>
+                          <StyledHeaderCell>Lớp</StyledHeaderCell>
+                          <StyledHeaderCell>Buổi</StyledHeaderCell>
+                          <StyledHeaderCell>Thời gian</StyledHeaderCell>
+                          <StyledHeaderCell>Ghi chú</StyledHeaderCell>
+                          <StyledHeaderCell>Trạng thái</StyledHeaderCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {approvedActiveRequests.map((request) => (
+                          <TableRow key={request.id}>
+                            <StyledTableCell>
+                              <Box display="flex" alignItems="center" gap={2}>
+                                <Avatar sx={{ width: 32, height: 32, fontSize: '0.75rem' }}>
+                                  {getInitials(request.fullname)}
+                                </Avatar>
+                                <Typography variant="body2" fontWeight={500}>
+                                  {request.fullname}
+                                </Typography>
+                              </Box>
+                            </StyledTableCell>
+                            <StyledTableCell>
+                              <Typography variant="body2">
+                                {request.classname}
+                              </Typography>
+                            </StyledTableCell>
+                            <StyledTableCell>
+                              <Typography variant="body2">
+                                Buổi {request.lesson}
+                              </Typography>
+                            </StyledTableCell>
+                            <StyledTableCell>
+                              <Typography variant="body2">
+                                {formatTimeRange(request.startTime, request.endTime)}
+                              </Typography>
+                            </StyledTableCell>
+                            <StyledTableCell>
+                              <Typography variant="body2" color="text.secondary">
+                                {request.note || '—'}
+                              </Typography>
+                            </StyledTableCell>
+                            <StyledTableCell>
+                              <StatusChip
+                                label={getStatusText(request.status)}
+                                status={request.status}
+                                size="small"
+                              />
+                            </StyledTableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                ) : (
+                  <Alert severity="info">Không có yêu cầu kích hoạt nào đã được duyệt.</Alert>
+                )}
+              </Box>
+            )}
+
+            {/* Changed Requests Tab */}
+            {tabValue === 4 && (
+              <Box>
+                {isWeeksLoading || isChangedLoading ? (
+                  <Box display="flex" justifyContent="center" alignItems="center" minHeight={200}>
+                    <CircularProgress />
+                  </Box>
+                ) : weeksError ? (
+                  <Alert severity="error">Lỗi tải danh sách tuần: {weeksError.message}</Alert>
+                ) : !openWeekId ? (
+                  <Alert severity="warning">Không có tuần nào đang mở để xem yêu cầu đổi lịch.</Alert>
+                ) : changedError ? (
+                  <Alert severity="error">Lỗi tải danh sách yêu cầu đã đổi lịch: {changedError.message}</Alert>
+                ) : changedRequests && changedRequests.length > 0 ? (
+                  <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <StyledHeaderCell>Học sinh</StyledHeaderCell>
+                          <StyledHeaderCell>Lớp</StyledHeaderCell>
+                          <StyledHeaderCell>Buổi</StyledHeaderCell>
+                          <StyledHeaderCell>Thời gian</StyledHeaderCell>
+                          <StyledHeaderCell>Ghi chú</StyledHeaderCell>
+                          <StyledHeaderCell>Trạng thái</StyledHeaderCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {changedRequests.map((request) => (
                           <TableRow key={request.id}>
                             <StyledTableCell>
                               <Box display="flex" alignItems="center" gap={2}>
