@@ -7,7 +7,8 @@ export interface TeacherListResponse {
     skills: string[],
     registeredBusySchedule: number[],
     createdAt: string,
-    updatedAt: string
+    updatedAt: string,
+    userId: string
 }
 
 // Function để gọi API lấy danh sách teacher
@@ -49,6 +50,50 @@ export const useUpdateTeacherBusySchedule = () => {
     return useMutation({
         mutationFn: ({ teacherId, busySchedule }: { teacherId: string; busySchedule: number[] }) =>
             updateTeacherBusySchedule(teacherId, busySchedule),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['teachers'] })
+        }
+    })
+}
+
+
+export interface CreateTeacherAccountDto {
+    username: string
+    password: string
+    fullname: string
+    email: string
+    phone: string
+    name: string
+    skills: string[]
+}
+
+const createTeacherAccount = async (teacher: CreateTeacherAccountDto) => {
+    const { data } = await apiClient.post('/user/register-teacher', teacher);
+
+    return data.data;
+}
+
+export const useCreateTeacherAccount = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (teacher: CreateTeacherAccountDto) => createTeacherAccount(teacher),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['teachers'] })
+        }
+    })
+}
+
+
+const deleteTeacherAccount = async (teacherId: string) => {
+    const { data } = await apiClient.delete(`/user/${teacherId}`);
+
+    return data.data;
+}
+
+export const useDeleteTeacherAccount = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (teacherId: string) => deleteTeacherAccount(teacherId),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['teachers'] })
         }

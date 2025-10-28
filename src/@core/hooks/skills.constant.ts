@@ -1,0 +1,13 @@
+export enum Skills {
+    LISTENING = 'LISTENING',
+    SPEAKING_1 = 'SPEAKING 1',
+    SPEAKING_2 = 'SPEAKING 2',
+    WRITING_1 = 'WRITING 1',
+    WRITING_2 = 'WRITING 2',
+    READING = 'READING',
+    PREP_W = "PREP-W",
+    VOCAB = "VOCAB",
+    GRAMMAR = 'GRAMMAR',
+    PRONUNCE = 'PRONUNCE',
+    VOCAB_GRAMAR = 'VOCAB + GRAMMAR'
+}
