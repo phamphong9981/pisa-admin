@@ -99,3 +99,24 @@ export const useDeleteTeacherAccount = () => {
         }
     })
 }
+
+export interface UpdateTeacherDto {
+    name: string
+    skills: string[]
+}
+
+const updateTeacher = async (teacherId: string, teacher: UpdateTeacherDto) => {
+    const { data } = await apiClient.put(`/teachers/${teacherId}`, teacher);
+
+    return data.data;
+}
+
+export const useUpdateTeacher = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ teacherId, teacher }: { teacherId: string, teacher: UpdateTeacherDto }) => updateTeacher(teacherId, teacher),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['teachers'] })
+        }
+    })
+}
