@@ -553,3 +553,22 @@ export const useRequestSchedule = () => {
         },
     })
 }
+
+// Export schedule info CSV
+export interface ExportScheduleInfoResponse {
+    filename: string
+    contentType: string
+    contentDisposition: string
+    content: string
+}
+
+export const exportScheduleInfo = async (weekId: string, download: boolean = true): Promise<ExportScheduleInfoResponse> => {
+    const { data } = await apiClient.get('/export/schedule-info', {
+        params: { weekId, download }
+    })
+
+    // Some APIs wrap payload in data.data, handle both
+    const payload = (data && data.data) ? data.data : data
+
+    return payload as ExportScheduleInfoResponse
+}

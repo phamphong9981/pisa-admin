@@ -4,13 +4,50 @@ export const runtime = 'edge';
 
 import React from 'react'
 
-import { Box, Card, CardContent, Grid, IconButton, InputAdornment, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from '@mui/material'
+import { Box, Button, Card, CardContent, Grid, IconButton, InputAdornment, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from '@mui/material'
 
 import { useGetTotalStudyHours } from '@/@core/hooks/useAccounting'
+import { exportScheduleInfo } from '@/@core/hooks/useSchedule'
+import { useGetWeeks, WeekResponseDto, ScheduleStatus as WeekStatus } from '@/@core/hooks/useWeek'
 
 const AccountingPage = () => {
   const [search, setSearch] = React.useState<string | undefined>(undefined)
   const { data, isFetching } = useGetTotalStudyHours(search)
+  const { data: weeksData, isLoading: isWeeksLoading } = useGetWeeks()
+  const [selectedWeekId, setSelectedWeekId] = React.useState<string>('')
+
+  const weeks = React.useMemo(() => weeksData || [], [weeksData])
+  const openWeek = React.useMemo(() => weeks.find(w => w.scheduleStatus === WeekStatus.OPEN), [weeks])
+
+  React.useMemo(() => {
+    if (weeks.length > 0 && !selectedWeekId) {
+      if (openWeek) {
+        setSelectedWeekId(openWeek.id)
+      } else {
+        const sorted = [...weeks].sort((a: WeekResponseDto, b: WeekResponseDto) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
+        setSelectedWeekId(sorted[0].id)
+      }
+    }
+  }, [weeks, selectedWeekId, openWeek])
+
+  const handleDownloadSchedule = async () => {
+    try {
+      const weekId = selectedWeekId
+      if (!weekId) return
+      const res = await exportScheduleInfo(weekId, true)
+      const blob = new Blob([res.content], { type: res.contentType || 'text/csv; charset=utf-8' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = res.filename || 'schedule.csv'
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (e) {
+      // swallow
+    }
+  }
 
   return (
     <Grid container spacing={6}>
@@ -43,6 +80,14 @@ const AccountingPage = () => {
                   )
                 }}
               />
+              <Button
+                variant='contained'
+                onClick={handleDownloadSchedule}
+                disabled={isWeeksLoading || !selectedWeekId}
+                startIcon={<i className='ri-download-line' />}
+              >
+                Tải lịch tuần (CSV)
+              </Button>
             </Box>
 
             <TableContainer>
