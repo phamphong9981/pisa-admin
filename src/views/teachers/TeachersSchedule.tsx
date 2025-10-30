@@ -906,7 +906,7 @@ const TeachersSchedule = () => {
         weekId={selectedWeekId}
         teacherName={scheduleDetailPopup.teacherName}
         className={scheduleDetailPopup.className}
-        scheduleTime={scheduleDetailPopup.scheduleTime}
+        scheduleTime={scheduleDetailPopup.scheduleTime}    
       />
     </>
   )

@@ -241,7 +241,15 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
   const [selectedStudentName, setSelectedStudentName] = React.useState<string>('')
   const [showTimeSuccess, setShowTimeSuccess] = React.useState(false)
 
-  const { data: scheduleDetail, isLoading, error } = useGetScheduleDetail(classId, lesson, weekId, scheduleTime)
+  const scheduleDetailQuery = useGetScheduleDetail(classId, lesson, weekId, scheduleTime)
+  const { data: scheduleDetail, isLoading, error } = scheduleDetailQuery
+
+  // Refetch detail whenever dialog opens (component may stay mounted)
+  React.useEffect(() => {
+    if (open) {
+      scheduleDetailQuery.refetch()
+    }
+  }, [open, classId, lesson, weekId, scheduleTime])
   const updateRollcallMutation = useUpdateRollcallStatus()
   const updateUserScheduleMutation = useUpdateUserSchedule()
 

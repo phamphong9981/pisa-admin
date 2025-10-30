@@ -179,8 +179,10 @@ export const useGetAllSchedule = (enable: boolean, courseId?: string, weekId?: s
     return useQuery({
         queryKey: ['schedules', courseId, weekId],
         queryFn: () => getAllSchedule(courseId, weekId),
-
         enabled: enable || !!courseId,
+        // Refetch every 2 seconds for near-real-time updates
+        refetchInterval: 2000,
+        refetchIntervalInBackground: true,
         staleTime: 5 * 60 * 1000, // 5 phút
         gcTime: 10 * 60 * 1000, // 10 phút
         retry: 1,
@@ -317,8 +319,12 @@ export const useGetScheduleDetail = (classId: string, lesson: number, weekId: st
         queryKey: ['schedule-detail', classId, lesson, weekId, scheduleTime],
         queryFn: () => getScheduleDetail(classId, lesson, weekId, scheduleTime),
         enabled: !!classId && !!lesson,
-        staleTime: 5 * 60 * 1000, // 5 phút
-        gcTime: 10 * 60 * 1000, // 10 phút
+        // Always fetch fresh, avoid caching for detail
+        staleTime: 0,
+        gcTime: 0,
+        refetchOnMount: true,
+        refetchOnWindowFocus: true,
+        refetchOnReconnect: true,
         retry: 1,
         retryDelay: (attemptIndex) => Math.min(1000 * 1 ** attemptIndex, 30000),
     })
