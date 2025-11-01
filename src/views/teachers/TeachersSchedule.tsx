@@ -217,6 +217,7 @@ const TeachersSchedule = () => {
   // States for filtering
   const [selectedTeachers, setSelectedTeachers] = useState<any[]>([])
   const [selectedDay, setSelectedDay] = useState<string>('all')
+  const [selectedTimeRange, setSelectedTimeRange] = useState<string>('all')
 
   // States for schedule detail popup
   const [scheduleDetailPopup, setScheduleDetailPopup] = useState<{
@@ -267,17 +268,28 @@ const TeachersSchedule = () => {
 
   // Filter time slots based on selected day
   const filteredTimeSlots = useMemo(() => {
-    if (selectedDay === 'all') return allTimeSlots
+    let slots = selectedDay === 'all'
+      ? allTimeSlots
+      : allTimeSlots.filter(slot => slot.day === selectedDay)
 
-    return allTimeSlots.filter(slot => slot.day === selectedDay)
-  }, [allTimeSlots, selectedDay])
+    if (selectedTimeRange !== 'all') {
+      slots = slots.filter(slot => slot.time === selectedTimeRange)
+    }
+
+    return slots
+  }, [allTimeSlots, selectedDay, selectedTimeRange])
 
   // Get unique days for filter dropdown
   const uniqueDays = useMemo(() => {
     const days = allTimeSlots.map(slot => slot.day)
 
-
     return ['all', ...Array.from(new Set(days))]
+  }, [allTimeSlots])
+
+  const uniqueTimeRanges = useMemo(() => {
+    const times = allTimeSlots.map(slot => slot.time)
+
+    return ['all', ...Array.from(new Set(times))]
   }, [allTimeSlots])
 
   // Check if teacher is busy at specific slot
@@ -523,7 +535,7 @@ const TeachersSchedule = () => {
           {/* Filter Section */}
           <Box sx={{ mb: 3 }}>
             <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={4}>
                 <Autocomplete
                   multiple
                   options={teachers || []}
@@ -599,7 +611,7 @@ const TeachersSchedule = () => {
                   handleHomeEndKeys
                 />
               </Grid>
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={4}>
                 <FormControl fullWidth>
                   <InputLabel>Lọc theo ngày</InputLabel>
                   <Select
@@ -610,6 +622,22 @@ const TeachersSchedule = () => {
                     {uniqueDays.map((day) => (
                       <MenuItem key={day} value={day}>
                         {day === 'all' ? 'Tất cả các ngày' : day}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <FormControl fullWidth>
+                  <InputLabel>Lọc theo khung giờ</InputLabel>
+                  <Select
+                    value={selectedTimeRange}
+                    onChange={(e) => setSelectedTimeRange(e.target.value)}
+                    label="Lọc theo khung giờ"
+                  >
+                    {uniqueTimeRanges.map((timeRange) => (
+                      <MenuItem key={timeRange} value={timeRange}>
+                        {timeRange === 'all' ? 'Tất cả khung giờ' : timeRange}
                       </MenuItem>
                     ))}
                   </Select>
@@ -658,17 +686,25 @@ const TeachersSchedule = () => {
             )}
 
             {/* Filter Summary */}
-            {selectedDay !== 'all' && (
+            {(selectedDay !== 'all' || selectedTimeRange !== 'all') && (
               <Box sx={{ mt: 2, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1 }}>
                   <i className="ri-filter-line" style={{ marginRight: 8 }} />
                   Đang lọc:
-                  <Chip
-                    label={`Ngày: ${selectedDay}`}
-                    size="small"
-                    sx={{ ml: 1 }}
-                    onDelete={() => setSelectedDay('all')}
-                  />
+                  {selectedDay !== 'all' && (
+                    <Chip
+                      label={`Ngày: ${selectedDay}`}
+                      size="small"
+                      onDelete={() => setSelectedDay('all')}
+                    />
+                  )}
+                  {selectedTimeRange !== 'all' && (
+                    <Chip
+                      label={`Khung giờ: ${selectedTimeRange}`}
+                      size="small"
+                      onDelete={() => setSelectedTimeRange('all')}
+                    />
+                  )}
                 </Typography>
               </Box>
             )}
@@ -818,66 +854,6 @@ const TeachersSchedule = () => {
               </TableBody>
             </Table>
           </TableContainer>
-
-          {/* Summary */}
-          <Box mt={3}>
-            <Typography variant="h6" gutterBottom>
-              Thống kê {filteredTeachers.length !== teachers?.length && `(${filteredTeachers.length}/${teachers?.length} giáo viên)`}
-            </Typography>
-            <Box display="flex" gap={2} flexWrap="wrap">
-              {filteredTeachers.map((teacher) => {
-                const busySlots = teacher.registeredBusySchedule.length
-                const teachingSlots = schedules?.filter(s => s.teacher_id === teacher.id).length || 0
-                const totalSlots = SCHEDULE_TIME.length
-                const freeSlots = totalSlots - busySlots - teachingSlots
-
-                return (
-                  <Card key={teacher.id} variant="outlined" sx={{ minWidth: 200 }}>
-                    <CardContent sx={{ p: 2 }}>
-                      <Typography variant="subtitle2" fontWeight={600}>
-                        {teacher.name}
-                      </Typography>
-                      <Box display="flex" justifyContent="space-between" mt={1}>
-                        <Typography variant="body2" sx={{ color: '#2e7d32' }}>
-                          Rảnh: {freeSlots}/{totalSlots}
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: '#c62828' }}>
-                          Bận: {busySlots}/{totalSlots}
-                        </Typography>
-                      </Box>
-                      <Box display="flex" justifyContent="space-between" mt={0.5}>
-                        <Typography variant="body2" sx={{ color: '#1976d2' }}>
-                          Đang dạy: {teachingSlots}/{totalSlots}
-                        </Typography>
-                      </Box>
-                      <Box display="flex" justifyContent="space-between" mt={0.5}>
-                        <Typography variant="body2" sx={{ color: '#666', fontSize: '0.75rem' }}>
-                          Tổng HS: {(() => {
-                            const totalStudents = schedules?.filter(s => s.teacher_id === teacher.id)
-                              .reduce((total, schedule) => {
-                                const students = Array.isArray(schedule.students) ? schedule.students : [];
-                                return total + students.length;
-                              }, 0) || 0;
-                            return totalStudents;
-                          })()}
-                        </Typography>
-                      </Box>
-                      <Box display="flex" gap={0.5} mt={1}>
-                        {teacher.skills.map((skill, index) => (
-                          <Chip
-                            key={index}
-                            label={skill}
-                            size="small"
-                            variant="outlined"
-                          />
-                        ))}
-                      </Box>
-                    </CardContent>
-                  </Card>
-                )
-              })}
-            </Box>
-          </Box>
         </CardContent>
       </Card>
 
@@ -906,7 +882,7 @@ const TeachersSchedule = () => {
         weekId={selectedWeekId}
         teacherName={scheduleDetailPopup.teacherName}
         className={scheduleDetailPopup.className}
-        scheduleTime={scheduleDetailPopup.scheduleTime}    
+        scheduleTime={scheduleDetailPopup.scheduleTime}
       />
     </>
   )
