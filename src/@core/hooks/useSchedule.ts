@@ -141,7 +141,14 @@ export const useUpdateUserSchedule = () => {
     })
 }
 
-interface allScheduleResponse {
+export interface AllScheduleStudentDto {
+    id: string
+    fullname: string
+    note?: string
+    coursename?: string
+}
+
+export interface AllScheduleResponse {
     schedule_time: number
     teacher_id: string
     class_name: string
@@ -153,18 +160,13 @@ interface allScheduleResponse {
     fullname?: string
     email?: string
     phone?: string
-    students?: {
-        id: string
-        fullname: string
-        note?: string
-        coursename?: string
-    },
+    students?: AllScheduleStudentDto[] | AllScheduleStudentDto | null
     note?: string
     start_time?: string
     end_time?: string
 }
 
-const getAllSchedule = async (courseId?: string, weekId?: string): Promise<allScheduleResponse[]> => {
+const getAllSchedule = async (courseId?: string, weekId?: string): Promise<AllScheduleResponse[]> => {
     const { data } = await apiClient.get('/schedules', {
         params: {
             weekId,

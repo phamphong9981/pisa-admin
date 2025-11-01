@@ -2,86 +2,165 @@ import { saveAs } from 'file-saver'
 import * as XLSX from 'xlsx'
 
 import type { TeacherListResponse } from './useTeacher'
+import { SCHEDULE_TIME, type AllScheduleResponse, type AllScheduleStudentDto } from './useSchedule'
 
-// Constants
-const DAYS = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật']
+const DAY_MAP: Record<string, string> = {
+    Monday: 'Thứ 2',
+    Tuesday: 'Thứ 3',
+    Wednesday: 'Thứ 4',
+    Thursday: 'Thứ 5',
+    Friday: 'Thứ 6',
+    Saturday: 'Thứ 7',
+    Sunday: 'Chủ nhật'
+}
 
-const TIME_SLOTS = [
-    '8:00-10:00',
-    '10:00-12:00',
-    '13:00-15:00',
-    '15:00-17:00',
-    '18:00-20:00',
-    '20:00-22:00'
-]
+interface TimeSlotForExport {
+    slot: number // zero-based index, consistent with UI mapping
+    day: string
+    time: string
+}
 
 interface ExportData {
     [key: string]: string | number
 }
 
 export const useExport = () => {
+    const defaultTimeSlots: TimeSlotForExport[] = SCHEDULE_TIME.map((slot, index) => {
+        const [time, englishDay] = slot.split(' ')
+
+        return {
+            slot: index,
+            day: DAY_MAP[englishDay] ?? englishDay,
+            time
+        }
+    })
+
+    const normalizeStudents = (students?: AllScheduleResponse['students']): AllScheduleStudentDto[] => {
+        if (!students) return []
+
+        if (Array.isArray(students)) {
+            return students
+        }
+
+        return [students]
+    }
+
+    const formatStudentLabel = (student: AllScheduleStudentDto) => {
+        const courseName = student.coursename ? ` - ${student.coursename}` : ''
+        return student.note ? `${student.fullname}${courseName} (${student.note})` : `${student.fullname}${courseName}`
+    }
+
     // Format dữ liệu cho export
-    const formatTeachersScheduleForExport = (teachers: TeacherListResponse[]) => {
+    const formatTeachersScheduleForExport = (
+        teachers: TeacherListResponse[],
+        schedules: AllScheduleResponse[] | undefined,
+        options?: {
+            timeSlots?: TimeSlotForExport[]
+            includeSummary?: boolean
+        }
+    ) => {
         if (!teachers || teachers.length === 0) return []
+
+        const effectiveTimeSlots = options?.timeSlots?.length ? options.timeSlots : defaultTimeSlots
+        const includeSummary = options?.includeSummary ?? true
 
         const data: ExportData[] = []
 
-        // Tạo header row
+        // Header row với thông tin kỹ năng
         const headerRow: ExportData = { 'Khung giờ': 'Giáo viên →' }
 
         teachers.forEach(teacher => {
-            headerRow[teacher.name] = `${teacher.skills.join(', ')}`
+            headerRow[teacher.name] = teacher.skills.length ? teacher.skills.join(', ') : 'Không có kỹ năng'
         })
         data.push(headerRow)
 
-        // Tạo dữ liệu cho từng khung giờ
-        let slotIndex = 0
+        // Thêm dữ liệu từng khung giờ
+        effectiveTimeSlots.forEach(slotInfo => {
+            const slotNumber = slotInfo.slot + 1 // schedule_time sử dụng chỉ số 1-based
+            const row: ExportData = {
+                'Khung giờ': `${slotInfo.day} ${slotInfo.time}`
+            }
 
-        DAYS.forEach((day) => {
-            TIME_SLOTS.forEach((time) => {
-                const row: ExportData = {
-                    'Khung giờ': `${day} ${time}`
+            teachers.forEach(teacher => {
+                const teachingInfo = schedules?.find(schedule =>
+                    schedule.teacher_id === teacher.id && schedule.schedule_time === slotNumber
+                )
+
+                if (teachingInfo) {
+                    const students = normalizeStudents(teachingInfo.students)
+                    const baseInfo = `ĐANG DẠY: ${teachingInfo.class_name} (Buổi ${teachingInfo.lesson})`
+
+                    if (students.length === 0) {
+                        row[teacher.name] = baseInfo
+                    } else {
+                        const studentLines = students.map(student => `- ${formatStudentLabel(student)}`).join('\n')
+                        row[teacher.name] = `${baseInfo}\nHS:\n${studentLines}`
+                    }
+                } else if (teacher.registeredBusySchedule.includes(slotNumber)) {
+                    row[teacher.name] = 'BẬN'
+                } else {
+                    row[teacher.name] = 'RẢNH'
                 }
-
-                teachers.forEach(teacher => {
-                    const isBusy = teacher.registeredBusySchedule.includes(slotIndex)
-
-                    row[teacher.name] = isBusy ? 'BẬN' : 'RẢNH'
-                })
-
-                data.push(row)
-                slotIndex++
             })
+
+            data.push(row)
         })
 
-        // Thêm summary row
-        const summaryHeader: ExportData = { 'Khung giờ': '--- THỐNG KÊ ---' }
+        if (includeSummary) {
+            const summaryHeader: ExportData = { 'Khung giờ': '--- THỐNG KÊ ---' }
 
-        teachers.forEach(teacher => {
-            summaryHeader[teacher.name] = ''
-        })
-        data.push(summaryHeader)
+            teachers.forEach(teacher => {
+                summaryHeader[teacher.name] = ''
+            })
+            data.push(summaryHeader)
 
-        const freeRow: ExportData = { 'Khung giờ': 'Số khung RẢNH' }
-        const busyRow: ExportData = { 'Khung giờ': 'Số khung BẬN' }
+            const freeRow: ExportData = { 'Khung giờ': 'Số khung RẢNH' }
+            const busyRow: ExportData = { 'Khung giờ': 'Số khung BẬN' }
+            const teachingRow: ExportData = { 'Khung giờ': 'Số khung ĐANG DẠY' }
+            const totalStudentsRow: ExportData = { 'Khung giờ': 'Tổng số học sinh' }
 
-        teachers.forEach(teacher => {
-            const busySlots = teacher.registeredBusySchedule.length
-            const freeSlots = 42 - busySlots
+            teachers.forEach(teacher => {
+                const busySlots = teacher.registeredBusySchedule.length
+                const teachingSlots = schedules?.filter(schedule => schedule.teacher_id === teacher.id).length || 0
+                const totalStudents = (schedules || [])
+                    .filter(schedule => schedule.teacher_id === teacher.id)
+                    .reduce((total, schedule) => {
+                        const students = normalizeStudents(schedule.students)
+                        return total + students.length
+                    }, 0)
 
-            freeRow[teacher.name] = freeSlots
-            busyRow[teacher.name] = busySlots
-        })
-        data.push(freeRow)
-        data.push(busyRow)
+                const freeSlots = Math.max(SCHEDULE_TIME.length - busySlots - teachingSlots, 0)
+
+                freeRow[teacher.name] = freeSlots
+                busyRow[teacher.name] = busySlots
+                teachingRow[teacher.name] = teachingSlots
+                totalStudentsRow[teacher.name] = totalStudents
+            })
+
+            data.push(freeRow)
+            data.push(busyRow)
+            data.push(teachingRow)
+            data.push(totalStudentsRow)
+        }
 
         return data
     }
 
     // Export to Excel
-    const exportToExcel = (teachers: TeacherListResponse[], filename = 'lich-ranh-giao-vien') => {
+    const exportToExcel = (
+        teachers: TeacherListResponse[],
+        schedules: AllScheduleResponse[] | undefined,
+        options?: {
+            filename?: string
+            timeSlots?: TimeSlotForExport[]
+            includeSummary?: boolean
+        }
+    ) => {
         try {
-            const data = formatTeachersScheduleForExport(teachers)
+            const data = formatTeachersScheduleForExport(teachers, schedules, {
+                timeSlots: options?.timeSlots,
+                includeSummary: options?.includeSummary
+            })
 
             // Tạo worksheet
             const worksheet = XLSX.utils.json_to_sheet(data)
@@ -89,7 +168,7 @@ export const useExport = () => {
             // Set column widths
             const colWidths = [
                 { wch: 20 }, // Khung giờ column
-                ...teachers.map(() => ({ wch: 15 })) // Teacher columns
+                ...teachers.map(() => ({ wch: 30 })) // Teacher columns rộng hơn để hiển thị chi tiết
             ]
 
             worksheet['!cols'] = colWidths
@@ -110,7 +189,7 @@ export const useExport = () => {
             // Tạo workbook
             const workbook = XLSX.utils.book_new()
 
-            XLSX.utils.book_append_sheet(workbook, worksheet, 'Lịch rảnh giáo viên')
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Lịch dạy giáo viên')
 
             // Export file
             const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
@@ -121,20 +200,33 @@ export const useExport = () => {
 
             const currentDate = new Date().toISOString().slice(0, 10)
 
+            const filename = options?.filename ?? 'lich-giao-vien'
+
             saveAs(blob, `${filename}-${currentDate}.xlsx`)
 
             return { success: true, message: 'Xuất file Excel thành công!' }
         } catch (error) {
             console.error('Export to Excel error:', error)
-            
-return { success: false, message: 'Lỗi khi xuất file Excel!' }
+
+            return { success: false, message: 'Lỗi khi xuất file Excel!' }
         }
     }
 
     // Export to CSV
-    const exportToCSV = (teachers: TeacherListResponse[], filename = 'lich-ranh-giao-vien') => {
+    const exportToCSV = (
+        teachers: TeacherListResponse[],
+        schedules: AllScheduleResponse[] | undefined,
+        options?: {
+            filename?: string
+            timeSlots?: TimeSlotForExport[]
+            includeSummary?: boolean
+        }
+    ) => {
         try {
-            const data = formatTeachersScheduleForExport(teachers)
+            const data = formatTeachersScheduleForExport(teachers, schedules, {
+                timeSlots: options?.timeSlots,
+                includeSummary: options?.includeSummary
+            })
 
             // Convert to CSV format
             const csv = convertToCSV(data)
@@ -143,13 +235,15 @@ return { success: false, message: 'Lỗi khi xuất file Excel!' }
             const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' })
             const currentDate = new Date().toISOString().slice(0, 10)
 
+            const filename = options?.filename ?? 'lich-giao-vien'
+
             saveAs(blob, `${filename}-${currentDate}.csv`)
 
             return { success: true, message: 'Xuất file CSV thành công!' }
         } catch (error) {
             console.error('Export to CSV error:', error)
-            
-return { success: false, message: 'Lỗi khi xuất file CSV!' }
+
+            return { success: false, message: 'Lỗi khi xuất file CSV!' }
         }
     }
 
@@ -168,16 +262,15 @@ return { success: false, message: 'Lỗi khi xuất file CSV!' }
             // Data rows
             ...data.map(row =>
                 headers.map(header => {
-                    const value = row[header]
+                    const rawValue = row[header]
+                    const value = rawValue === undefined || rawValue === null ? '' : String(rawValue)
 
-
-                    // Escape commas and quotes in CSV
-                    if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+                    // Escape commas, quotes, and newlines in CSV
+                    if (value.includes(',') || value.includes('"') || value.includes('\n')) {
                         return `"${value.replace(/"/g, '""')}"`
                     }
 
-                    
-return value
+                    return value
                 }).join(',')
             )
         ].join('\n')
@@ -231,8 +324,8 @@ return value
             return { success: true, message: 'Xuất thống kê thành công!' }
         } catch (error) {
             console.error('Export summary error:', error)
-            
-return { success: false, message: 'Lỗi khi xuất thống kê!' }
+
+            return { success: false, message: 'Lỗi khi xuất thống kê!' }
         }
     }
 

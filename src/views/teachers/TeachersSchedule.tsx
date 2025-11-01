@@ -325,10 +325,27 @@ const TeachersSchedule = () => {
   }
 
   // Export handlers
-  const handleExportExcel = () => {
-    if (!teachers) return
+  const selectedWeekInfo = useMemo(() => {
+    if (!selectedWeekId) return null
 
-    const result = exportToExcel(teachers)
+    return weeks.find(week => week.id === selectedWeekId) || null
+  }, [weeks, selectedWeekId])
+
+  const buildExportFilename = (base: string) => {
+    if (!selectedWeekInfo) return base
+
+    const startDate = new Date(selectedWeekInfo.startDate).toISOString().slice(0, 10)
+
+    return `${base}-${startDate}`
+  }
+
+  const handleExportExcel = () => {
+    if (!filteredTeachers || filteredTeachers.length === 0) return
+
+    const result = exportToExcel(filteredTeachers, schedules, {
+      timeSlots: filteredTimeSlots,
+      filename: buildExportFilename('lich-giao-vien')
+    })
 
     setNotification({
       open: true,
@@ -339,9 +356,12 @@ const TeachersSchedule = () => {
   }
 
   const handleExportCSV = () => {
-    if (!teachers) return
+    if (!filteredTeachers || filteredTeachers.length === 0) return
 
-    const result = exportToCSV(teachers)
+    const result = exportToCSV(filteredTeachers, schedules, {
+      timeSlots: filteredTimeSlots,
+      filename: buildExportFilename('lich-giao-vien')
+    })
 
     setNotification({
       open: true,
@@ -352,9 +372,9 @@ const TeachersSchedule = () => {
   }
 
   const handleExportSummary = () => {
-    if (!teachers) return
+    if (!filteredTeachers || filteredTeachers.length === 0) return
 
-    const result = exportSummary(teachers)
+    const result = exportSummary(filteredTeachers, buildExportFilename('thong-ke-giao-vien'))
 
     setNotification({
       open: true,
@@ -445,7 +465,7 @@ const TeachersSchedule = () => {
                 variant="contained"
                 startIcon={<i className="ri-download-line" />}
                 onClick={handleExportClick}
-                disabled={!teachers || teachers.length === 0}
+                disabled={!filteredTeachers || filteredTeachers.length === 0}
               >
                 Xuất file
               </Button>
