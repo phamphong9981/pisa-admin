@@ -78,3 +78,32 @@ export const useUpdateStudentBusySchedule = () => {
         }
     })
 }
+
+
+export interface CreateUserDto {
+    username: string
+    password: string
+    fullname: string
+    email: string
+    phone?: string
+    courseId: string
+}
+
+const registerUser = async (createUserDto: CreateUserDto) => {
+    const { data } = await apiClient.post('/register', createUserDto);
+
+    return data.data;
+}
+
+export const useCreateUser = (courseId: string) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: registerUser,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['courseInfo', courseId] })
+        },
+        onError: (error) => {
+            console.error('Error registering user:', error)
+        }
+    })
+}

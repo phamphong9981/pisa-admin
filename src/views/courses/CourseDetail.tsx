@@ -29,6 +29,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
   Tooltip,
   Typography
 } from '@mui/material'
@@ -36,7 +37,7 @@ import {
 import { styled } from '@mui/material/styles'
 
 import { useCourseInfo, useRegisterCourse, useUnregisterCourse } from '@/@core/hooks/useCourse'
-import { useStudentList } from '@/@core/hooks/useStudent'
+import { useCreateUser, useStudentList } from '@/@core/hooks/useStudent'
 import { useGetWeeks } from '@/@core/hooks/useWeek'
 import CreateClassForm from '@/views/classes/CreateClassForm'
 import StudentSchedulePopup from '@/views/courses/StudentSchedulePopup'
@@ -102,11 +103,19 @@ const CourseDetail = ({ courseName }: CourseDetailProps) => {
   const router = useRouter()
   const [openCreateClassDialog, setOpenCreateClassDialog] = useState(false)
   const [openRegisterDialog, setOpenRegisterDialog] = useState(false)
+  const [openCreateStudentDialog, setOpenCreateStudentDialog] = useState(false)
   const [openUnregisterDialog, setOpenUnregisterDialog] = useState(false)
   const [studentToUnregister, setStudentToUnregister] = useState<{ id: string; name: string } | null>(null)
   const [searchStudent, setSearchStudent] = useState('')
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([])
   const [selectedWeekId, setSelectedWeekId] = useState<string>('')
+  const [newStudentForm, setNewStudentForm] = useState({
+    username: '',
+    password: '',
+    fullname: '',
+    email: '',
+    phone: ''
+  })
 
   // States for student schedule popup
   const [studentSchedulePopup, setStudentSchedulePopup] = useState<{
@@ -134,6 +143,7 @@ const CourseDetail = ({ courseName }: CourseDetailProps) => {
   const { mutate: unregisterCourse, isPending: isUnregistering } = useUnregisterCourse()
   const { data: studentListData, isLoading: isStudentListLoading } = useStudentList(searchStudent)
   const { data: weeksData, isLoading: isLoadingWeeks } = useGetWeeks()
+  const { mutate: createUser, isPending: isCreatingUser } = useCreateUser(course?.id || '')
 
   // Get registered student IDs
   const registeredStudentIds = useMemo(() => {
@@ -209,6 +219,48 @@ const CourseDetail = ({ courseName }: CourseDetailProps) => {
         },
         onError: () => {
           setNotification({ open: true, message: 'Đăng ký học sinh thất bại!', severity: 'error' })
+        }
+      }
+    )
+  }
+
+  const resetNewStudentForm = () => {
+    setNewStudentForm({
+      username: '',
+      password: '',
+      fullname: '',
+      email: '',
+      phone: ''
+    })
+  }
+
+  const handleCreateStudent = () => {
+    if (!course?.id) return
+
+    const { username, password, fullname, email } = newStudentForm
+
+    if (!username || !password || !fullname || !email) {
+      setNotification({ open: true, message: 'Vui lòng điền đầy đủ thông tin bắt buộc.', severity: 'error' })
+      return
+    }
+
+    createUser(
+      {
+        username: newStudentForm.username,
+        password: newStudentForm.password,
+        fullname: newStudentForm.fullname,
+        email: newStudentForm.email,
+        phone: newStudentForm.phone,
+        courseId: course.id
+      },
+      {
+        onSuccess: () => {
+          setNotification({ open: true, message: 'Tạo học sinh mới thành công!', severity: 'success' })
+          setOpenCreateStudentDialog(false)
+          resetNewStudentForm()
+        },
+        onError: () => {
+          setNotification({ open: true, message: 'Tạo học sinh mới thất bại!', severity: 'error' })
         }
       }
     )
@@ -387,14 +439,24 @@ const CourseDetail = ({ courseName }: CourseDetailProps) => {
                 <Typography variant="h6">
                   Danh sách học sinh ({course?.profileCourses?.length || 0})
                 </Typography>
-                <Button
-                  variant="contained"
-                  size="small"
-                  startIcon={<i className="ri-user-add-line" />}
-                  onClick={() => setOpenRegisterDialog(true)}
-                >
-                  Đăng ký học sinh
-                </Button>
+                <Box display="flex" alignItems="center" gap={1}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<i className="ri-user-add-line" />}
+                    onClick={() => setOpenCreateStudentDialog(true)}
+                  >
+                    Tạo học sinh mới
+                  </Button>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    startIcon={<i className="ri-user-shared-line" />}
+                    onClick={() => setOpenRegisterDialog(true)}
+                  >
+                    Đăng ký học sinh
+                  </Button>
+                </Box>
               </Box>
             }
           />
@@ -716,6 +778,95 @@ const CourseDetail = ({ courseName }: CourseDetailProps) => {
             courseId={course.id}
             onSuccess={() => setOpenCreateClassDialog(false)}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Student Dialog */}
+      <Dialog
+        open={openCreateStudentDialog}
+        onClose={() => {
+          setOpenCreateStudentDialog(false)
+          resetNewStudentForm()
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogContent>
+          <Box mb={3}>
+            <Typography variant="h6" gutterBottom>
+              Tạo học sinh mới
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Điền thông tin học sinh để thêm vào hệ thống và tự động đăng ký vào khóa học hiện tại.
+            </Typography>
+          </Box>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Tên đăng nhập"
+                fullWidth
+                required
+                value={newStudentForm.username}
+                onChange={(e) => setNewStudentForm(prev => ({ ...prev, username: e.target.value }))}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Mật khẩu"
+                type="password"
+                fullWidth
+                required
+                value={newStudentForm.password}
+                onChange={(e) => setNewStudentForm(prev => ({ ...prev, password: e.target.value }))}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                label="Họ và tên"
+                fullWidth
+                required
+                value={newStudentForm.fullname}
+                onChange={(e) => setNewStudentForm(prev => ({ ...prev, fullname: e.target.value }))}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                label="Email"
+                type="email"
+                fullWidth
+                required
+                value={newStudentForm.email}
+                onChange={(e) => setNewStudentForm(prev => ({ ...prev, email: e.target.value }))}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                label="Số điện thoại"
+                fullWidth
+                value={newStudentForm.phone}
+                onChange={(e) => setNewStudentForm(prev => ({ ...prev, phone: e.target.value }))}
+              />
+            </Grid>
+          </Grid>
+          <Box mt={4} display="flex" justifyContent="flex-end" gap={2}>
+            <Button
+              variant="outlined"
+              onClick={() => {
+                setOpenCreateStudentDialog(false)
+                resetNewStudentForm()
+              }}
+              disabled={isCreatingUser}
+            >
+              Hủy
+            </Button>
+            <Button
+              variant="contained"
+              onClick={handleCreateStudent}
+              disabled={isCreatingUser}
+            >
+              {isCreatingUser ? 'Đang tạo...' : 'Tạo học sinh'}
+            </Button>
+          </Box>
         </DialogContent>
       </Dialog>
 
