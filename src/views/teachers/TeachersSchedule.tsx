@@ -38,7 +38,7 @@ import { styled } from '@mui/material/styles'
 
 // Hooks
 import { useExport } from '@/@core/hooks/useExport'
-import { SCHEDULE_TIME, useGetAllSchedule } from '@/@core/hooks/useSchedule'
+import { RollcallStatus, SCHEDULE_TIME, useGetAllSchedule } from '@/@core/hooks/useSchedule'
 import { useTeacherList } from '@/@core/hooks/useTeacher'
 import { useGetWeeks, WeekResponseDto, ScheduleStatus as WeekStatus } from '@/@core/hooks/useWeek'
 
@@ -337,6 +337,45 @@ const TeachersSchedule = () => {
     const startDate = new Date(selectedWeekInfo.startDate).toISOString().slice(0, 10)
 
     return `${base}-${startDate}`
+  }
+
+  const getRollcallStatusConfig = (status?: RollcallStatus) => {
+    switch (status) {
+      case RollcallStatus.ATTENDING:
+        return {
+          label: 'Đã điểm danh',
+          backgroundColor: '#c8e6c9',
+          borderColor: '#81c784',
+          textColor: '#1b5e20',
+          accentColor: '#388e3c'
+        }
+      case RollcallStatus.ABSENT_WITHOUT_REASON:
+        return {
+          label: 'Vắng không lý do',
+          backgroundColor: '#ffcdd2',
+          borderColor: '#ef9a9a',
+          textColor: '#b71c1c',
+          accentColor: '#d32f2f'
+        }
+      case RollcallStatus.ABSENT_WITH_REASON:
+        return {
+          label: 'Vắng có lý do',
+          backgroundColor: '#ffe0b2',
+          borderColor: '#ffcc80',
+          textColor: '#e65100',
+          accentColor: '#fb8c00'
+        }
+      case RollcallStatus.ABSENT_WITH_LATE_REASON:
+        return {
+          label: 'Vắng xin muộn',
+          backgroundColor: '#d1c4e9',
+          borderColor: '#b39ddb',
+          textColor: '#4527a0',
+          accentColor: '#7e57c2'
+        }
+      default:
+        return null
+    }
   }
 
   const handleExportExcel = () => {
@@ -833,14 +872,28 @@ const TeachersSchedule = () => {
                                         const displayLabel = student.note
                                           ? `${student.fullname}${coursename} (${student.note})`
                                           : `${student.fullname}${coursename}`;
+                                        const rollcallStatusConfig = getRollcallStatusConfig(student.rollcall_status as RollcallStatus | undefined)
+                                        const isNotRollcall = !student.rollcall_status || student.rollcall_status === RollcallStatus.NOT_ROLLCALL
+
+                                        const studentSx = rollcallStatusConfig && !isNotRollcall
+                                          ? {
+                                            backgroundColor: `${rollcallStatusConfig.backgroundColor} !important`,
+                                            borderColor: `${rollcallStatusConfig.borderColor} !important`,
+                                            color: `${rollcallStatusConfig.textColor} !important`,
+                                            borderLeft: `4px solid ${rollcallStatusConfig.accentColor}`
+                                          }
+                                          : undefined
 
                                         return (
                                           <Box
                                             key={student.id}
                                             className="student-item"
                                             title={displayLabel}
+                                            sx={studentSx}
                                           >
-                                            {displayLabel}
+                                            <Typography component="span" variant="caption" sx={{ fontWeight: 500 }}>
+                                              {displayLabel}
+                                            </Typography>
                                           </Box>
                                         );
                                       })}
