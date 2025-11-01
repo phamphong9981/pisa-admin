@@ -134,6 +134,30 @@ const ClassBoxSubHeader = styled('div')(({ theme }) => ({
   fontSize: '0.75rem',
 }))
 
+const getDayInVietnamese = (englishDay: string) => {
+  const dayMap: Record<string, string> = {
+    Monday: 'Thứ 2',
+    Tuesday: 'Thứ 3',
+    Wednesday: 'Thứ 4',
+    Thursday: 'Thứ 5',
+    Friday: 'Thứ 6',
+    Saturday: 'Thứ 7',
+    Sunday: 'Chủ nhật'
+  }
+
+  return dayMap[englishDay] || englishDay
+}
+
+const dayOffsetMap: Record<string, number> = {
+  Monday: 0,
+  Tuesday: 1,
+  Wednesday: 2,
+  Thursday: 3,
+  Friday: 4,
+  Saturday: 5,
+  Sunday: 6
+}
+
 const SchedulePlanner = () => {
   const [selectedRegion, setSelectedRegion] = useState<number>(1) // Default to HALONG
   const [selectedWeekId, setSelectedWeekId] = useState<string>('')
@@ -218,6 +242,7 @@ const SchedulePlanner = () => {
       day: string
       time: string
       slotIndex: number
+      dayLabel?: string
     } | null
     editMode: boolean
     editData: {
@@ -238,13 +263,26 @@ const SchedulePlanner = () => {
 
   // Parse SCHEDULE_TIME into day + time
   const parsedSlots = useMemo(() => {
-    return SCHEDULE_TIME.map((s) => {
-      const [time, day] = s.split(' ')
+    return SCHEDULE_TIME.map((slotString) => {
+      const [time, day] = slotString.split(' ')
+      const vietnameseDay = getDayInVietnamese(day)
+      const offset = dayOffsetMap[day] ?? 0
 
+      let dayLabel = vietnameseDay
 
-      return { time, day }
+      if (selectedWeek?.startDate) {
+        const date = new Date(selectedWeek.startDate)
+        date.setDate(date.getDate() + offset)
+        const formatted = date.toLocaleDateString('vi-VN', {
+          day: '2-digit',
+          month: '2-digit'
+        })
+        dayLabel = `${vietnameseDay} (${formatted})`
+      }
+
+      return { time, day, dayLabel }
     })
-  }, [])
+  }, [selectedWeek?.startDate])
 
   const days = useMemo(() => {
     const seen = new Set<string>()
@@ -262,6 +300,18 @@ const SchedulePlanner = () => {
     parsedSlots.forEach(p => { if (!seen.has(p.time)) { seen.add(p.time); order.push(p.time) } })
 
     return order
+  }, [parsedSlots])
+
+  const dayLabelMap = useMemo(() => {
+    const map: Record<string, string> = {}
+
+    parsedSlots.forEach(slot => {
+      if (!map[slot.day]) {
+        map[slot.day] = slot.dayLabel
+      }
+    })
+
+    return map
   }, [parsedSlots])
 
   const indexFromDayTime = (day: string, time: string) => {
@@ -434,7 +484,8 @@ const SchedulePlanner = () => {
         selectedSlot: {
           day: slot.day,
           time: slot.time,
-          slotIndex: slotIndex
+          slotIndex: slotIndex,
+          dayLabel: slot.dayLabel
         },
         editMode: true,
         editData: {
@@ -451,9 +502,11 @@ const SchedulePlanner = () => {
 
   // Handle open create lesson schedule modal
   const handleOpenCreateLessonModal = (day: string, time: string, slotIndex: number, teacherId?: string) => {
+    const slotInfo = parsedSlots[slotIndex - 1]
+
     setCreateLessonModal({
       open: true,
-      selectedSlot: { day, time, slotIndex },
+      selectedSlot: { day, time, slotIndex, dayLabel: slotInfo?.dayLabel },
       editMode: false,
       editData: null,
       teacherId
@@ -533,12 +586,13 @@ const SchedulePlanner = () => {
       const csvData: string[][] = []
 
       // Add header row
-      const headerRow = ['Thứ', ...times]
+      const headerRow = ['Thứ / Ngày', ...times]
       csvData.push(headerRow)
 
       // Add data rows for each day
       days.forEach(day => {
-        const row: string[] = [day]
+        const displayDay = dayLabelMap[day] || getDayInVietnamese(day)
+        const row: string[] = [displayDay]
 
         times.forEach(time => {
           const index = indexFromDayTime(day, time)
@@ -1130,7 +1184,7 @@ const SchedulePlanner = () => {
                   <TableBody>
                     {days.map(day => (
                       <TableRow key={day} hover={false}>
-                        <DayCell>{day}</DayCell>
+                        <DayCell>{dayLabelMap[day] || getDayInVietnamese(day)}</DayCell>
                         {times.map(time => {
                           const index = indexFromDayTime(day, time)
                           let free = index > 0 ? (freeStudentsByIndex[index] || []) : []

@@ -167,6 +167,16 @@ const getDayInVietnamese = (englishDay: string) => {
   return dayMap[englishDay] || englishDay
 }
 
+const dayOffsetMap: Record<string, number> = {
+  Monday: 0,
+  Tuesday: 1,
+  Wednesday: 2,
+  Thursday: 3,
+  Friday: 4,
+  Saturday: 5,
+  Sunday: 6
+}
+
 const TeachersSchedule = () => {
   const { data: teachers, isLoading, error } = useTeacherList()
 
@@ -182,6 +192,12 @@ const TeachersSchedule = () => {
   const openWeek = useMemo(() => {
     return weeks.find(week => week.scheduleStatus === WeekStatus.OPEN)
   }, [weeks])
+
+  const selectedWeekInfo = useMemo(() => {
+    if (!selectedWeekId) return null
+
+    return weeks.find(week => week.id === selectedWeekId) || null
+  }, [weeks, selectedWeekId])
 
   // Set default week (open week or most recent)
   useMemo(() => {
@@ -238,22 +254,37 @@ const TeachersSchedule = () => {
 
   // Generate time slots for all 7 days
   const allTimeSlots = useMemo(() => {
-    const slots: { day: string; time: string; slot: number }[] = []
+    const slots: { dayKey: string; dayLabel: string; time: string; slot: number }[] = []
 
     SCHEDULE_TIME.forEach((timeSlot, index) => {
       const parts = timeSlot.split(' ')
-      const time = parts[0] // "8:00-10:00"
-      const englishDay = parts[1] // "Monday"
+      const time = parts[0]
+      const englishDay = parts[1]
+      const vietnameseDay = getDayInVietnamese(englishDay)
+      const offset = dayOffsetMap[englishDay] ?? 0
+
+      let dayLabel = vietnameseDay
+
+      if (selectedWeekInfo?.startDate) {
+        const date = new Date(selectedWeekInfo.startDate)
+        date.setDate(date.getDate() + offset)
+        const formatted = date.toLocaleDateString('vi-VN', {
+          day: '2-digit',
+          month: '2-digit'
+        })
+        dayLabel = `${vietnameseDay} (${formatted})`
+      }
 
       slots.push({
-        day: getDayInVietnamese(englishDay),
-        time: time,
+        dayKey: vietnameseDay,
+        dayLabel,
+        time,
         slot: index
       })
     })
 
     return slots
-  }, [])
+  }, [selectedWeekInfo?.startDate])
 
   // Filter teachers based on selected teachers
   const filteredTeachers = useMemo(() => {
@@ -270,7 +301,7 @@ const TeachersSchedule = () => {
   const filteredTimeSlots = useMemo(() => {
     let slots = selectedDay === 'all'
       ? allTimeSlots
-      : allTimeSlots.filter(slot => slot.day === selectedDay)
+      : allTimeSlots.filter(slot => slot.dayKey === selectedDay)
 
     if (selectedTimeRange !== 'all') {
       slots = slots.filter(slot => slot.time === selectedTimeRange)
@@ -280,10 +311,16 @@ const TeachersSchedule = () => {
   }, [allTimeSlots, selectedDay, selectedTimeRange])
 
   // Get unique days for filter dropdown
-  const uniqueDays = useMemo(() => {
-    const days = allTimeSlots.map(slot => slot.day)
+  const uniqueDayOptions = useMemo(() => {
+    const seen = new Map<string, string>()
 
-    return ['all', ...Array.from(new Set(days))]
+    allTimeSlots.forEach(slot => {
+      if (!seen.has(slot.dayKey)) {
+        seen.set(slot.dayKey, slot.dayLabel)
+      }
+    })
+
+    return Array.from(seen.entries()).map(([key, label]) => ({ key, label }))
   }, [allTimeSlots])
 
   const uniqueTimeRanges = useMemo(() => {
@@ -291,6 +328,12 @@ const TeachersSchedule = () => {
 
     return ['all', ...Array.from(new Set(times))]
   }, [allTimeSlots])
+
+  const selectedDayLabel = useMemo(() => {
+    if (selectedDay === 'all') return null
+
+    return uniqueDayOptions.find(option => option.key === selectedDay)?.label || null
+  }, [selectedDay, uniqueDayOptions])
 
   // Check if teacher is busy at specific slot
   const isTeacherBusy = (teacherSchedule: number[], slotIndex: number) => {
@@ -325,12 +368,6 @@ const TeachersSchedule = () => {
   }
 
   // Export handlers
-  const selectedWeekInfo = useMemo(() => {
-    if (!selectedWeekId) return null
-
-    return weeks.find(week => week.id === selectedWeekId) || null
-  }, [weeks, selectedWeekId])
-
   const buildExportFilename = (base: string) => {
     if (!selectedWeekInfo) return base
 
@@ -381,8 +418,14 @@ const TeachersSchedule = () => {
   const handleExportExcel = () => {
     if (!filteredTeachers || filteredTeachers.length === 0) return
 
+    const exportSlots = filteredTimeSlots.map(slot => ({
+      slot: slot.slot,
+      day: slot.dayLabel,
+      time: slot.time
+    }))
+
     const result = exportToExcel(filteredTeachers, schedules, {
-      timeSlots: filteredTimeSlots,
+      timeSlots: exportSlots,
       filename: buildExportFilename('lich-giao-vien')
     })
 
@@ -397,8 +440,14 @@ const TeachersSchedule = () => {
   const handleExportCSV = () => {
     if (!filteredTeachers || filteredTeachers.length === 0) return
 
+    const exportSlots = filteredTimeSlots.map(slot => ({
+      slot: slot.slot,
+      day: slot.dayLabel,
+      time: slot.time
+    }))
+
     const result = exportToCSV(filteredTeachers, schedules, {
-      timeSlots: filteredTimeSlots,
+      timeSlots: exportSlots,
       filename: buildExportFilename('lich-giao-vien')
     })
 
@@ -678,9 +727,10 @@ const TeachersSchedule = () => {
                     onChange={(e) => setSelectedDay(e.target.value)}
                     label="Lọc theo ngày"
                   >
-                    {uniqueDays.map((day) => (
-                      <MenuItem key={day} value={day}>
-                        {day === 'all' ? 'Tất cả các ngày' : day}
+                    <MenuItem value="all">Tất cả các ngày</MenuItem>
+                    {uniqueDayOptions.map((day) => (
+                      <MenuItem key={day.key} value={day.key}>
+                        {day.label}
                       </MenuItem>
                     ))}
                   </Select>
@@ -752,7 +802,7 @@ const TeachersSchedule = () => {
                   Đang lọc:
                   {selectedDay !== 'all' && (
                     <Chip
-                      label={`Ngày: ${selectedDay}`}
+                      label={`Ngày: ${selectedDayLabel || selectedDay}`}
                       size="small"
                       onDelete={() => setSelectedDay('all')}
                     />
@@ -790,7 +840,7 @@ const TeachersSchedule = () => {
                         Khung giờ
                       </Typography>
                       <Typography variant="caption" color="textSecondary">
-                        {selectedDay === 'all' ? 'Theo tuần' : selectedDay}
+                        {selectedDay === 'all' ? 'Theo tuần' : (selectedDayLabel || selectedDay)}
                       </Typography>
                     </Box>
                   </StyledHeaderCell>
@@ -829,7 +879,7 @@ const TeachersSchedule = () => {
                       <StyledTimeCell>
                         <Box>
                           <Typography variant="body2" fontWeight={600}>
-                            {slot.day}
+                            {slot.dayLabel}
                           </Typography>
                           <Typography variant="caption" color="primary">
                             {slot.time}
@@ -905,8 +955,8 @@ const TeachersSchedule = () => {
                               <Tooltip
                                 title={
                                   isBusy
-                                    ? `${teacher.name} bận vào ${slot.day} ${slot.time}`
-                                    : `${teacher.name} rảnh vào ${slot.day} ${slot.time}`
+                                    ? `${teacher.name} bận vào ${slot.dayLabel} ${slot.time}`
+                                    : `${teacher.name} rảnh vào ${slot.dayLabel} ${slot.time}`
                                 }
                               >
                                 <IconButton size="small">
