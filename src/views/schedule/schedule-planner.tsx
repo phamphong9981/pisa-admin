@@ -1445,10 +1445,17 @@ const SchedulePlanner = () => {
           return index > 0 ? (freeStudentsByIndex[index] || []) : []
         })()}
         courseClasses={courseInfo?.classes || []}
+        courseId={selectedCourseId}
         weekId={selectedWeekId}
         editMode={createLessonModal.editMode}
         editData={createLessonModal.editData}
         teacherId={createLessonModal.teacherId}
+        onClassCreated={(newClassId) => {
+          // The useCreateClass hook will automatically invalidate the courseInfo query
+          // so the parent component will refresh the class list automatically
+          // Optionally, we can select the newly created class
+          // setSelectedClassId(newClassId)
+        }}
       />
     </Box>
   )

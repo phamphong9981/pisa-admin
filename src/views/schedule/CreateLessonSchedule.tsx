@@ -28,6 +28,10 @@ import {
 import { useCreateLessonSchedule, useGetScheduleDetail, useUpdateUserSchedule, useUpdateLessonSchedule } from '@/@core/hooks/useSchedule'
 import { useStudentList } from '@/@core/hooks/useStudent'
 import { useTeacherList } from '@/@core/hooks/useTeacher'
+import { useCreateClass } from '@/@core/hooks/useClass'
+
+// Components
+import CreateClassForm from '@/views/classes/CreateClassForm'
 
 interface CreateLessonScheduleProps {
   open: boolean
@@ -51,6 +55,7 @@ interface CreateLessonScheduleProps {
       skills: string[]
     }
   }>
+  courseId?: string // Thêm courseId để có thể tạo lớp mới
   weekId?: string
   editMode?: boolean
   editData?: {
@@ -61,6 +66,7 @@ interface CreateLessonScheduleProps {
     scheduleTime: number
   } | null
   teacherId?: string // Thêm teacherId để hiển thị giáo viên mặc định
+  onClassCreated?: (newClassId: string) => void // Callback khi tạo lớp thành công
 }
 
 const CreateLessonSchedule = ({
@@ -69,10 +75,12 @@ const CreateLessonSchedule = ({
   selectedSlot,
   availableStudents,
   courseClasses,
+  courseId,
   weekId = "08a60c9a-b3f8-42f8-8ff8-c7015d4ef3e7",
   editMode = false,
   editData = null,
-  teacherId: propTeacherId
+  teacherId: propTeacherId,
+  onClassCreated
 }: CreateLessonScheduleProps) => {
   console.log('selectedSlot', selectedSlot)
 
@@ -151,6 +159,9 @@ const CreateLessonSchedule = ({
 
   // Delete confirmation modal
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+
+  // Create class dialog state
+  const [showCreateClassDialog, setShowCreateClassDialog] = useState(false)
 
   // Action state for edit mode (removed, will use direct action)
 
@@ -929,35 +940,53 @@ const CreateLessonSchedule = ({
 
                 {/* Class Selection */}
                 <Grid item xs={12} md={6}>
-                  <FormControl fullWidth required>
-                    <InputLabel>Lớp học</InputLabel>
-                    <Select
-                      value={selectedClassId}
-                      onChange={(e) => {
-                        setSelectedClassId(e.target.value)
+                  <Box>
+                    <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
+                      <Typography variant="subtitle2" gutterBottom>
+                        Lớp học <span style={{ color: 'red' }}>*</span>
+                      </Typography>
+                      {!editMode && courseId && (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<i className="ri-add-line" />}
+                          onClick={() => setShowCreateClassDialog(true)}
+                          sx={{ fontSize: '0.75rem' }}
+                        >
+                          Tạo lớp mới
+                        </Button>
+                      )}
+                    </Box>
+                    <FormControl fullWidth required>
+                      <InputLabel>Lớp học</InputLabel>
+                      <Select
+                        value={selectedClassId}
+                        onChange={(e) => {
+                          setSelectedClassId(e.target.value)
 
-                        // Auto-select teacher when class is selected (only in create mode)
-                        if (!editMode) {
-                          const selectedClass = courseClasses.find(cls => cls.id === e.target.value)
+                          // Auto-select teacher when class is selected (only in create mode)
+                          if (!editMode) {
+                            const selectedClass = courseClasses.find(cls => cls.id === e.target.value)
 
-                          if (selectedClass) {
-                            setSelectedTeacherId(selectedClass.teacherId)
+                            if (selectedClass) {
+                              setSelectedTeacherId(selectedClass.teacherId)
+                            }
                           }
-                        }
-                      }}
-                      label="Lớp học"
-                      disabled={editMode}
-                    >
-                      {courseClasses.map((cls) => (
-                        <MenuItem key={cls.id} value={cls.id}>
-                          <Box display="flex" alignItems="center" gap={1}>
-                            <i className="ri-book-line" style={{ color: '#1976d2' }} />
-                            <span>{cls.name}</span>
-                          </Box>
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                        }}
+                        label="Lớp học"
+                        disabled={editMode}
+                      >
+                        {courseClasses.map((cls) => (
+                          <MenuItem key={cls.id} value={cls.id}>
+                            <Box display="flex" alignItems="center" gap={1}>
+                              <i className="ri-book-line" style={{ color: '#1976d2' }} />
+                              <span>{cls.name}</span>
+                            </Box>
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Box>
                 </Grid>
 
                 {/* Teacher Selection */}
@@ -1764,6 +1793,50 @@ const CreateLessonSchedule = ({
             }}
           >
             {updateLessonScheduleMutation.isPending ? 'Đang xóa...' : 'Xóa lịch học'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Create Class Dialog */}
+      <Dialog
+        open={showCreateClassDialog}
+        onClose={() => setShowCreateClassDialog(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box display="flex" alignItems="center" gap={2}>
+            <i className="ri-add-line" style={{ fontSize: '24px', color: '#1976d2' }} />
+            <Typography variant="h6" fontWeight={600}>
+              Tạo lớp học mới
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            {courseId ? (
+              <CreateClassForm
+                courseId={courseId}
+                onSuccess={() => {
+                  setShowCreateClassDialog(false)
+                  setSuccessMessage('Tạo lớp học thành công! Danh sách lớp sẽ tự động cập nhật. Bạn có thể chọn lớp mới từ danh sách.')
+                  setTimeout(() => setSuccessMessage(''), 5000)
+
+                  // The useCreateClass hook will automatically invalidate the courseInfo query
+                  // so the parent component will refresh the class list automatically
+                  // Parent component's courseInfo query will be refetched and courseClasses will update
+                }}
+              />
+            ) : (
+              <Alert severity="error">
+                Không thể tạo lớp học: Chưa chọn khóa học.
+              </Alert>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowCreateClassDialog(false)} color="inherit">
+            Đóng
           </Button>
         </DialogActions>
       </Dialog>
