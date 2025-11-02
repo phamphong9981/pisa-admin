@@ -135,6 +135,18 @@ const TeachingInfo = styled(Box)(({ theme }) => ({
       fontWeight: 600
     }
   },
+  '& .lesson-note': {
+    padding: theme.spacing(0.5, 0.75),
+    backgroundColor: '#f5f5f5',
+    borderBottom: '1px solid #e0e0e0',
+    fontSize: '0.65rem',
+    color: '#666',
+    fontStyle: 'italic',
+    lineHeight: 1.3,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis'
+  },
   '& .students-content': {
     padding: theme.spacing(0.5),
     '& .students-list': {
@@ -1084,9 +1096,12 @@ const TeachersSchedule = () => {
                                   <Box className="class-name" title={teachingInfo.class_name}>
                                     {teachingInfo.class_name}
                                   </Box>
-                                  <Box className="lesson-badge">
-                                    Buổi {teachingInfo.lesson}
-                                  </Box>
+                                  {teachingInfo.note && (
+                                    <Box className="lesson-note" title={teachingInfo.note}>
+                                      <i className="ri-file-text-line" style={{ marginRight: 4, fontSize: '12px' }} />
+                                      {teachingInfo.note}
+                                    </Box>
+                                  )}
                                 </Box>
                                 {teachingInfo.students && Array.isArray(teachingInfo.students) && teachingInfo.students.length > 0 && (
                                   <Box className="students-content">
