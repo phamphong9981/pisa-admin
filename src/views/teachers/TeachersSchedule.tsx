@@ -233,7 +233,7 @@ const TeachersSchedule = () => {
   // States for filtering
   const [selectedTeachers, setSelectedTeachers] = useState<any[]>([])
   const [selectedDay, setSelectedDay] = useState<string>('all')
-  const [selectedTimeRange, setSelectedTimeRange] = useState<string>('all')
+  const [selectedTimeRanges, setSelectedTimeRanges] = useState<string[]>([])
 
   // States for schedule detail popup
   const [scheduleDetailPopup, setScheduleDetailPopup] = useState<{
@@ -303,12 +303,12 @@ const TeachersSchedule = () => {
       ? allTimeSlots
       : allTimeSlots.filter(slot => slot.dayKey === selectedDay)
 
-    if (selectedTimeRange !== 'all') {
-      slots = slots.filter(slot => slot.time === selectedTimeRange)
+    if (selectedTimeRanges.length > 0) {
+      slots = slots.filter(slot => selectedTimeRanges.includes(slot.time))
     }
 
     return slots
-  }, [allTimeSlots, selectedDay, selectedTimeRange])
+  }, [allTimeSlots, selectedDay, selectedTimeRanges])
 
   // Get unique days for filter dropdown
   const uniqueDayOptions = useMemo(() => {
@@ -326,7 +326,7 @@ const TeachersSchedule = () => {
   const uniqueTimeRanges = useMemo(() => {
     const times = allTimeSlots.map(slot => slot.time)
 
-    return ['all', ...Array.from(new Set(times))]
+    return Array.from(new Set(times))
   }, [allTimeSlots])
 
   const selectedDayLabel = useMemo(() => {
@@ -737,20 +737,60 @@ const TeachersSchedule = () => {
                 </FormControl>
               </Grid>
               <Grid item xs={12} md={4}>
-                <FormControl fullWidth>
-                  <InputLabel>Lọc theo khung giờ</InputLabel>
-                  <Select
-                    value={selectedTimeRange}
-                    onChange={(e) => setSelectedTimeRange(e.target.value)}
-                    label="Lọc theo khung giờ"
-                  >
-                    {uniqueTimeRanges.map((timeRange) => (
-                      <MenuItem key={timeRange} value={timeRange}>
-                        {timeRange === 'all' ? 'Tất cả khung giờ' : timeRange}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                <Autocomplete
+                  multiple
+                  options={uniqueTimeRanges}
+                  value={selectedTimeRanges}
+                  onChange={(event, newValue) => {
+                    setSelectedTimeRanges(newValue)
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      placeholder="Chọn khung giờ để lọc..."
+                      label="Lọc theo khung giờ"
+                      InputProps={{
+                        ...params.InputProps,
+                        startAdornment: (
+                          <>
+                            <i className="ri-time-line" style={{ color: '#666', marginRight: 8 }} />
+                            {params.InputProps.startAdornment}
+                          </>
+                        ),
+                      }}
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          backgroundColor: 'white',
+                          '&:hover fieldset': {
+                            borderColor: '#1976d2',
+                          },
+                          '&.Mui-focused fieldset': {
+                            borderColor: '#1976d2',
+                          },
+                        }
+                      }}
+                    />
+                  )}
+                  renderTags={(value, getTagProps) =>
+                    value.map((option, index) => (
+                      <Chip
+                        {...getTagProps({ index })}
+                        key={option}
+                        label={option}
+                        size="small"
+                        sx={{
+                          backgroundColor: '#fff3e0',
+                          color: '#e65100',
+                          border: '1px solid #ffcc80'
+                        }}
+                      />
+                    ))
+                  }
+                  noOptionsText="Không có khung giờ nào"
+                  clearOnBlur={false}
+                  selectOnFocus
+                  handleHomeEndKeys
+                />
               </Grid>
             </Grid>
 
@@ -795,7 +835,7 @@ const TeachersSchedule = () => {
             )}
 
             {/* Filter Summary */}
-            {(selectedDay !== 'all' || selectedTimeRange !== 'all') && (
+            {(selectedDay !== 'all' || selectedTimeRanges.length > 0) && (
               <Box sx={{ mt: 2, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
                 <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1 }}>
                   <i className="ri-filter-line" style={{ marginRight: 8 }} />
@@ -807,12 +847,34 @@ const TeachersSchedule = () => {
                       onDelete={() => setSelectedDay('all')}
                     />
                   )}
-                  {selectedTimeRange !== 'all' && (
-                    <Chip
-                      label={`Khung giờ: ${selectedTimeRange}`}
-                      size="small"
-                      onDelete={() => setSelectedTimeRange('all')}
-                    />
+                  {selectedTimeRanges.length > 0 && (
+                    <>
+                      {selectedTimeRanges.map((timeRange) => (
+                        <Chip
+                          key={timeRange}
+                          label={`Khung giờ: ${timeRange}`}
+                          size="small"
+                          onDelete={() => {
+                            setSelectedTimeRanges(prev => prev.filter(t => t !== timeRange))
+                          }}
+                        />
+                      ))}
+                      {selectedTimeRanges.length > 1 && (
+                        <Chip
+                          label="Xóa tất cả khung giờ"
+                          size="small"
+                          variant="outlined"
+                          onClick={() => setSelectedTimeRanges([])}
+                          sx={{
+                            color: '#d32f2f',
+                            borderColor: '#d32f2f',
+                            '&:hover': {
+                              backgroundColor: '#ffebee'
+                            }
+                          }}
+                        />
+                      )}
+                    </>
                   )}
                 </Typography>
               </Box>
