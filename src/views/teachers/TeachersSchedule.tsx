@@ -15,6 +15,10 @@ import {
   CardContent,
   CardHeader,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControl,
   Grid,
   IconButton,
@@ -39,7 +43,7 @@ import { styled } from '@mui/material/styles'
 // Hooks
 import { useExport } from '@/@core/hooks/useExport'
 import { RollcallStatus, SCHEDULE_TIME, useGetAllSchedule } from '@/@core/hooks/useSchedule'
-import { useTeacherList } from '@/@core/hooks/useTeacher'
+import { useTeacherList, useUpdateTeacher } from '@/@core/hooks/useTeacher'
 import { useGetWeeks, WeekResponseDto, ScheduleStatus as WeekStatus } from '@/@core/hooks/useWeek'
 
 // Components
@@ -216,9 +220,23 @@ const TeachersSchedule = () => {
 
   const { data: schedules, isLoading: isSchedulesLoading } = useGetAllSchedule(true, undefined, selectedWeekId || undefined)
   const { exportToExcel, exportToCSV, exportSummary } = useExport()
+  const { mutate: updateTeacher, isPending: isUpdatingTeacher } = useUpdateTeacher()
 
   // States for export menu
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
+
+  // States for edit note dialog
+  const [editNoteDialog, setEditNoteDialog] = useState<{
+    open: boolean
+    teacherId: string
+    teacherName: string
+    note: string
+  }>({
+    open: false,
+    teacherId: '',
+    teacherName: '',
+    note: ''
+  })
 
   const [notification, setNotification] = useState<{
     open: boolean
@@ -491,6 +509,62 @@ const TeachersSchedule = () => {
   // Handle close schedule detail popup
   const handleCloseScheduleDetailPopup = () => {
     setScheduleDetailPopup(prev => ({ ...prev, open: false }))
+  }
+
+  // Handle open edit note dialog
+  const handleOpenEditNoteDialog = (teacherId: string, teacherName: string, currentNote?: string) => {
+    setEditNoteDialog({
+      open: true,
+      teacherId,
+      teacherName,
+      note: currentNote || ''
+    })
+  }
+
+  // Handle close edit note dialog
+  const handleCloseEditNoteDialog = () => {
+    setEditNoteDialog({
+      open: false,
+      teacherId: '',
+      teacherName: '',
+      note: ''
+    })
+  }
+
+  // Handle save note
+  const handleSaveNote = () => {
+    if (!editNoteDialog.teacherId || !teachers) return
+
+    const teacher = teachers.find(t => t.id === editNoteDialog.teacherId)
+    if (!teacher) return
+
+    updateTeacher(
+      {
+        teacherId: editNoteDialog.teacherId,
+        teacher: {
+          name: teacher.name,
+          skills: teacher.skills,
+          note: editNoteDialog.note.trim() || undefined
+        }
+      },
+      {
+        onSuccess: () => {
+          setNotification({
+            open: true,
+            message: 'Cập nhật ghi chú thành công!',
+            severity: 'success'
+          })
+          handleCloseEditNoteDialog()
+        },
+        onError: () => {
+          setNotification({
+            open: true,
+            message: 'Cập nhật ghi chú thất bại!',
+            severity: 'error'
+          })
+        }
+      }
+    )
   }
 
   if (isLoading || isSchedulesLoading) {
@@ -908,13 +982,51 @@ const TeachersSchedule = () => {
                   </StyledHeaderCell>
                   {filteredTeachers.map((teacher) => (
                     <StyledHeaderCell key={teacher.id}>
-                      <Box>
-                        <Typography variant="body2" fontWeight={600}>
-                          {teacher.name}
-                        </Typography>
-                        <Typography variant="caption" color="textSecondary">
-                          {teacher.skills?.length || 0} kỹ năng
-                        </Typography>
+                      <Box display="flex" alignItems="flex-start" gap={0.5}>
+                        <Box flex={1}>
+                          <Box display="flex" alignItems="center" gap={0.5} mb={0.5}>
+                            <Typography variant="body2" fontWeight={600}>
+                              {teacher.name}
+                            </Typography>
+                            <Tooltip title="Chỉnh sửa ghi chú">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleOpenEditNoteDialog(teacher.id, teacher.name, teacher.note)}
+                                sx={{
+                                  padding: '2px',
+                                  '&:hover': {
+                                    backgroundColor: 'rgba(25, 118, 210, 0.1)'
+                                  }
+                                }}
+                              >
+                                <i className="ri-edit-line" style={{ fontSize: '14px', color: '#1976d2' }} />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
+                          <Typography variant="caption" color="textSecondary" display="block">
+                            {teacher.skills?.length || 0} kỹ năng
+                          </Typography>
+                          {teacher.note && (
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{
+                                display: 'block',
+                                mt: 0.5,
+                                fontStyle: 'italic',
+                                color: '#666',
+                                maxWidth: '120px',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                              }}
+                              title={teacher.note}
+                            >
+                              <i className="ri-file-text-line" style={{ marginRight: 4, fontSize: '12px' }} />
+                              {teacher.note}
+                            </Typography>
+                          )}
+                        </Box>
                       </Box>
                     </StyledHeaderCell>
                   ))}
@@ -1069,6 +1181,47 @@ const TeachersSchedule = () => {
         className={scheduleDetailPopup.className}
         scheduleTime={scheduleDetailPopup.scheduleTime}
       />
+
+      {/* Edit Note Dialog */}
+      <Dialog open={editNoteDialog.open} onClose={handleCloseEditNoteDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          <Box display="flex" alignItems="center" gap={1}>
+            <i className="ri-file-edit-line" style={{ fontSize: 24, color: '#1976d2' }} />
+            <Typography variant="h6">Chỉnh sửa ghi chú</Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              Giáo viên: <strong>{editNoteDialog.teacherName}</strong>
+            </Typography>
+            <TextField
+              fullWidth
+              multiline
+              rows={4}
+              label="Ghi chú"
+              placeholder="Nhập ghi chú cho giáo viên..."
+              value={editNoteDialog.note}
+              onChange={(e) => setEditNoteDialog(prev => ({ ...prev, note: e.target.value }))}
+              sx={{ mt: 2 }}
+              helperText="Ghi chú sẽ hiển thị dưới tên giáo viên trong lịch"
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseEditNoteDialog} disabled={isUpdatingTeacher}>
+            Hủy
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleSaveNote}
+            disabled={isUpdatingTeacher}
+            startIcon={isUpdatingTeacher ? <i className="ri-loader-4-line" style={{ animation: 'spin 1s linear infinite' }} /> : <i className="ri-save-line" />}
+          >
+            {isUpdatingTeacher ? 'Đang lưu...' : 'Lưu'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   )
 }

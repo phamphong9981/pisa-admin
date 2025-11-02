@@ -8,7 +8,8 @@ export interface TeacherListResponse {
     registeredBusySchedule: number[],
     createdAt: string,
     updatedAt: string,
-    userId: string
+    userId: string,
+    note?: string
 }
 
 // Function để gọi API lấy danh sách teacher
@@ -65,6 +66,7 @@ export interface CreateTeacherAccountDto {
     phone: string
     name: string
     skills: string[]
+    note?: string
 }
 
 const createTeacherAccount = async (teacher: CreateTeacherAccountDto) => {
@@ -103,6 +105,7 @@ export const useDeleteTeacherAccount = () => {
 export interface UpdateTeacherDto {
     name: string
     skills: string[]
+    note?: string
 }
 
 const updateTeacher = async (teacherId: string, teacher: UpdateTeacherDto) => {
