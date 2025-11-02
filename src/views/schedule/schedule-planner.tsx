@@ -442,9 +442,9 @@ const SchedulePlanner = () => {
     const availableSlots = new Set<number>()
 
     // Add all slots that teacher is NOT busy (0-based)
-    for (let i = 0; i < SCHEDULE_TIME.length; i++) {
+    for (let i = 1; i <= SCHEDULE_TIME.length; i++) {
       if (!teacherBusySlots.includes(i)) {
-        availableSlots.add(i + 1) // Convert to 1-based for display
+        availableSlots.add(i)
       }
     }
 

@@ -1016,7 +1016,7 @@ const CreateLessonSchedule = ({
                             return selectedClass?.teacherId === teacher.id
                           })()
 
-                          const isTeacherBusy = teacher.registeredBusySchedule?.includes(selectedSlot!.slotIndex + 1)
+                          const isTeacherBusy = teacher.registeredBusySchedule?.includes(selectedSlot!.slotIndex)
                           const isSelected = selectedTeacherId === teacher.id
 
                           return (
