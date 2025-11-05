@@ -18,7 +18,6 @@ import {
   FormControlLabel,
   Radio,
   RadioGroup,
-  Checkbox,
   Autocomplete,
   InputAdornment
 } from '@mui/material'
@@ -46,9 +45,11 @@ const CreateClassForm = ({ courseId, onSuccess }: CreateClassFormProps) => {
     class_type: ClassType.FT_LISTENING,
     teacher_id: '',
     course_id: courseId || '',
-    auto_schedule: true,
+    auto_schedule: false, // Temporary default, user must select
     fixedSchedule: []
   })
+
+  const [autoScheduleSelected, setAutoScheduleSelected] = useState<boolean | null>(null)
 
   const [openSnackbar, setOpenSnackbar] = useState(false)
   const [snackbarMessage, setSnackbarMessage] = useState('')
@@ -59,6 +60,11 @@ const CreateClassForm = ({ courseId, onSuccess }: CreateClassFormProps) => {
       ...prev,
       [field]: value
     }))
+  }
+
+  const handleAutoScheduleChange = (value: boolean) => {
+    setAutoScheduleSelected(value)
+    handleChange('auto_schedule', value)
   }
 
   const handleFixedScheduleChange = (scheduleTime: number | null) => {
@@ -81,6 +87,14 @@ const CreateClassForm = ({ courseId, onSuccess }: CreateClassFormProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    // Validate that auto_schedule must be selected
+    if (autoScheduleSelected === null || autoScheduleSelected === undefined) {
+      setSnackbarMessage('Vui lòng chọn loại lớp học (Lớp chính thức hoặc Lớp bổ trợ)')
+      setSnackbarSeverity('error')
+      setOpenSnackbar(true)
+      return
+    }
+
     try {
       await createClassMutation.mutateAsync(formData)
       setSnackbarMessage('Tạo lớp học thành công!')
@@ -94,9 +108,10 @@ const CreateClassForm = ({ courseId, onSuccess }: CreateClassFormProps) => {
         class_type: ClassType.FT_LISTENING,
         teacher_id: '',
         course_id: courseId || '',
-        auto_schedule: true,
+        auto_schedule: false,
         fixedSchedule: []
       })
+      setAutoScheduleSelected(null)
 
       // Call onSuccess callback
       onSuccess?.()
@@ -250,27 +265,85 @@ const CreateClassForm = ({ courseId, onSuccess }: CreateClassFormProps) => {
           </Grid>
 
           <Grid item xs={12}>
-            <Box sx={{ display: 'flex', alignItems: 'center', p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={formData.auto_schedule}
-                    onChange={(e) => handleChange('auto_schedule', e.target.checked)}
-                    color="primary"
-                  />
-                }
-                label={
-                  <Box>
-                    <Typography variant="body2" fontWeight={500}>
-                      Tự động xếp lịch
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Hệ thống sẽ tự động sắp xếp lịch học cho lớp này dựa trên lịch trống của giáo viên và học sinh
-                    </Typography>
-                  </Box>
-                }
-              />
-            </Box>
+            <FormControl fullWidth required>
+              <Typography variant="body2" fontWeight={500} gutterBottom>
+                Loại lớp học <span style={{ color: 'red' }}>*</span>
+              </Typography>
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
+                Vui lòng chọn loại lớp học cho lớp này
+              </Typography>
+              <RadioGroup
+                value={autoScheduleSelected === null ? '' : autoScheduleSelected ? 'true' : 'false'}
+                onChange={(e) => handleAutoScheduleChange(e.target.value === 'true')}
+              >
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <Box
+                      sx={{
+                        p: 2,
+                        border: '1px solid',
+                        borderColor: autoScheduleSelected === true ? 'primary.main' : 'divider',
+                        borderRadius: 1,
+                        bgcolor: autoScheduleSelected === true ? 'action.selected' : 'background.paper',
+                        cursor: 'pointer',
+                        '&:hover': {
+                          bgcolor: 'action.hover'
+                        }
+                      }}
+                      onClick={() => handleAutoScheduleChange(true)}
+                    >
+                      <FormControlLabel
+                        value="true"
+                        control={<Radio />}
+                        label={
+                          <Box>
+                            <Typography variant="body2" fontWeight={500}>
+                              Lớp chính thức
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Hệ thống sẽ tự động sắp xếp lịch học dựa trên lịch trống của giáo viên và học sinh
+                            </Typography>
+                          </Box>
+                        }
+                        sx={{ margin: 0 }}
+                      />
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Box
+                      sx={{
+                        p: 2,
+                        border: '1px solid',
+                        borderColor: autoScheduleSelected === false ? 'primary.main' : 'divider',
+                        borderRadius: 1,
+                        bgcolor: autoScheduleSelected === false ? 'action.selected' : 'background.paper',
+                        cursor: 'pointer',
+                        '&:hover': {
+                          bgcolor: 'action.hover'
+                        }
+                      }}
+                      onClick={() => handleAutoScheduleChange(false)}
+                    >
+                      <FormControlLabel
+                        value="false"
+                        control={<Radio />}
+                        label={
+                          <Box>
+                            <Typography variant="body2" fontWeight={500}>
+                              Lớp bổ trợ
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Lớp học được xếp lịch thủ công hoặc không tự động sắp xếp
+                            </Typography>
+                          </Box>
+                        }
+                        sx={{ margin: 0 }}
+                      />
+                    </Box>
+                  </Grid>
+                </Grid>
+              </RadioGroup>
+            </FormControl>
           </Grid>
 
           <Grid item xs={12}>
