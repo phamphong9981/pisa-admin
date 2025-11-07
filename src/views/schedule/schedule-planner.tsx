@@ -377,11 +377,10 @@ const SchedulePlanner = () => {
   }, [courseInfo])
 
   const filteredClasses = useMemo(() => {
-    const cls = courseInfo?.classes || []
+    const cls = courseInfo?.classes?.filter(c => c.autoSchedule === true) || []
 
     if (!classSearch.trim()) return cls
     const keyword = classSearch.toLowerCase()
-
 
     return cls.filter(c => c.name.toLowerCase().includes(keyword))
   }, [courseInfo, classSearch])

@@ -28,6 +28,7 @@ interface ClassInfo {
 export interface ClassListResponse {
     id: string,
     name: string,
+    autoSchedule: boolean,
     totalStudent: number,
     totalLessonPerWeek: number,
     classType: string,
