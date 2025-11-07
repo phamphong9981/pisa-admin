@@ -6,6 +6,7 @@ import { useEffect, useState, useMemo } from 'react'
 // MUI Imports
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Chip,
@@ -15,11 +16,7 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
-  FormControl,
   Grid,
-  InputLabel,
-  MenuItem,
-  Select,
   TextField,
   Typography
 } from '@mui/material'
@@ -120,6 +117,11 @@ const CreateLessonSchedule = ({
   const [startTime, setStartTime] = useState('')
   const [endTime, setEndTime] = useState('')
   const [note, setNote] = useState('')
+
+  const selectedClass = useMemo(
+    () => courseClasses.find(cls => cls.id === selectedClassId) || null,
+    [courseClasses, selectedClassId]
+  )
 
   // Original values for comparison (edit mode)
   const [originalValues, setOriginalValues] = useState<{
@@ -957,35 +959,41 @@ const CreateLessonSchedule = ({
                         </Button>
                       )}
                     </Box>
-                    <FormControl fullWidth required>
-                      <InputLabel>Lớp học</InputLabel>
-                      <Select
-                        value={selectedClassId}
-                        onChange={(e) => {
-                          setSelectedClassId(e.target.value)
+                    <Autocomplete
+                      fullWidth
+                      options={courseClasses}
+                      value={selectedClass}
+                      onChange={(_, value) => {
+                        setSelectedClassId(value?.id || '')
 
-                          // Auto-select teacher when class is selected (only in create mode)
-                          if (!editMode) {
-                            const selectedClass = courseClasses.find(cls => cls.id === e.target.value)
-
-                            if (selectedClass) {
-                              setSelectedTeacherId(selectedClass.teacherId)
-                            }
+                        if (!editMode) {
+                          if (value) {
+                            setSelectedTeacherId(value.teacherId)
+                          } else {
+                            setSelectedTeacherId('')
                           }
-                        }}
-                        label="Lớp học"
-                        disabled={editMode}
-                      >
-                        {courseClasses.map((cls) => (
-                          <MenuItem key={cls.id} value={cls.id}>
-                            <Box display="flex" alignItems="center" gap={1}>
-                              <i className="ri-book-line" style={{ color: '#1976d2' }} />
-                              <span>{cls.name}</span>
-                            </Box>
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
+                        }
+                      }}
+                      disabled={editMode}
+                      getOptionLabel={(option) => option?.name ?? ''}
+                      isOptionEqualToValue={(option, value) => option.id === value.id}
+                      noOptionsText="Không tìm thấy lớp học"
+                      ListboxProps={{ style: { maxHeight: 260 } }}
+                      renderOption={(props, option) => (
+                        <Box component="li" {...props} key={option.id} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <i className="ri-book-line" style={{ color: '#1976d2' }} />
+                          <span>{option.name}</span>
+                        </Box>
+                      )}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Lớp học"
+                          placeholder="Chọn hoặc tìm kiếm lớp học"
+                          required
+                        />
+                      )}
+                    />
                   </Box>
                 </Grid>
 
@@ -1038,12 +1046,7 @@ const CreateLessonSchedule = ({
                         {teacherList?.filter(teacher =>
                           teacher.name.toLowerCase().includes(teacherSearch.toLowerCase())
                         ).map((teacher) => {
-                          const isDefaultTeacher = selectedClassId && (() => {
-                            const selectedClass = courseClasses.find(cls => cls.id === selectedClassId)
-
-
-                            return selectedClass?.teacherId === teacher.id
-                          })()
+                          const isDefaultTeacher = selectedClass ? selectedClass.teacherId === teacher.id : false
 
                           const isTeacherBusy = teacher.registeredBusySchedule?.includes(selectedSlot!.slotIndex)
                           const isSelected = selectedTeacherId === teacher.id
@@ -1115,12 +1118,7 @@ const CreateLessonSchedule = ({
 
                       if (!selectedTeacher) return null
 
-                      const isDefaultTeacher = selectedClassId && (() => {
-                        const selectedClass = courseClasses.find(cls => cls.id === selectedClassId)
-
-
-                        return selectedClass?.teacherId === selectedTeacher.id
-                      })()
+                      const isDefaultTeacher = selectedClass ? selectedClass.teacherId === selectedTeacher.id : false
 
                       return (
                         <Box sx={{
@@ -1178,11 +1176,7 @@ const CreateLessonSchedule = ({
                     })()}
 
                     {/* Default Teacher Quick Select */}
-                    {selectedClassId && !selectedTeacherId && !showTeacherSearchResults && (() => {
-                      const selectedClass = courseClasses.find(cls => cls.id === selectedClassId)
-
-                      if (!selectedClass) return null
-
+                    {selectedClass && !selectedTeacherId && !showTeacherSearchResults && (() => {
                       const isDefaultTeacherBusy = teacherList?.find(t => t.id === selectedClass.teacherId)?.registeredBusySchedule?.includes(selectedSlot!.slotIndex + 1)
 
                       return (
