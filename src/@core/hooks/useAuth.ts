@@ -26,6 +26,37 @@ interface AuthState {
     role: string | null
     isAuthenticated: boolean
     isLoading: boolean
+    permissions: string[]
+}
+
+const ROLE_COLUMNS = [
+    { column: 'Quản lý lịch học', key: 'schedule' },
+    { column: 'Kế toán', key: 'accounting' },
+    { column: 'Quản lý lớp học', key: 'class' },
+    { column: 'Quản lý giáo viên', key: 'teacher' }
+]
+
+const ADMIN_PREFIX = 'admin'
+const ALL_PERMISSION_KEYS = ROLE_COLUMNS.map(({ key }) => key)
+
+const derivePermissionsFromRole = (role: string | null): string[] => {
+    if (!role) return []
+
+    if (role === ADMIN_PREFIX) {
+        return ALL_PERMISSION_KEYS
+    }
+
+    if (role.startsWith(`${ADMIN_PREFIX}_`)) {
+        const keys = role
+            .slice(ADMIN_PREFIX.length + 1)
+            .split('_')
+            .filter(Boolean)
+
+        // Ensure only known permission keys are included
+        return ALL_PERMISSION_KEYS.filter(key => keys.includes(key))
+    }
+
+    return []
 }
 
 const useAuth = () => {
@@ -34,7 +65,8 @@ const useAuth = () => {
         token: null,
         role: null,
         isAuthenticated: false,
-        isLoading: true
+        isLoading: true,
+        permissions: []
     })
 
     // Hooks
@@ -54,7 +86,8 @@ const useAuth = () => {
                     token: localToken,
                     role: localRole,
                     isAuthenticated: true,
-                    isLoading: false
+                    isLoading: false,
+                    permissions: derivePermissionsFromRole(localRole)
                 })
                 return
             }
@@ -66,10 +99,11 @@ const useAuth = () => {
                 token: tokenCookie,
                 role: roleCookie,
                 isAuthenticated: true,
-                isLoading: false
+                isLoading: false,
+                permissions: derivePermissionsFromRole(roleCookie)
             })
         } else {
-            setAuthState(prev => ({ ...prev, isLoading: false }))
+            setAuthState(prev => ({ ...prev, isLoading: false, permissions: [] }))
         }
     }, [tokenCookie, roleCookie])
 
@@ -85,8 +119,10 @@ const useAuth = () => {
                 return { success: false, message: data.error || 'Login failed' }
             }
 
-            // Check if user is admin
-            if (data.data.role !== 'admin') {
+            const userRole = data.data.role
+
+            // Only allow admin roles
+            if (!userRole || !userRole.startsWith(ADMIN_PREFIX)) {
                 return { success: false, message: 'Access denied. Admin privileges required.' }
             }
 
@@ -103,9 +139,10 @@ const useAuth = () => {
             // Update auth state
             setAuthState({
                 token: data.data.token,
-                role: data.data.role,
+                role: userRole,
                 isAuthenticated: true,
-                isLoading: false
+                isLoading: false,
+                permissions: derivePermissionsFromRole(userRole)
             })
 
             return { success: true, message: 'Login successful' }
@@ -130,7 +167,8 @@ const useAuth = () => {
             token: null,
             role: null,
             isAuthenticated: false,
-            isLoading: false
+            isLoading: false,
+            permissions: []
         })
         router.push('/login')
     }, [setTokenCookie, setRoleCookie, router])
@@ -142,15 +180,26 @@ const useAuth = () => {
 
     // Check if user is admin
     const isAdmin = useCallback(() => {
-        return authState.role === 'admin'
+        return authState.role?.startsWith(ADMIN_PREFIX) ?? false
     }, [authState.role])
+
+    const hasPermission = useCallback(
+        (permissionKey: string) => {
+            if (!authState.isAuthenticated) return false
+            if (authState.role === ADMIN_PREFIX) return true
+
+            return authState.permissions.includes(permissionKey)
+        },
+        [authState.isAuthenticated, authState.permissions, authState.role]
+    )
 
     return {
         ...authState,
         login,
         logout,
         getAuthHeader,
-        isAdmin
+        isAdmin,
+        hasPermission
     }
 }
 

@@ -1,3 +1,4 @@
+'use client'
 // MUI Imports
 import { useTheme } from '@mui/material/styles'
 
@@ -12,6 +13,7 @@ import { Menu, MenuItem, SubMenu } from '@menu/vertical-menu'
 
 // Hook Imports
 import useVerticalNav from '@menu/hooks/useVerticalNav'
+import useAuth from '@/@core/hooks/useAuth'
 
 // Styled Component Imports
 import StyledVerticalNavExpandIcon from '@menu/styles/vertical/StyledVerticalNavExpandIcon'
@@ -35,8 +37,14 @@ const VerticalMenu = ({ scrollMenu }: { scrollMenu: (container: any, isPerfectSc
   // Hooks
   const theme = useTheme()
   const { isBreakpointReached, transitionDuration } = useVerticalNav()
+  const { hasPermission } = useAuth()
 
   const ScrollWrapper = isBreakpointReached ? 'div' : PerfectScrollbar
+
+  const canAccessClasses = hasPermission('class')
+  const canAccessAccounting = hasPermission('accounting')
+  const canAccessSchedule = hasPermission('schedule')
+  const canAccessTeacher = hasPermission('teacher')
 
   return (
     // eslint-disable-next-line lines-around-comment
@@ -61,18 +69,26 @@ const VerticalMenu = ({ scrollMenu }: { scrollMenu: (container: any, isPerfectSc
         menuSectionStyles={menuSectionStyles(theme)}
       >
         <MenuItem href='/' icon={<i className='ri-dashboard-line' />}>Analytics</MenuItem>
-        <MenuItem href='/courses' icon={<i className='ri-book-open-line' />}>Quản lý lớp học</MenuItem>
-        <MenuItem href='/accounting' icon={<i className='ri-calculator-line' />}>Kế toán</MenuItem>
-        <SubMenu label='Quản lý lịch học' icon={<i className='ri-calendar-schedule-line' />}>
-          <MenuItem href='/edit-schedule' icon={<i className='ri-calendar-edit-line' />}>Chỉnh sửa lịch</MenuItem>
-          <MenuItem href='/schedule-planner' icon={<i className='ri-calendar-event-line' />}>Xếp lịch học</MenuItem>
-          <MenuItem href='/schedule-requests' icon={<i className='ri-user-forbid-line' />}>Yêu cầu đổi lịch</MenuItem>
-          <MenuItem href='/unscheduled-students' icon={<i className='ri-user-forbid-line' />}>Danh sách học sinh đang thiếu</MenuItem>
-        </SubMenu>
-        <SubMenu label='Quản lý giáo viên' icon={<i className='ri-user-star-line' />}>
-          <MenuItem href='/teachers-info' icon={<i className='ri-user-settings-line' />}>Thông tin giáo viên</MenuItem>
-          <MenuItem href='/teachers-schedule' icon={<i className='ri-calendar-time-line' />}>Lịch giáo viên</MenuItem>
-        </SubMenu>
+        {canAccessClasses && (
+          <MenuItem href='/courses' icon={<i className='ri-book-open-line' />}>Quản lý lớp học</MenuItem>
+        )}
+        {canAccessAccounting && (
+          <MenuItem href='/accounting' icon={<i className='ri-calculator-line' />}>Kế toán</MenuItem>
+        )}
+        {canAccessSchedule && (
+          <SubMenu label='Quản lý lịch học' icon={<i className='ri-calendar-schedule-line' />}>
+            <MenuItem href='/edit-schedule' icon={<i className='ri-calendar-edit-line' />}>Chỉnh sửa lịch</MenuItem>
+            <MenuItem href='/schedule-planner' icon={<i className='ri-calendar-event-line' />}>Xếp lịch học</MenuItem>
+            <MenuItem href='/schedule-requests' icon={<i className='ri-user-forbid-line' />}>Yêu cầu đổi lịch</MenuItem>
+            <MenuItem href='/unscheduled-students' icon={<i className='ri-user-forbid-line' />}>Danh sách học sinh đang thiếu</MenuItem>
+          </SubMenu>
+        )}
+        {canAccessTeacher && (
+          <SubMenu label='Quản lý giáo viên' icon={<i className='ri-user-star-line' />}>
+            <MenuItem href='/teachers-info' icon={<i className='ri-user-settings-line' />}>Thông tin giáo viên</MenuItem>
+            <MenuItem href='/teachers-schedule' icon={<i className='ri-calendar-time-line' />}>Lịch giáo viên</MenuItem>
+          </SubMenu>
+        )}
         {/* <MenuSection label='Apps & Pages'>
           <MenuItem href='/account-settings' icon={<i className='ri-user-settings-line' />}>
             Account Settings
