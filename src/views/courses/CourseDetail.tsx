@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 
 import { useRouter } from 'next/navigation'
 
@@ -31,7 +31,8 @@ import {
   TableRow,
   TextField,
   Tooltip,
-  Typography
+  Typography,
+  Checkbox
 } from '@mui/material'
 
 import { styled } from '@mui/material/styles'
@@ -40,7 +41,9 @@ import { useCourseInfo, useRegisterCourse, useUnregisterCourse } from '@/@core/h
 import { useCreateUser, useStudentList } from '@/@core/hooks/useStudent'
 import { useGetWeeks } from '@/@core/hooks/useWeek'
 import CreateClassForm from '@/views/classes/CreateClassForm'
+import ImportClassesFromCSV from '@/views/classes/ImportClassesFromCSV'
 import StudentSchedulePopup from '@/views/courses/StudentSchedulePopup'
+import { useDeleteClasses } from '@/@core/hooks/useClass'
 
 const StyledCard = styled(Card)(({ theme }) => ({
   marginBottom: theme.spacing(3)
@@ -102,12 +105,15 @@ interface CourseDetailProps {
 const CourseDetail = ({ courseName }: CourseDetailProps) => {
   const router = useRouter()
   const [openCreateClassDialog, setOpenCreateClassDialog] = useState(false)
+  const [openImportClassDialog, setOpenImportClassDialog] = useState(false)
   const [openRegisterDialog, setOpenRegisterDialog] = useState(false)
   const [openCreateStudentDialog, setOpenCreateStudentDialog] = useState(false)
   const [openUnregisterDialog, setOpenUnregisterDialog] = useState(false)
+  const [openDeleteClassesDialog, setOpenDeleteClassesDialog] = useState(false)
   const [studentToUnregister, setStudentToUnregister] = useState<{ id: string; name: string } | null>(null)
   const [searchStudent, setSearchStudent] = useState('')
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([])
+  const [selectedClassIds, setSelectedClassIds] = useState<string[]>([])
   const [selectedWeekId, setSelectedWeekId] = useState<string>('')
   const [newStudentForm, setNewStudentForm] = useState({
     username: '',
@@ -144,6 +150,7 @@ const CourseDetail = ({ courseName }: CourseDetailProps) => {
   const { data: studentListData, isLoading: isStudentListLoading } = useStudentList(searchStudent)
   const { data: weeksData, isLoading: isLoadingWeeks } = useGetWeeks()
   const { mutate: createUser, isPending: isCreatingUser } = useCreateUser(course?.id || '')
+  const deleteClassesMutation = useDeleteClasses(courseName, selectedWeekId || 'all')
 
   // Get registered student IDs
   const registeredStudentIds = useMemo(() => {
@@ -160,6 +167,33 @@ const CourseDetail = ({ courseName }: CourseDetailProps) => {
   }, [studentListData?.users, registeredStudentIds])
 
   const classes = course?.classes
+
+  useEffect(() => {
+    if (!classes || classes.length === 0) {
+      setSelectedClassIds([])
+      return
+    }
+
+    setSelectedClassIds(prev => prev.filter(id => classes.some(cls => cls.id === id)))
+  }, [classes])
+
+  const handleToggleClassSelection = (classId: string) => {
+    setSelectedClassIds(prev =>
+      prev.includes(classId) ? prev.filter(id => id !== classId) : [...prev, classId]
+    )
+  }
+
+  const handleToggleAllClasses = (checked: boolean) => {
+    if (!classes) return
+    if (checked) {
+      setSelectedClassIds(classes.map(cls => cls.id))
+    } else {
+      setSelectedClassIds([])
+    }
+  }
+
+  const allClassesSelected = classes ? selectedClassIds.length === classes.length && classes.length > 0 : false
+  const someClassesSelected = classes ? selectedClassIds.length > 0 && selectedClassIds.length < classes.length : false
 
   // Lấy danh sách lớp học của khóa học này
   if (isLoadingCourses) {
@@ -651,14 +685,35 @@ const CourseDetail = ({ courseName }: CourseDetailProps) => {
                 <Typography variant="h6">
                   Danh sách lớp kỹ năng ({classes?.length || 0})
                 </Typography>
-                <Button
-                  variant="contained"
-                  size="small"
-                  startIcon={<i className="ri-add-line" />}
-                  onClick={() => setOpenCreateClassDialog(true)}
-                >
-                  Thêm lớp kỹ năng
-                </Button>
+                <Box display="flex" gap={1} alignItems="center">
+                  {selectedClassIds.length > 0 && (
+                    <Button
+                      variant="outlined"
+                      color="error"
+                      size="small"
+                      startIcon={<i className="ri-delete-bin-line" />}
+                      onClick={() => setOpenDeleteClassesDialog(true)}
+                    >
+                      Xóa ({selectedClassIds.length})
+                    </Button>
+                  )}
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<i className="ri-file-upload-line" />}
+                    onClick={() => setOpenImportClassDialog(true)}
+                  >
+                    Import từ CSV
+                  </Button>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    startIcon={<i className="ri-add-line" />}
+                    onClick={() => setOpenCreateClassDialog(true)}
+                  >
+                    Thêm thủ công
+                  </Button>
+                </Box>
               </Box>
             }
           />
@@ -674,6 +729,13 @@ const CourseDetail = ({ courseName }: CourseDetailProps) => {
                 <Table>
                   <TableHead>
                     <TableRow>
+                      <TableCell padding="checkbox">
+                        <Checkbox
+                          checked={allClassesSelected}
+                          indeterminate={someClassesSelected}
+                          onChange={(event) => handleToggleAllClasses(event.target.checked)}
+                        />
+                      </TableCell>
                       <StyledTableCell>Lớp kỹ năng</StyledTableCell>
                       <StyledTableCell>Loại kỹ năng</StyledTableCell>
                       <StyledTableCell align="center">Số học sinh</StyledTableCell>
@@ -684,7 +746,18 @@ const CourseDetail = ({ courseName }: CourseDetailProps) => {
                   </TableHead>
                   <TableBody>
                     {classes.map((classItem) => (
-                      <TableRow key={classItem.id} hover onClick={() => router.push(`/classes/${classItem.id}`)}>
+                      <TableRow
+                        key={classItem.id}
+                        hover
+                        onClick={() => router.push(`/classes/${classItem.id}`)}
+                        selected={selectedClassIds.includes(classItem.id)}
+                      >
+                        <TableCell padding="checkbox" onClick={e => e.stopPropagation()}>
+                          <Checkbox
+                            checked={selectedClassIds.includes(classItem.id)}
+                            onChange={() => handleToggleClassSelection(classItem.id)}
+                          />
+                        </TableCell>
                         <TableCell>
                           <Box display="flex" alignItems="center" gap={2}>
                             <Avatar sx={{ bgcolor: 'secondary.main' }}>
@@ -778,6 +851,66 @@ const CourseDetail = ({ courseName }: CourseDetailProps) => {
             courseId={course.id}
             onSuccess={() => setOpenCreateClassDialog(false)}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* Import Classes from CSV Dialog */}
+      <ImportClassesFromCSV
+        courseId={course.id}
+        open={openImportClassDialog}
+        onClose={() => setOpenImportClassDialog(false)}
+        onSuccess={() => {
+          setNotification({ open: true, message: 'Import lớp học thành công!', severity: 'success' })
+        }}
+      />
+
+      {/* Delete Classes Dialog */}
+      <Dialog
+        open={openDeleteClassesDialog}
+        onClose={() => setOpenDeleteClassesDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogContent>
+          <Box textAlign="center" py={2}>
+            <i className="ri-delete-bin-6-line" style={{ fontSize: 48, color: '#f44336', marginBottom: 16 }} />
+            <Typography variant="h6" gutterBottom>
+              Xác nhận xóa lớp học
+            </Typography>
+            <Typography variant="body1" color="text.secondary" mb={3}>
+              Bạn có chắc chắn muốn xóa {selectedClassIds.length} lớp học đã chọn? Hành động này không thể hoàn tác.
+            </Typography>
+            <Box display="flex" justifyContent="center" gap={2}>
+              <Button
+                variant="outlined"
+                onClick={() => setOpenDeleteClassesDialog(false)}
+                disabled={deleteClassesMutation.isPending}
+              >
+                Hủy
+              </Button>
+              <Button
+                variant="contained"
+                color="error"
+                onClick={() => {
+                  deleteClassesMutation.mutate(selectedClassIds, {
+                    onSuccess: () => {
+                      setNotification({ open: true, message: 'Xóa lớp học thành công!', severity: 'success' })
+                      setSelectedClassIds([])
+                      setOpenDeleteClassesDialog(false)
+                      router.refresh()
+                    },
+                    onError: () => {
+                      setNotification({ open: true, message: 'Xóa lớp học thất bại!', severity: 'error' })
+                    }
+                  })
+                }}
+                disabled={deleteClassesMutation.isPending}
+                startIcon={deleteClassesMutation.isPending ? <i className="ri-loader-line animate-spin" /> : <i className="ri-check-line" />}
+              >
+                {deleteClassesMutation.isPending ? 'Đang xóa...' : 'Xác nhận xóa'}
+              </Button>
+            </Box>
+          </Box>
         </DialogContent>
       </Dialog>
 

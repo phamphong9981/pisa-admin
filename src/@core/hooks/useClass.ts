@@ -40,7 +40,7 @@ export interface ClassListResponse {
 
 interface CreateClassDto {
     name: string
-    total_lesson_per_week: number
+    total_lesson_per_week?: number
     class_type: ClassType
     teacher_id: string,
     course_id: string,
@@ -78,7 +78,7 @@ const fetchClassInfo = async (id: string): Promise<ClassInfo> => {
     return data.data;
 }
 
-const createClass = async (classInfo: CreateClassDto) => {
+const createClass = async (classInfo: CreateClassDto | CreateClassDto[]) => {
     console.log(classInfo);
     const { data } = await apiClient.post('/classes', classInfo);
 
@@ -203,3 +203,24 @@ export const useUpdateClass = () => {
 
 export type { ClassInfo, CreateClassDto, UpdateClassDto }
 
+const deleteClasses = async (ids: string[]) => {
+    const { data } = await apiClient.post('/classes/delete-classes', {
+        ids: ids
+    });
+
+    return data.data;
+}
+
+export const useDeleteClasses = (courseId: string, weekId: string) => {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: deleteClasses,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['courseInfo', courseId, weekId] })
+        },
+        onError: (error) => {
+            console.error('Error deleting classes:', error)
+        }
+    })
+}
