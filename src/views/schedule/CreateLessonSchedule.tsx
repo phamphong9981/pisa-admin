@@ -1489,7 +1489,7 @@ const CreateLessonSchedule = ({
                     }}>
                       <Grid container spacing={1}>
                         {availableStudents.map((student) => (
-                          <Grid item xs={12} sm={6} md={4} key={student.id}>
+                          <Grid item xs={12} sm={12} md={12} key={student.id}>
                             <Chip
                               label={student.fullname}
                               onClick={() => handleAddAvailableStudent(student)}
