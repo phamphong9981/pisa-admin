@@ -39,6 +39,7 @@ import { SCHEDULE_TIME, useAutoScheduleCourse, useGetAllSchedule } from '@/@core
 import { useGetWeeks, WeekResponseDto } from '@/@core/hooks/useWeek'
 import { useTeacherList, TeacherListResponse } from '@/@core/hooks/useTeacher'
 import CreateLessonSchedule from './CreateLessonSchedule'
+import MissingScheduleTable from './MissingScheduleTable'
 
 const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
   fontWeight: 700,
@@ -235,6 +236,9 @@ const SchedulePlanner = () => {
 
   // State for export
   const [isExporting, setIsExporting] = useState(false)
+
+  // State for missing schedule table
+  const [showMissingScheduleTable, setShowMissingScheduleTable] = useState(false)
 
   // State for create lesson schedule modal
   const [createLessonModal, setCreateLessonModal] = useState<{
@@ -721,6 +725,20 @@ const SchedulePlanner = () => {
                 </Typography>
                 <Button
                   variant="outlined"
+                  color={showMissingScheduleTable ? "primary" : "inherit"}
+                  startIcon={<i className="ri-table-line" />}
+                  onClick={() => setShowMissingScheduleTable(!showMissingScheduleTable)}
+                  sx={{
+                    minWidth: 'auto',
+                    px: 2,
+                    py: 1,
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  {showMissingScheduleTable ? 'Ẩn lịch thiếu' : 'Hiển thị lịch thiếu'}
+                </Button>
+                <Button
+                  variant="outlined"
                   color="primary"
                   startIcon={
                     isExporting ?
@@ -1095,6 +1113,12 @@ const SchedulePlanner = () => {
         </CardContent>
       </Card>
 
+      {/* Missing Schedule Table */}
+      {selectedCourseId && showMissingScheduleTable && (
+        <Box sx={{ mb: 4 }}>
+          <MissingScheduleTable courseId={selectedCourseId} weekId={selectedWeekId} />
+        </Box>
+      )}
 
       {selectedCourseId ? (
         <Card>

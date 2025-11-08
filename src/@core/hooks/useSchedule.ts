@@ -514,20 +514,22 @@ export interface MissingSchedulesDto {
     }
 }
 
-const missingSchedulesList = async (profileId?: string): Promise<MissingSchedulesDto[]> => {
+const missingSchedulesList = async (profileId?: string, courseId?: string, weekId?: string): Promise<MissingSchedulesDto[]> => {
     const { data } = await apiClient.get('/missing-schedules', {
         params: {
-            profileId
+            profileId,
+            courseId,
+            weekId
         }
     })
 
     return data.data;
 }
 
-export const useMissingSchedulesList = (profileId?: string) => {
+export const useMissingSchedulesList = (profileId?: string, courseId?: string, weekId?: string) => {
     return useQuery({
-        queryKey: ['missing-schedules', profileId],
-        queryFn: () => missingSchedulesList(profileId),
+        queryKey: ['missing-schedules', profileId, courseId, weekId],
+        queryFn: () => missingSchedulesList(profileId, courseId, weekId),
         staleTime: 5 * 60 * 1000, // 5 phút
         gcTime: 10 * 60 * 1000, // 10 phút
         retry: 1,
