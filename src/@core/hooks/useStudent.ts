@@ -52,6 +52,8 @@ export const useStudentList = (search: string) => {
     return useQuery<ListUsersResponseDto, Error>({
         queryKey: ['students', search],
         queryFn: () => fetchStudentList(search),
+        refetchInterval: 3000,
+        refetchIntervalInBackground: true,
         staleTime: 5 * 60 * 1000,
         gcTime: 10 * 60 * 1000,
         retry: 1,
