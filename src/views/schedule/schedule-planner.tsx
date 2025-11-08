@@ -29,7 +29,8 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Typography
+  Typography,
+  Tooltip
 } from '@mui/material'
 
 // Hooks
@@ -1336,32 +1337,57 @@ const SchedulePlanner = () => {
                                       </Box>
                                     </ClassBoxSubHeader>
                                     <ClassBoxBody>
-                                      {Array.isArray(s.students) && s.students.length > 0 ? (
-                                        <Box display="flex" gap={0.5} flexWrap="wrap">
-                                          {s.students.map((st: any) => {
-                                            const coursename = st.coursename ? ` - ${st.coursename}` : '';
-                                            const displayLabel = st.note
-                                              ? `${st.fullname}${coursename} (${st.note})`
-                                              : `${st.fullname}${coursename}`;
+                                      {Array.isArray(s.students) && s.students.length > 0 ? (() => {
+                                        const visibleStudents = s.students.slice(0, 10)
+                                        const hasMoreStudents = s.students.length > 10
+                                        const additionalStudents = hasMoreStudents ? s.students.slice(10) : []
 
-                                            return (
-                                              <Chip
-                                                key={st.id}
-                                                size="small"
-                                                label={displayLabel}
-                                                sx={{
-                                                  maxWidth: '100%',
-                                                  '& .MuiChip-label': {
-                                                    overflow: 'hidden',
-                                                    textOverflow: 'ellipsis',
-                                                    whiteSpace: 'nowrap'
-                                                  }
-                                                }}
-                                              />
-                                            );
-                                          })}
-                                        </Box>
-                                      ) : (
+                                        return (
+                                          <Box display="flex" gap={0.5} flexWrap="wrap">
+                                            {visibleStudents.map((st: any) => {
+                                              const coursename = st.coursename ? ` - ${st.coursename}` : ''
+                                              const displayLabel = st.note
+                                                ? `${st.fullname}${coursename} (${st.note})`
+                                                : `${st.fullname}${coursename}`
+
+                                              return (
+                                                <Chip
+                                                  key={st.id}
+                                                  size="small"
+                                                  label={displayLabel}
+                                                  sx={{
+                                                    maxWidth: '100%',
+                                                    '& .MuiChip-label': {
+                                                      overflow: 'hidden',
+                                                      textOverflow: 'ellipsis',
+                                                      whiteSpace: 'nowrap'
+                                                    }
+                                                  }}
+                                                />
+                                              )
+                                            })}
+
+                                            {hasMoreStudents && (
+                                              <Tooltip
+                                                title={additionalStudents.map((st: any) => st.fullname).join(', ')}
+                                              >
+                                                <Chip
+                                                  size="small"
+                                                  label="..."
+                                                  sx={{
+                                                    maxWidth: '100%',
+                                                    '& .MuiChip-label': {
+                                                      overflow: 'hidden',
+                                                      textOverflow: 'ellipsis',
+                                                      whiteSpace: 'nowrap'
+                                                    }
+                                                  }}
+                                                />
+                                              </Tooltip>
+                                            )}
+                                          </Box>
+                                        )
+                                      })() : (
                                         <Typography variant="caption" color="text.secondary">Chưa có danh sách học sinh</Typography>
                                       )}
                                     </ClassBoxBody>
@@ -1370,13 +1396,26 @@ const SchedulePlanner = () => {
 
                                 {/* Free students list */}
                                 <Box>
-                                  {free.length > 0 ? (
-                                    <Box display="flex" gap={0.5} flexWrap="wrap">
-                                      {free.map(s => (
-                                        <Chip key={s.id} size="small" label={s.fullname} />
-                                      ))}
-                                    </Box>
-                                  ) : (
+                                  {free.length > 0 ? (() => {
+                                    const visibleFreeStudents = free.slice(0, 10)
+                                    const hasMoreFreeStudents = free.length > 10
+                                    const additionalFreeStudents = hasMoreFreeStudents ? free.slice(10) : []
+
+                                    return (
+                                      <Box display="flex" gap={0.5} flexWrap="wrap">
+                                        {visibleFreeStudents.map(s => (
+                                          <Chip key={s.id} size="small" label={s.fullname} />
+                                        ))}
+                                        {hasMoreFreeStudents && (
+                                          <Tooltip
+                                            title={additionalFreeStudents.map(s => s.fullname).join(', ')}
+                                          >
+                                            <Chip size="small" label="..." />
+                                          </Tooltip>
+                                        )}
+                                      </Box>
+                                    )
+                                  })() : (
                                     scheduled.length === 0 ? (
                                       <Typography variant="caption" color="text.secondary">Không có HS rảnh</Typography>
                                     ) : null

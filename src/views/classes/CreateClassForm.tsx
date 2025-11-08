@@ -129,10 +129,7 @@ const CreateClassForm = ({ courseId, onSuccess }: CreateClassFormProps) => {
       case ClassType.FT_WRITING: return 'FastTrack - Viết'
       case ClassType.FT_READING: return 'FastTrack - Đọc'
       case ClassType.FT_SPEAKING: return 'FastTrack - Nói'
-      case ClassType.LISTENING: return 'Nghe'
-      case ClassType.WRITING: return 'Viết'
-      case ClassType.READING: return 'Đọc'
-      case ClassType.SPEAKING: return 'Nói'
+      case ClassType.OTHER: return 'Khác'
       default: return classType
     }
   }

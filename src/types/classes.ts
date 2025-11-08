@@ -30,8 +30,5 @@ export enum ClassType {
     FT_SPEAKING = 'FT_speaking',
     FT_WRITING = 'FT_writing',
     FT_READING = 'FT_reading',
-    LISTENING = 'listening',
-    SPEAKING = 'speaking',
-    WRITING = 'writing',
-    READING = 'reading',
+    OTHER = 'other',
 }
