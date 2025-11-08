@@ -23,7 +23,9 @@ import {
     TableContainer,
     TableHead,
     TableRow,
-    Paper
+    Paper,
+    IconButton,
+    Collapse
 } from '@mui/material'
 import { styled } from '@mui/material/styles'
 
@@ -113,9 +115,51 @@ const StudentSchedulePopup = ({
     }
 
     const groupedSchedules = groupSchedulesByWeek()
-    const weekIds = Object.keys(groupedSchedules).sort()
+
+    const weeksWithMetadata = Object.entries(groupedSchedules).map(([weekId, weekSchedules]) => {
+        const flatSchedules = Object.values(weekSchedules).flat()
+        const firstSchedule = flatSchedules[0]
+        const startDateString = firstSchedule?.startDate
+        const startDate = startDateString ? new Date(startDateString) : null
+
+        return {
+            weekId,
+            weekSchedules,
+            flatSchedules,
+            startDate,
+            startDateString
+        }
+    }).sort((a, b) => {
+        if (a.startDate && b.startDate) {
+            return b.startDate.getTime() - a.startDate.getTime()
+        }
+        if (a.startDate) return -1
+        if (b.startDate) return 1
+
+        return a.weekId.localeCompare(b.weekId)
+    })
+
+    const [expandedWeeks, setExpandedWeeks] = useState<Record<string, boolean>>({})
+
+    useEffect(() => {
+        if (weeksWithMetadata.length === 0) {
+            setExpandedWeeks({})
+            return
+        }
+
+        setExpandedWeeks(prev => {
+            const updated: Record<string, boolean> = {}
+
+            weeksWithMetadata.forEach(({ weekId }) => {
+                updated[weekId] = prev[weekId] ?? false
+            })
+
+            return updated
+        })
+    }, [weeksWithMetadata])
 
     const totalSchedules = missingSchedules?.length || 0
+    const totalWeeks = weeksWithMetadata.length
 
     const getStatusLabel = (status: string) => {
         switch (status) {
@@ -379,6 +423,32 @@ const StudentSchedulePopup = ({
         )
     }
 
+    const getWeekRangeLabel = (startDateString?: string) => {
+        if (!startDateString) {
+            return 'Không rõ thời gian'
+        }
+
+        const startDate = new Date(startDateString)
+        const endDate = new Date(startDate)
+        endDate.setDate(endDate.getDate() + 6)
+
+        const format = (date: Date) =>
+            date.toLocaleDateString('vi-VN', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            })
+
+        return `${format(startDate)} - ${format(endDate)}`
+    }
+
+    const handleToggleWeek = (weekId: string) => {
+        setExpandedWeeks(prev => ({
+            ...prev,
+            [weekId]: !(prev[weekId] ?? false)
+        }))
+    }
+
     return (
         <Dialog
             open={open}
@@ -435,19 +505,16 @@ const StudentSchedulePopup = ({
                         <Alert severity="info" sx={{ mb: 3 }}>
                             <Typography variant="body2">
                                 <strong>Tổng kết:</strong> Học sinh {studentName} có {totalSchedules} lịch học bị thay đổi,
-                                được phân bổ trong {weekIds.length} tuần học khác nhau.
+                                được phân bổ trong {totalWeeks} tuần học khác nhau.
                                 Thông tin lớp bù được hiển thị trong cột "Lớp bù" cho tất cả các lịch.
                             </Typography>
                         </Alert>
 
                         {/* Render schedules grouped by week */}
-                        {weekIds.map((weekId) => {
-                            const weekSchedules = groupedSchedules[weekId]
-                            const weekTotal = Object.values(weekSchedules).flat().length
-
-                            // Get week start date from first schedule in this week
-                            const firstSchedule = Object.values(weekSchedules).flat()[0]
-                            const weekStartDate = firstSchedule?.startDate || weekId
+                        {weeksWithMetadata.map(({ weekId, weekSchedules, flatSchedules, startDateString }) => {
+                            const weekTotal = flatSchedules.length
+                            const isExpanded = expandedWeeks[weekId] ?? false
+                            const weekRangeLabel = getWeekRangeLabel(startDateString)
 
                             return (
                                 <Box key={weekId} sx={{ mb: 4 }}>
@@ -466,30 +533,39 @@ const StudentSchedulePopup = ({
                                                     Tuần học
                                                 </Typography>
                                                 <Typography variant="body2" color="text.secondary">
-                                                    {new Date(weekStartDate).toLocaleDateString('vi-VN', {
-                                                        day: '2-digit',
-                                                        month: '2-digit',
-                                                        year: 'numeric'
-                                                    })} - {weekTotal} lịch học
+                                                    {weekRangeLabel} • {weekTotal} lịch học
                                                 </Typography>
                                             </Box>
+                                            <IconButton
+                                                size="small"
+                                                onClick={() => handleToggleWeek(weekId)}
+                                                sx={{
+                                                    marginLeft: 'auto',
+                                                    transition: 'transform 0.2s ease',
+                                                    transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'
+                                                }}
+                                            >
+                                                <i className="ri-arrow-down-s-line" />
+                                            </IconButton>
                                         </Box>
                                     </Box>
 
                                     {/* Cancelled Schedules */}
-                                    {weekSchedules['cancelled'] && renderScheduleList(weekSchedules['cancelled'], 'cancelled', 'Lịch đã hủy')}
+                                    <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                                        {weekSchedules['cancelled'] && renderScheduleList(weekSchedules['cancelled'], 'cancelled', 'Lịch đã hủy')}
 
-                                    {/* Changed Schedules */}
-                                    {weekSchedules['changed'] && renderScheduleList(weekSchedules['changed'], 'changed', 'Lịch đã thay đổi')}
+                                        {/* Changed Schedules */}
+                                        {weekSchedules['changed'] && renderScheduleList(weekSchedules['changed'], 'changed', 'Lịch đã thay đổi')}
 
-                                    {/* On Request Cancel Schedules */}
-                                    {weekSchedules['on_request_cancel'] && renderScheduleList(weekSchedules['on_request_cancel'], 'on_request_cancel', 'Yêu cầu hủy')}
+                                        {/* On Request Cancel Schedules */}
+                                        {weekSchedules['on_request_cancel'] && renderScheduleList(weekSchedules['on_request_cancel'], 'on_request_cancel', 'Yêu cầu hủy')}
 
-                                    {/* On Request Change Schedules */}
-                                    {weekSchedules['on_request_change'] && renderScheduleList(weekSchedules['on_request_change'], 'on_request_change', 'Yêu cầu thay đổi')}
+                                        {/* On Request Change Schedules */}
+                                        {weekSchedules['on_request_change'] && renderScheduleList(weekSchedules['on_request_change'], 'on_request_change', 'Yêu cầu thay đổi')}
 
-                                    {/* No Schedule Schedules */}
-                                    {weekSchedules['no_schedule'] && renderScheduleList(weekSchedules['no_schedule'], 'no_schedule', 'Chưa xếp lịch')}
+                                        {/* No Schedule Schedules */}
+                                        {weekSchedules['no_schedule'] && renderScheduleList(weekSchedules['no_schedule'], 'no_schedule', 'Chưa xếp lịch')}
+                                    </Collapse>
                                 </Box>
                             )
                         })}
