@@ -808,7 +808,10 @@ const CourseDetail = ({ courseName }: CourseDetailProps) => {
                               <IconButton
                                 size="small"
                                 color="primary"
-                                onClick={() => router.push(`/classes/${classItem.id}`)}
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  router.push(`/classes/${classItem.id}`)
+                                }}
                               >
                                 <i className="ri-eye-line" />
                               </IconButton>

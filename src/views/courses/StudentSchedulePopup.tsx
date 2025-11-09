@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 
 import {
     Box,
@@ -93,70 +93,56 @@ const StudentSchedulePopup = ({
     const { data: missingSchedules, isLoading } = useMissingSchedulesList(studentId)
 
     // Group schedules by week and status
-    const groupSchedulesByWeek = () => {
-        if (!missingSchedules) return {}
 
-        const grouped: { [weekId: string]: { [status: string]: MissingSchedulesDto[] } } = {}
-
-        missingSchedules.forEach(schedule => {
-            const weekId = schedule.weekId
-            const status = schedule.scheduleStatus || 'unknown'
-
-            if (!grouped[weekId]) {
-                grouped[weekId] = {}
-            }
-            if (!grouped[weekId][status]) {
-                grouped[weekId][status] = []
-            }
-            grouped[weekId][status].push(schedule)
-        })
-
-        return grouped
-    }
-
-    const groupedSchedules = groupSchedulesByWeek()
-
-    const weeksWithMetadata = Object.entries(groupedSchedules).map(([weekId, weekSchedules]) => {
-        const flatSchedules = Object.values(weekSchedules).flat()
-        const firstSchedule = flatSchedules[0]
-        const startDateString = firstSchedule?.startDate
-        const startDate = startDateString ? new Date(startDateString) : null
-
-        return {
-            weekId,
-            weekSchedules,
-            flatSchedules,
-            startDate,
-            startDateString
+    const groupedSchedules = useMemo(() => {
+        if (!missingSchedules) return {};
+        const grouped: Record<string, Record<string, MissingSchedulesDto[]>> = {};
+        for (const s of missingSchedules) {
+            const wId = s.weekId;
+            const st = s.scheduleStatus || 'unknown';
+            (grouped[wId] ??= {})[st] ??= [];
+            grouped[wId][st].push(s);
         }
-    }).sort((a, b) => {
-        if (a.startDate && b.startDate) {
-            return b.startDate.getTime() - a.startDate.getTime()
-        }
-        if (a.startDate) return -1
-        if (b.startDate) return 1
+        return grouped;
+    }, [missingSchedules]);
 
-        return a.weekId.localeCompare(b.weekId)
-    })
+    const weeksWithMetadata = useMemo(() => {
+        return Object.entries(groupedSchedules)
+            .map(([weekId, weekSchedules]) => {
+                const flatSchedules = Object.values(weekSchedules).flat();
+                const first = flatSchedules[0];
+                const startDate = first?.startDate ? new Date(first.startDate) : null;
+                return { weekId, weekSchedules, flatSchedules, startDate, startDateString: first?.startDate };
+            })
+            .sort((a, b) => (a.startDate && b.startDate ? b.startDate.getTime() - a.startDate.getTime()
+                : a.startDate ? -1 : b.startDate ? 1 : a.weekId.localeCompare(b.weekId)));
+    }, [groupedSchedules]);
 
     const [expandedWeeks, setExpandedWeeks] = useState<Record<string, boolean>>({})
 
     useEffect(() => {
-        if (weeksWithMetadata.length === 0) {
-            setExpandedWeeks({})
-            return
-        }
-
+        // tính next state dựa trên weeks hiện có
         setExpandedWeeks(prev => {
-            const updated: Record<string, boolean> = {}
+            const next: Record<string, boolean> = { ...prev };
 
-            weeksWithMetadata.forEach(({ weekId }) => {
-                updated[weekId] = prev[weekId] ?? false
-            })
+            // thêm khóa mới với mặc định false
+            for (const { weekId } of weeksWithMetadata) {
+                if (!(weekId in next)) next[weekId] = false;
+            }
+            // loại bỏ khóa không còn tồn tại
+            const valid = new Set(weeksWithMetadata.map(w => w.weekId));
+            for (const k of Object.keys(next)) {
+                if (!valid.has(k)) delete next[k];
+            }
 
-            return updated
-        })
-    }, [weeksWithMetadata])
+            // so sánh nông để quyết định có cần set lại hay không
+            const changed =
+                Object.keys(next).length !== Object.keys(prev).length ||
+                Object.keys(next).some(k => next[k] !== prev[k]);
+
+            return changed ? next : prev;   // ← nếu không đổi, trả lại prev để tránh re-render
+        });
+    }, [weeksWithMetadata.length]);
 
     const totalSchedules = missingSchedules?.length || 0
     const totalWeeks = weeksWithMetadata.length
