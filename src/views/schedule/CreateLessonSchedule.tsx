@@ -438,6 +438,22 @@ const CreateLessonSchedule = ({
   const formatTimeToHHMM = (time: string): string => {
     if (!time) return ''
 
+    const matchHHMM = time.match(/^(\d{1,2}):(\d{2})$/)
+
+    if (matchHHMM) {
+      const [, hours, minutes] = matchHHMM
+
+      return `${hours.padStart(2, '0')}:${minutes}`
+    }
+
+    const matchHHMMSS = time.match(/^(\d{1,2}):(\d{2}):(\d{2})$/)
+
+    if (matchHHMMSS) {
+      const [, hours, minutes] = matchHHMMSS
+
+      return `${hours.padStart(2, '0')}:${minutes}`
+    }
+
     // If time is already in HH:MM format, return as is
     if (/^\d{2}:\d{2}$/.test(time)) {
       return time
