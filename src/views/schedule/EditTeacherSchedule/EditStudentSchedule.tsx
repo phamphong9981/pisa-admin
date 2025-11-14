@@ -37,7 +37,7 @@ import {
 import { styled } from '@mui/material/styles'
 
 // Hooks
-import { useStudentList, useUpdateStudentBusySchedule } from '@/@core/hooks/useStudent'
+import { useStudentListWithReload, useUpdateStudentBusySchedule } from '@/@core/hooks/useStudent'
 import { SCHEDULE_TIME } from '@/@core/hooks/useSchedule'
 
 const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
@@ -76,17 +76,17 @@ const ScheduleCell = styled(TableCell, {
   cursor: isEditable ? 'pointer' : isTeaching ? 'pointer' : 'default',
   minWidth: '120px',
   minHeight: '60px',
-  backgroundColor: isTeaching 
+  backgroundColor: isTeaching
     ? '#e3f2fd' // Light blue for teaching
-    : isBusy 
+    : isBusy
       ? '#ffebee' // Light red for busy
       : '#f1f8e9', // Light green for free
   '&:hover': {
-    backgroundColor: isEditable 
+    backgroundColor: isEditable
       ? '#e8f5e8' // Light green on hover for editable
-      : isTeaching 
+      : isTeaching
         ? '#bbdefb' // Darker blue on hover
-        : isBusy 
+        : isBusy
           ? '#ffcdd2' // Darker red on hover
           : '#dcedc8', // Darker green on hover
   },
@@ -97,7 +97,7 @@ const ScheduleCell = styled(TableCell, {
 const getDayInVietnamese = (englishDay: string) => {
   const dayMap: { [key: string]: string } = {
     'Monday': 'Thứ 2',
-    'Tuesday': 'Thứ 3', 
+    'Tuesday': 'Thứ 3',
     'Wednesday': 'Thứ 4',
     'Thursday': 'Thứ 5',
     'Friday': 'Thứ 6',
@@ -115,8 +115,8 @@ const EditStudentSchedule = () => {
   const [debouncedSearch, setDebouncedSearch] = useState('')
 
   // Hook for fetching students
-  const { data: studentData, isLoading, error } = useStudentList(debouncedSearch)
-  
+  const { data: studentData, isLoading, error } = useStudentListWithReload(debouncedSearch)
+
   // Hook for updating student busy schedule
   const updateStudentBusyScheduleMutation = useUpdateStudentBusySchedule()
 
@@ -132,8 +132,8 @@ const EditStudentSchedule = () => {
     `
     document.head.appendChild(style)
 
-    
-return () => {
+
+    return () => {
       document.head.removeChild(style)
     }
   }, [])
@@ -180,29 +180,29 @@ return () => {
   // Generate time slots for all 7 days
   const allTimeSlots = useMemo(() => {
     const slots: { day: string; time: string; slot: number }[] = []
-    
+
     SCHEDULE_TIME.forEach((timeSlot, index) => {
       const parts = timeSlot.split(' ')
       const time = parts[0] // "8:00-10:00"
       const englishDay = parts[1] // "Monday"
-      
+
       slots.push({
         day: getDayInVietnamese(englishDay),
         time: time,
         slot: index
       })
     })
-    
+
     return slots
   }, [])
 
   // Filter students based on search term
   const filteredStudents = useMemo(() => {
     if (!studentData?.users) return []
-    
+
     if (!studentSearch.trim()) return studentData.users
-    
-    return studentData.users.filter(student => 
+
+    return studentData.users.filter(student =>
       student.profile.fullname.toLowerCase().includes(studentSearch.toLowerCase()) ||
       student.profile.email.toLowerCase().includes(studentSearch.toLowerCase()) ||
       student.course?.name.toLowerCase().includes(studentSearch.toLowerCase())
@@ -212,7 +212,7 @@ return () => {
   // Filter time slots based on selected day
   const filteredTimeSlots = useMemo(() => {
     if (selectedDay === 'all') return allTimeSlots
-    
+
     return allTimeSlots.filter(slot => slot.day === selectedDay)
   }, [allTimeSlots, selectedDay])
 
@@ -220,16 +220,16 @@ return () => {
   const uniqueDays = useMemo(() => {
     const days = allTimeSlots.map(slot => slot.day)
 
-    
-return ['all', ...Array.from(new Set(days))]
+
+    return ['all', ...Array.from(new Set(days))]
   }, [allTimeSlots])
 
   // Check if student is busy at specific slot
   // Note: API uses 1-42, UI uses 0-41, so we need to add 1 to convert
   const isStudentBusy = (studentSchedule: number[] | undefined, slotIndex: number) => {
     if (!studentSchedule || !Array.isArray(studentSchedule)) return false
-    
-return studentSchedule.includes(slotIndex + 1)
+
+    return studentSchedule.includes(slotIndex + 1)
   }
 
 
@@ -240,7 +240,7 @@ return studentSchedule.includes(slotIndex + 1)
     if (!student) return
 
     const isBusy = isStudentBusy(student.profile.busyScheduleArr, slotIndex)
-    
+
     setEditDialog({
       open: true,
       studentId,
@@ -340,28 +340,28 @@ return studentSchedule.includes(slotIndex + 1)
           subheader="Click vào ô lịch để thay đổi trạng thái bận/rảnh của học sinh (42 khung giờ/tuần)"
           action={
             <Box display="flex" gap={1} alignItems="center">
-              <Chip 
-                size="small" 
-                label="Rảnh" 
-                sx={{ 
+              <Chip
+                size="small"
+                label="Rảnh"
+                sx={{
                   backgroundColor: '#f1f8e9',
                   color: '#2e7d32',
                   border: '1px solid #c8e6c9'
                 }}
               />
-              <Chip 
-                size="small" 
-                label="Bận" 
-                sx={{ 
+              <Chip
+                size="small"
+                label="Bận"
+                sx={{
                   backgroundColor: '#ffebee',
                   color: '#c62828',
                   border: '1px solid #ffcdd2'
                 }}
               />
-              <Chip 
-                size="small" 
-                label="Có thể chỉnh sửa" 
-                sx={{ 
+              <Chip
+                size="small"
+                label="Có thể chỉnh sửa"
+                sx={{
                   backgroundColor: '#e8f5e8',
                   color: '#2e7d32',
                   border: '1px solid #c8e6c9',
@@ -389,10 +389,10 @@ return studentSchedule.includes(slotIndex + 1)
                     ),
                     endAdornment: studentSearch && (
                       <InputAdornment position="end">
-                        <i 
-                          className="ri-close-line" 
-                          style={{ 
-                            color: '#666', 
+                        <i
+                          className="ri-close-line"
+                          style={{
+                            color: '#666',
                             cursor: 'pointer',
                             fontSize: '18px'
                           }}
@@ -401,7 +401,7 @@ return studentSchedule.includes(slotIndex + 1)
                       </InputAdornment>
                     )
                   }}
-                  sx={{ 
+                  sx={{
                     '& .MuiOutlinedInput-root': {
                       backgroundColor: 'white',
                       '&:hover fieldset': {
@@ -431,25 +431,25 @@ return studentSchedule.includes(slotIndex + 1)
                 </FormControl>
               </Grid>
             </Grid>
-            
+
             {/* Filter Summary */}
             {(studentSearch || selectedDay !== 'all') && (
               <Box sx={{ mt: 2, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
                 <Typography variant="body2" color="text.secondary">
                   <i className="ri-filter-line" style={{ marginRight: 8 }} />
-                  Đang lọc: 
+                  Đang lọc:
                   {studentSearch && (
-                    <Chip 
-                      label={`Học sinh: "${studentSearch}"`} 
-                      size="small" 
+                    <Chip
+                      label={`Học sinh: "${studentSearch}"`}
+                      size="small"
                       sx={{ ml: 1, mr: 1 }}
                       onDelete={() => setStudentSearch('')}
                     />
                   )}
                   {selectedDay !== 'all' && (
-                    <Chip 
-                      label={`Ngày: ${selectedDay}`} 
-                      size="small" 
+                    <Chip
+                      label={`Ngày: ${selectedDay}`}
+                      size="small"
                       sx={{ ml: 1 }}
                       onDelete={() => setSelectedDay('all')}
                     />
@@ -459,8 +459,8 @@ return studentSchedule.includes(slotIndex + 1)
             )}
           </Box>
 
-          <TableContainer sx={{ 
-            maxHeight: '70vh', 
+          <TableContainer sx={{
+            maxHeight: '70vh',
             overflow: 'auto',
             border: '1px solid #e0e0e0',
             borderRadius: '8px'
@@ -522,7 +522,7 @@ return studentSchedule.includes(slotIndex + 1)
                       </StyledTimeCell>
                       {filteredStudents.map((student) => {
                         const isBusy = isStudentBusy(student.profile.busyScheduleArr, slot.slot)
-                        
+
                         return (
                           <ScheduleCell
                             key={`${student.id}-${slot.slot}`}
@@ -536,23 +536,23 @@ return studentSchedule.includes(slotIndex + 1)
                               slot.time
                             )}
                           >
-                            
-                                <Tooltip 
-                                    title={
-                                    isBusy 
-                                        ? `${student.profile.fullname} bận vào ${slot.day} ${slot.time}`
-                                        : `${student.profile.fullname} rảnh vào ${slot.day} ${slot.time}`
-                                    }
-                                >
-                                    <IconButton size="small">
-                                  {isBusy ? (
-                                    <i className="ri-close-line" style={{ color: '#c62828', fontSize: '18px' }} />
-                                  ) : (
-                                    <i className="ri-check-line" style={{ color: '#2e7d32', fontSize: '18px' }} />
-                                  )}
-                                </IconButton>
-                              </Tooltip>
-                                  
+
+                            <Tooltip
+                              title={
+                                isBusy
+                                  ? `${student.profile.fullname} bận vào ${slot.day} ${slot.time}`
+                                  : `${student.profile.fullname} rảnh vào ${slot.day} ${slot.time}`
+                              }
+                            >
+                              <IconButton size="small">
+                                {isBusy ? (
+                                  <i className="ri-close-line" style={{ color: '#c62828', fontSize: '18px' }} />
+                                ) : (
+                                  <i className="ri-check-line" style={{ color: '#2e7d32', fontSize: '18px' }} />
+                                )}
+                              </IconButton>
+                            </Tooltip>
+
                           </ScheduleCell>
                         )
                       })}
@@ -562,7 +562,7 @@ return studentSchedule.includes(slotIndex + 1)
               </TableBody>
             </Table>
           </TableContainer>
-          
+
           {/* Summary */}
           <Box mt={3}>
             <Typography variant="h6" gutterBottom>
@@ -574,7 +574,7 @@ return studentSchedule.includes(slotIndex + 1)
                 const busySlots = student.profile.busyScheduleArr?.length || 0
                 const totalSlots = SCHEDULE_TIME.length
                 const freeSlots = totalSlots - busySlots
-                
+
                 return (
                   <Card key={student.id} variant="outlined" sx={{ minWidth: 200 }}>
                     <CardContent sx={{ p: 2 }}>
@@ -595,9 +595,9 @@ return studentSchedule.includes(slotIndex + 1)
                         </Typography>
                       </Box>
                       <Box display="flex" gap={0.5} mt={1}>
-                        <Chip 
-                          label={student.profile.ieltsPoint || 'N/A'} 
-                          size="small" 
+                        <Chip
+                          label={student.profile.ieltsPoint || 'N/A'}
+                          size="small"
                           variant="outlined"
                           color="primary"
                         />
@@ -630,15 +630,15 @@ return studentSchedule.includes(slotIndex + 1)
               <strong>Thời gian:</strong> {editDialog.day} - {editDialog.time}
             </Typography>
             <Typography variant="body1" gutterBottom>
-              <strong>Trạng thái hiện tại:</strong> 
-              <Chip 
-                label={editDialog.currentStatus === 'busy' ? 'Bận' : 'Rảnh'} 
-                color={editDialog.currentStatus === 'busy' ? 'error' : 'success'} 
-                size="small" 
+              <strong>Trạng thái hiện tại:</strong>
+              <Chip
+                label={editDialog.currentStatus === 'busy' ? 'Bận' : 'Rảnh'}
+                color={editDialog.currentStatus === 'busy' ? 'error' : 'success'}
+                size="small"
                 sx={{ ml: 1 }}
               />
             </Typography>
-            
+
             <Box sx={{ mt: 3 }}>
               <Typography variant="subtitle1" gutterBottom>
                 Thay đổi trạng thái:
@@ -673,8 +673,8 @@ return studentSchedule.includes(slotIndex + 1)
             onClick={handleSaveSchedule}
             disabled={updateStudentBusyScheduleMutation.isPending}
             startIcon={
-              updateStudentBusyScheduleMutation.isPending ? 
-                <i className="ri-loader-4-line" style={{ animation: 'spin 1s linear infinite' }} /> : 
+              updateStudentBusyScheduleMutation.isPending ?
+                <i className="ri-loader-4-line" style={{ animation: 'spin 1s linear infinite' }} /> :
                 <i className="ri-save-line" />
             }
           >
@@ -690,8 +690,8 @@ return studentSchedule.includes(slotIndex + 1)
         onClose={handleCloseNotification}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
       >
-        <Alert 
-          onClose={handleCloseNotification} 
+        <Alert
+          onClose={handleCloseNotification}
           severity={notification.severity}
           variant="filled"
         >

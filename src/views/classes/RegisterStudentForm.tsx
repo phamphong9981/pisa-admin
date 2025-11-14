@@ -31,7 +31,7 @@ import {
 } from '@mui/material'
 
 import { useRegisterStudentToClass } from '@/@core/hooks/useClass'
-import { useStudentList } from '@/@core/hooks/useStudent'
+import { useStudentListWithReload } from '@/@core/hooks/useStudent'
 
 interface RegisterStudentFormProps {
   classId: string
@@ -59,7 +59,7 @@ const RegisterStudentForm = ({ classId, className, currentStudents }: RegisterSt
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
 
-  const { data: studentData, isLoading, error } = useStudentList(searchTerm)
+  const { data: studentData, isLoading, error } = useStudentListWithReload(searchTerm)
   const registerMutation = useRegisterStudentToClass()
 
   const getInitials = (name: string) => {
@@ -78,11 +78,11 @@ const RegisterStudentForm = ({ classId, className, currentStudents }: RegisterSt
     const isAlreadyRegistered = currentStudents.some(
       s => s.profileId === student.profile.id || s.username === student.username
     )
-    
+
     if (isAlreadyRegistered) {
       setErrorMessage('Học sinh này đã có trong lớp học')
-      
-return
+
+      return
     }
 
     setSelectedStudent({
@@ -104,7 +104,7 @@ return
         classId,
         username: selectedStudent.username
       })
-      
+
       setSuccessMessage(`Đã đăng ký học sinh ${selectedStudent.fullName} vào lớp ${className}`)
       setShowConfirmDialog(false)
       setSelectedStudent(null)
@@ -121,13 +121,13 @@ return
     setSelectedStudent(null)
   }
 
-  const filteredStudents = studentData?.users?.filter(student => 
+  const filteredStudents = studentData?.users?.filter(student =>
     !currentStudents.some(s => s.profileId === student.profile.id || s.username === student.username)
   ) || []
 
   return (
     <Card>
-      <CardHeader 
+      <CardHeader
         title={
           <Box display="flex" alignItems="center" gap={2}>
             <i className="ri-user-add-line text-xl" />
@@ -190,8 +190,8 @@ return
             ) : filteredStudents.length === 0 ? (
               <Box textAlign="center" py={4}>
                 <Typography color="text.secondary">
-                  {studentData?.users?.length === 0 
-                    ? 'Không tìm thấy học sinh nào' 
+                  {studentData?.users?.length === 0
+                    ? 'Không tìm thấy học sinh nào'
                     : 'Tất cả học sinh đã có trong lớp học này'}
                 </Typography>
               </Box>
@@ -240,7 +240,7 @@ return
                             <Typography variant="body2">{student.profile.phone}</Typography>
                           </TableCell>
                           <TableCell>
-                            <Chip 
+                            <Chip
                               label={student.profile.ieltsPoint || 'N/A'}
                               size="small"
                               color={student.profile.ieltsPoint ? 'success' : 'default'}

@@ -34,7 +34,7 @@ import {
 } from '@mui/material'
 
 // Hooks
-import { useCourseInfo, useCourseList } from '@/@core/hooks/useCourse'
+import { useCourseInfo, useCourseInfoWithReload, useCourseList } from '@/@core/hooks/useCourse'
 import { SCHEDULE_TIME, useAutoScheduleCourse, useGetAllSchedule } from '@/@core/hooks/useSchedule'
 import { useGetWeeks, WeekResponseDto } from '@/@core/hooks/useWeek'
 import { useTeacherList, TeacherListResponse } from '@/@core/hooks/useTeacher'
@@ -175,7 +175,7 @@ const SchedulePlanner = () => {
   const { data: weeksData, isLoading: isWeeksLoading } = useGetWeeks()
 
 
-  const { data: courseInfo, isLoading: isCourseInfoLoading, error: courseInfoError } = useCourseInfo(selectedCourseId, selectedWeekId)
+  const { data: courseInfo, isLoading: isCourseInfoLoading, error: courseInfoError } = useCourseInfoWithReload(selectedCourseId, selectedWeekId)
 
   const { data: courseSchedules } = useGetAllSchedule(false, selectedCourseId, selectedWeekId)
   const autoScheduleCourseMutation = useAutoScheduleCourse()

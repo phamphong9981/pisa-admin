@@ -80,6 +80,24 @@ export const useCourseInfo = (courseId: string, weekId: string) => {
     })
 }
 
+export const useCourseInfoWithReload = (courseId: string, weekId: string) => {
+    return useQuery<CourseInfo, Error>({
+        queryKey: ['courseInfo', courseId, weekId],
+        queryFn: async () => {
+            const { data } = await apiClient.get(`/courses/${courseId}/${weekId}`);
+
+            return data.data;
+        },
+        enabled: !!courseId,
+        refetchInterval: 2000,
+        refetchIntervalInBackground: true,
+        staleTime: 5 * 60 * 1000,
+        gcTime: 10 * 60 * 1000,
+        retry: 1,
+        retryDelay: (attemptIndex) => Math.min(1000 * 1 ** attemptIndex, 30000),
+    })
+}
+
 export enum CourseType {
     FOUNDATION = 'foundation',
     INTERMEDIATE = 'intermediate',
