@@ -18,7 +18,8 @@ import {
     Dialog,
     DialogTitle,
     DialogContent,
-    DialogActions
+    DialogActions,
+    Link
 } from '@mui/material'
 import { useDropzone } from 'react-dropzone'
 import Papa from 'papaparse'
@@ -240,6 +241,32 @@ const ImportClassesFromCSV = ({ courseId, onSuccess, open, onClose }: ImportClas
             </DialogTitle>
 
             <DialogContent>
+                {/* Download Sample File */}
+                <Box sx={{ mb: 3, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                        Bạn muốn xem mẫu file CSV để nhập nhiều lớp học cùng lúc?
+                    </Typography>
+                    <Link
+                        href="/import-class-example.csv"
+                        download="import-class-example.csv"
+                        sx={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 1,
+                            color: 'primary.main',
+                            textDecoration: 'none',
+                            '&:hover': {
+                                textDecoration: 'underline'
+                            }
+                        }}
+                    >
+                        <i className="ri-download-line" />
+                        <Typography variant="body2" fontWeight={500}>
+                            Tải file mẫu ở đây
+                        </Typography>
+                    </Link>
+                </Box>
+
                 {/* Instructions */}
                 <Alert severity="info" sx={{ mb: 3 }}>
                     <Typography variant="body2" gutterBottom>
