@@ -25,7 +25,7 @@ import Papa from 'papaparse'
 
 import { ClassType } from '@/types/classes'
 import type { CreateClassDto } from '@/@core/hooks/useClass'
-import { useCreateClass } from '@/@core/hooks/useClass'
+import { useCreateClassBulk } from '@/@core/hooks/useClass'
 import { useTeacherList } from '@/@core/hooks/useTeacher'
 
 interface ParsedClassRow {
@@ -56,7 +56,7 @@ const ImportClassesFromCSV = ({ courseId, onSuccess, open, onClose }: ImportClas
     const [showPreview, setShowPreview] = useState(false)
 
     const { data: teachers, isLoading: isLoadingTeachers } = useTeacherList()
-    const createClassMutation = useCreateClass(courseId)
+    const createClassMutation = useCreateClassBulk(courseId)
 
     // Map teacher name to teacher ID
     const getTeacherIdByName = useCallback((teacherName: string): string | null => {
@@ -166,11 +166,11 @@ const ImportClassesFromCSV = ({ courseId, onSuccess, open, onClose }: ImportClas
 
             const classData: ProcessedClass = {
                 name: row.className.trim(),
-                total_lesson_per_week: 2,
-                class_type: getClassType(row.classType),
-                teacher_id: teacherId,
-                course_id: courseId,
-                auto_schedule: getAutoSchedule(row.autoSchedule),
+                totalLessonPerWeek: 2,
+                classType: getClassType(row.classType),
+                teacherId: teacherId,
+                courseId: courseId,
+                autoSchedule: getAutoSchedule(row.autoSchedule),
                 originalTeacherName: row.teacherName,
                 rowIndex: index + 2
             }
@@ -350,7 +350,7 @@ const ImportClassesFromCSV = ({ courseId, onSuccess, open, onClose }: ImportClas
                                                 <TableCell>
                                                     {processed && (
                                                         <Chip
-                                                            label={getClassTypeLabel(processed.class_type)}
+                                                            label={getClassTypeLabel(processed.classType)}
                                                             size="small"
                                                             color="primary"
                                                             variant="outlined"

@@ -41,11 +41,11 @@ const CreateClassForm = ({ courseId, onSuccess }: CreateClassFormProps) => {
 
   const [formData, setFormData] = useState<CreateClassDto>({
     name: '',
-    total_lesson_per_week: 1,
-    class_type: ClassType.FT_LISTENING,
-    teacher_id: '',
-    course_id: courseId || '',
-    auto_schedule: false, // Temporary default, user must select
+    totalLessonPerWeek: 1,
+    classType: ClassType.FT_LISTENING,
+    teacherId: '',
+    courseId: courseId || '',
+    autoSchedule: false, // Temporary default, user must select
     fixedSchedule: []
   })
 
@@ -64,7 +64,7 @@ const CreateClassForm = ({ courseId, onSuccess }: CreateClassFormProps) => {
 
   const handleAutoScheduleChange = (value: boolean) => {
     setAutoScheduleSelected(value)
-    handleChange('auto_schedule', value)
+    handleChange('autoSchedule', value)
   }
 
   const handleFixedScheduleChange = (scheduleTime: number | null) => {
@@ -76,12 +76,12 @@ const CreateClassForm = ({ courseId, onSuccess }: CreateClassFormProps) => {
 
   // Memoize selected teacher to prevent unnecessary re-renders
   const selectedTeacher = useMemo(() => {
-    return teachers?.find(teacher => teacher.id === formData.teacher_id) || null
-  }, [teachers, formData.teacher_id])
+    return teachers?.find(teacher => teacher.id === formData.teacherId) || null
+  }, [teachers, formData.teacherId])
 
   // Memoize callbacks to prevent re-renders
   const handleTeacherChange = useCallback((event: any, newValue: any) => {
-    handleChange('teacher_id', newValue?.id || '')
+    handleChange('teacherId', newValue?.id || '')
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -104,11 +104,11 @@ const CreateClassForm = ({ courseId, onSuccess }: CreateClassFormProps) => {
       // Reset form
       setFormData({
         name: '',
-        total_lesson_per_week: 1,
-        class_type: ClassType.FT_LISTENING,
-        teacher_id: '',
-        course_id: courseId || '',
-        auto_schedule: false,
+        totalLessonPerWeek: 1,
+        classType: ClassType.FT_LISTENING,
+        teacherId: '',
+        courseId: courseId || '',
+        autoSchedule: false,
         fixedSchedule: []
       })
       setAutoScheduleSelected(null)
@@ -173,8 +173,8 @@ const CreateClassForm = ({ courseId, onSuccess }: CreateClassFormProps) => {
               fullWidth
               label="Số buổi học/tuần"
               type="number"
-              value={formData.total_lesson_per_week}
-              onChange={(e) => handleChange('total_lesson_per_week', parseInt(e.target.value))}
+              value={formData.totalLessonPerWeek}
+              onChange={(e) => handleChange('totalLessonPerWeek', parseInt(e.target.value))}
               required
               inputProps={{ min: 1, max: 7 }}
             />
@@ -184,8 +184,8 @@ const CreateClassForm = ({ courseId, onSuccess }: CreateClassFormProps) => {
             <FormControl fullWidth required>
               <InputLabel>Trình độ lớp học</InputLabel>
               <Select
-                value={formData.class_type}
-                onChange={(e) => handleChange('class_type', e.target.value as ClassType)}
+                value={formData.classType}
+                onChange={(e) => handleChange('classType', e.target.value as ClassType)}
                 label="Trình độ lớp học"
               >
                 {Object.values(ClassType).map((type) => (

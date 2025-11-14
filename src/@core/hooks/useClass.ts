@@ -40,11 +40,11 @@ export interface ClassListResponse {
 
 interface CreateClassDto {
     name: string
-    total_lesson_per_week?: number
-    class_type: ClassType
-    teacher_id: string,
-    course_id: string,
-    auto_schedule: boolean,
+    totalLessonPerWeek?: number
+    classType: ClassType
+    teacherId: string,
+    courseId: string,
+    autoSchedule: boolean,
     fixedSchedule?: number[]
 }
 
@@ -78,9 +78,17 @@ const fetchClassInfo = async (id: string): Promise<ClassInfo> => {
     return data.data;
 }
 
-const createClass = async (classInfo: CreateClassDto | CreateClassDto[]) => {
+const createClass = async (classInfo: CreateClassDto) => {
     console.log(classInfo);
     const { data } = await apiClient.post('/classes', classInfo);
+
+
+    return data.data;
+}
+
+const createClassBulk = async (classInfo: CreateClassDto[]) => {
+    console.log(classInfo);
+    const { data } = await apiClient.post('/classes/bulk', classInfo);
 
 
     return data.data;
@@ -182,6 +190,17 @@ export const useCreateClass = (courseId: string) => {
         onError: (error) => {
             console.error('Error creating class:', error)
         }
+    })
+}
+
+export const useCreateClassBulk = (courseId: string) => {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: createClassBulk,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['courseInfo', courseId] })
+        },
     })
 }
 
