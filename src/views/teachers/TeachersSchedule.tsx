@@ -282,6 +282,9 @@ const TeachersSchedule = () => {
     scheduleTime: 0
   })
 
+  // State for full screen modal
+  const [fullScreenOpen, setFullScreenOpen] = useState(false)
+
   // Generate time slots for all 7 days
   const allTimeSlots = useMemo(() => {
     const slots: { dayKey: string; dayLabel: string; time: string; slot: number }[] = []
@@ -579,6 +582,506 @@ const TeachersSchedule = () => {
     )
   }
 
+  // Render schedule table (reusable for both card and full screen modal)
+  const renderScheduleTable = (isFullScreen: boolean = false) => (
+    <TableContainer sx={{
+      maxHeight: isFullScreen ? 'calc(100vh - 300px)' : '70vh',
+      overflow: 'auto',
+      border: '1px solid #e0e0e0',
+      borderRadius: '8px'
+    }}>
+      <Table stickyHeader>
+        <TableHead>
+          <TableRow>
+            <StyledHeaderCell sx={{
+              minWidth: '150px',
+              position: 'sticky',
+              left: 0,
+              top: 0,
+              zIndex: 3
+            }}>
+              <Box>
+                <Typography variant="body2" fontWeight={600}>
+                  Khung giờ
+                </Typography>
+                <Typography variant="caption" color="textSecondary">
+                  {selectedDay === 'all' ? 'Theo tuần' : (selectedDayLabel || selectedDay)}
+                </Typography>
+              </Box>
+            </StyledHeaderCell>
+            {filteredTeachers.map((teacher) => (
+              <StyledHeaderCell key={teacher.id}>
+                <Box display="flex" alignItems="flex-start" gap={0.5}>
+                  <Box flex={1}>
+                    <Box display="flex" alignItems="center" gap={0.5} mb={0.5}>
+                      <Typography variant="body2" fontWeight={600}>
+                        {teacher.name}
+                      </Typography>
+                      <Tooltip title="Chỉnh sửa ghi chú">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleOpenEditNoteDialog(teacher.id, teacher.name, teacher.note)}
+                          sx={{
+                            padding: '2px',
+                            '&:hover': {
+                              backgroundColor: 'rgba(25, 118, 210, 0.1)'
+                            }
+                          }}
+                        >
+                          <i className="ri-edit-line" style={{ fontSize: '14px', color: '#1976d2' }} />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+                    <Typography variant="caption" color="textSecondary" display="block">
+                      {teacher.skills?.length || 0} kỹ năng
+                    </Typography>
+                    {teacher.note && (
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{
+                          display: 'block',
+                          mt: 0.5,
+                          fontStyle: 'italic',
+                          color: '#666',
+                          maxWidth: '120px',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}
+                        title={teacher.note}
+                      >
+                        <i className="ri-file-text-line" style={{ marginRight: 4, fontSize: '12px' }} />
+                        {teacher.note}
+                      </Typography>
+                    )}
+                  </Box>
+                </Box>
+              </StyledHeaderCell>
+            ))}
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {filteredTimeSlots.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={filteredTeachers.length + 1} align="center" sx={{ py: 4 }}>
+                <Box display="flex" flexDirection="column" alignItems="center" gap={2}>
+                  <i className="ri-calendar-line" style={{ fontSize: '48px', color: '#ccc' }} />
+                  <Typography variant="h6" color="text.secondary">
+                    Không có dữ liệu phù hợp
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Thử thay đổi bộ lọc để xem kết quả khác
+                  </Typography>
+                </Box>
+              </TableCell>
+            </TableRow>
+          ) : (
+            filteredTimeSlots.map((slot, index) => (
+              <TableRow key={index}>
+                <StyledTimeCell>
+                  <Box>
+                    <Typography variant="body2" fontWeight={600}>
+                      {slot.dayLabel}
+                    </Typography>
+                    <Typography variant="caption" color="primary">
+                      {slot.time}
+                    </Typography>
+                  </Box>
+                </StyledTimeCell>
+                {filteredTeachers.map((teacher) => {
+                  const isBusy = isTeacherBusy(teacher.registeredBusySchedule, slot.slot)
+                  const isTeaching = isTeacherTeaching(teacher.id, slot.slot)
+                  const teachingInfo = getTeachingInfo(teacher.id, slot.slot)
+
+                  return (
+                    <ScheduleCell
+                      key={`${teacher.id}-${slot.slot}`}
+                      isBusy={isBusy}
+                      isTeaching={isTeaching}
+                      onClick={isTeaching && teachingInfo ? () => handleTeachingCellClick(
+                        teachingInfo.class_id,
+                        teachingInfo.lesson,
+                        teacher.name,
+                        teachingInfo.class_name,
+                        teachingInfo.schedule_time
+                      ) : undefined}
+                    >
+                      {isTeaching && teachingInfo ? (
+                        <TeachingInfo>
+                          <Box className="lesson-header">
+                            <Box className="class-name" title={teachingInfo.class_name}>
+                              {teachingInfo.class_name}
+                              {teachingInfo.note && (
+                                <Box className="lesson-note" title={teachingInfo.note}>
+                                  <i className="ri-file-text-line" style={{ marginRight: 4, fontSize: '12px' }} />
+                                  {teachingInfo.note}
+                                </Box>
+                              )}
+                            </Box>
+                          </Box>
+                          {teachingInfo.students && Array.isArray(teachingInfo.students) && teachingInfo.students.length > 0 && (
+                            <Box className="students-content">
+                              <Box className="students-list">
+                                {teachingInfo.students.map((student: any) => {
+                                  const coursename = student.coursename ? ` - ${student.coursename}` : '';
+                                  const displayLabel = student.note
+                                    ? `${student.fullname}${coursename} (${student.note})`
+                                    : `${student.fullname}${coursename}`;
+                                  const rollcallStatusConfig = getRollcallStatusConfig(student.rollcall_status as RollcallStatus | undefined)
+                                  const isNotRollcall = !student.rollcall_status || student.rollcall_status === RollcallStatus.NOT_ROLLCALL
+
+                                  const studentSx = rollcallStatusConfig && !isNotRollcall
+                                    ? {
+                                      backgroundColor: `${rollcallStatusConfig.backgroundColor} !important`,
+                                      borderColor: `${rollcallStatusConfig.borderColor} !important`,
+                                      color: `${rollcallStatusConfig.textColor} !important`,
+                                      borderLeft: `4px solid ${rollcallStatusConfig.accentColor}`
+                                    }
+                                    : undefined
+
+                                  return (
+                                    <Box
+                                      key={student.id}
+                                      className="student-item"
+                                      title={displayLabel}
+                                      sx={studentSx}
+                                    >
+                                      <Typography component="span" variant="caption" sx={{ fontWeight: 500 }}>
+                                        {displayLabel}
+                                      </Typography>
+                                    </Box>
+                                  );
+                                })}
+                              </Box>
+                            </Box>
+                          )}
+                        </TeachingInfo>
+                      ) : (
+                        <Tooltip
+                          title={
+                            isBusy
+                              ? `${teacher.name} bận vào ${slot.dayLabel} ${slot.time}`
+                              : `${teacher.name} rảnh vào ${slot.dayLabel} ${slot.time}`
+                          }
+                        >
+                          <IconButton size="small">
+                            {isBusy ? (
+                              <i className="ri-close-line" style={{ color: '#c62828', fontSize: '18px' }} />
+                            ) : (
+                              <i className="ri-check-line" style={{ color: '#2e7d32', fontSize: '18px' }} />
+                            )}
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                    </ScheduleCell>
+                  )
+                })}
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  )
+
+  // Render filter section (reusable for both card and full screen modal)
+  const renderFilterSection = () => (
+    <>
+      {/* Week Selection */}
+      <Box sx={{ mb: 3 }}>
+        <FormControl size="small" sx={{ minWidth: 300 }}>
+          <InputLabel>Tuần học</InputLabel>
+          <Select
+            value={selectedWeekId}
+            onChange={(e) => setSelectedWeekId(e.target.value)}
+            label="Tuần học"
+            disabled={isWeeksLoading}
+          >
+            {isWeeksLoading ? (
+              <MenuItem disabled>Đang tải...</MenuItem>
+            ) : weeks.length === 0 ? (
+              <MenuItem disabled>Không có dữ liệu</MenuItem>
+            ) : (
+              weeks.map((week: WeekResponseDto) => {
+                const startDate = new Date(week.startDate)
+                const endDate = new Date(startDate)
+                endDate.setDate(endDate.getDate() + 6)
+
+                return (
+                  <MenuItem key={week.id} value={week.id}>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <i className="ri-calendar-line" style={{ color: '#1976d2' }} />
+                      <Box>
+                        <Typography variant="body2">
+                          {startDate.toLocaleDateString('vi-VN', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric'
+                          })} - {endDate.toLocaleDateString('vi-VN', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric'
+                          })}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {week.scheduleStatus === WeekStatus.OPEN ? 'Mở' :
+                            week.scheduleStatus === WeekStatus.CLOSED ? 'Đóng' : 'Chờ duyệt'}
+                          {openWeek?.id === week.id && ' (Đang chọn)'}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </MenuItem>
+                )
+              })
+            )}
+          </Select>
+        </FormControl>
+      </Box>
+
+      {/* Filter Section */}
+      <Box sx={{ mb: 3 }}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} md={4}>
+            <Autocomplete
+              multiple
+              options={teachers || []}
+              getOptionLabel={(option) => option.name}
+              value={selectedTeachers}
+              onChange={(event, newValue) => {
+                setSelectedTeachers(newValue)
+              }}
+              filterOptions={(options, { inputValue }) => {
+                return options.filter(option =>
+                  option.name.toLowerCase().includes(inputValue.toLowerCase()) ||
+                  option.skills.some((skill: string) =>
+                    skill.toLowerCase().includes(inputValue.toLowerCase())
+                  )
+                )
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  placeholder="Chọn giáo viên để lọc..."
+                  InputProps={{
+                    ...params.InputProps,
+                    startAdornment: (
+                      <>
+                        <i className="ri-search-line" style={{ color: '#666', marginRight: 8 }} />
+                        {params.InputProps.startAdornment}
+                      </>
+                    ),
+                  }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: 'white',
+                      '&:hover fieldset': {
+                        borderColor: '#1976d2',
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: '#1976d2',
+                      },
+                    }
+                  }}
+                />
+              )}
+              renderTags={(value, getTagProps) =>
+                value.map((option, index) => (
+                  <Chip
+                    {...getTagProps({ index })}
+                    key={option.id}
+                    label={option.name}
+                    size="small"
+                    sx={{
+                      backgroundColor: '#e3f2fd',
+                      color: '#1976d2',
+                      border: '1px solid #bbdefb'
+                    }}
+                  />
+                ))
+              }
+              renderOption={(props, option) => (
+                <Box component="li" {...props}>
+                  <Box>
+                    <Typography variant="body2" fontWeight={600}>
+                      {option.name}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {option.skills?.length || 0} kỹ năng: {option.skills?.join(', ') || 'Không có'}
+                    </Typography>
+                  </Box>
+                </Box>
+              )}
+              noOptionsText="Không tìm thấy giáo viên"
+              clearOnBlur={false}
+              selectOnFocus
+              handleHomeEndKeys
+            />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth>
+              <InputLabel>Lọc theo ngày</InputLabel>
+              <Select
+                value={selectedDay}
+                onChange={(e) => setSelectedDay(e.target.value)}
+                label="Lọc theo ngày"
+              >
+                <MenuItem value="all">Tất cả các ngày</MenuItem>
+                {uniqueDayOptions.map((day) => (
+                  <MenuItem key={day.key} value={day.key}>
+                    {day.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Autocomplete
+              multiple
+              options={uniqueTimeRanges}
+              value={selectedTimeRanges}
+              onChange={(event, newValue) => {
+                setSelectedTimeRanges(newValue)
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  placeholder="Chọn khung giờ để lọc..."
+                  label="Lọc theo khung giờ"
+                  InputProps={{
+                    ...params.InputProps,
+                    startAdornment: (
+                      <>
+                        <i className="ri-time-line" style={{ color: '#666', marginRight: 8 }} />
+                        {params.InputProps.startAdornment}
+                      </>
+                    ),
+                  }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: 'white',
+                      '&:hover fieldset': {
+                        borderColor: '#1976d2',
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: '#1976d2',
+                      },
+                    }
+                  }}
+                />
+              )}
+              renderTags={(value, getTagProps) =>
+                value.map((option, index) => (
+                  <Chip
+                    {...getTagProps({ index })}
+                    key={option}
+                    label={option}
+                    size="small"
+                    sx={{
+                      backgroundColor: '#fff3e0',
+                      color: '#e65100',
+                      border: '1px solid #ffcc80'
+                    }}
+                  />
+                ))
+              }
+              noOptionsText="Không có khung giờ nào"
+              clearOnBlur={false}
+              selectOnFocus
+              handleHomeEndKeys
+            />
+          </Grid>
+        </Grid>
+
+        {/* Selected Teachers Display */}
+        {selectedTeachers.length > 0 && (
+          <Box sx={{ mt: 2, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              <i className="ri-filter-line" style={{ marginRight: 8 }} />
+              Giáo viên đã chọn ({selectedTeachers.length}):
+            </Typography>
+            <Box display="flex" gap={1} flexWrap="wrap">
+              {selectedTeachers.map((teacher) => (
+                <Chip
+                  key={teacher.id}
+                  label={teacher.name}
+                  size="small"
+                  onDelete={() => {
+                    setSelectedTeachers(prev => prev.filter(t => t.id !== teacher.id))
+                  }}
+                  sx={{
+                    backgroundColor: '#e3f2fd',
+                    color: '#1976d2',
+                    border: '1px solid #bbdefb'
+                  }}
+                />
+              ))}
+              <Chip
+                label="Xóa tất cả"
+                size="small"
+                variant="outlined"
+                onClick={() => setSelectedTeachers([])}
+                sx={{
+                  color: '#d32f2f',
+                  borderColor: '#d32f2f',
+                  '&:hover': {
+                    backgroundColor: '#ffebee'
+                  }
+                }}
+              />
+            </Box>
+          </Box>
+        )}
+
+        {/* Filter Summary */}
+        {(selectedDay !== 'all' || selectedTimeRanges.length > 0) && (
+          <Box sx={{ mt: 2, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
+            <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1 }}>
+              <i className="ri-filter-line" style={{ marginRight: 8 }} />
+              Đang lọc:
+              {selectedDay !== 'all' && (
+                <Chip
+                  label={`Ngày: ${selectedDayLabel || selectedDay}`}
+                  size="small"
+                  onDelete={() => setSelectedDay('all')}
+                />
+              )}
+              {selectedTimeRanges.length > 0 && (
+                <>
+                  {selectedTimeRanges.map((timeRange) => (
+                    <Chip
+                      key={timeRange}
+                      label={`Khung giờ: ${timeRange}`}
+                      size="small"
+                      onDelete={() => {
+                        setSelectedTimeRanges(prev => prev.filter(t => t !== timeRange))
+                      }}
+                    />
+                  ))}
+                  {selectedTimeRanges.length > 1 && (
+                    <Chip
+                      label="Xóa tất cả khung giờ"
+                      size="small"
+                      variant="outlined"
+                      onClick={() => setSelectedTimeRanges([])}
+                      sx={{
+                        color: '#d32f2f',
+                        borderColor: '#d32f2f',
+                        '&:hover': {
+                          backgroundColor: '#ffebee'
+                        }
+                      }}
+                    />
+                  )}
+                </>
+              )}
+            </Typography>
+          </Box>
+        )}
+      </Box>
+    </>
+  )
+
   if (isLoading || isSchedulesLoading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
@@ -634,6 +1137,15 @@ const TeachersSchedule = () => {
                 }}
               />
 
+              {/* Full Screen Button */}
+              <Button
+                variant="outlined"
+                startIcon={<i className="ri-fullscreen-line" />}
+                onClick={() => setFullScreenOpen(true)}
+              >
+                Toàn màn hình
+              </Button>
+
               {/* Export Button */}
               <Button
                 variant="contained"
@@ -675,497 +1187,8 @@ const TeachersSchedule = () => {
           }
         />
         <CardContent>
-          {/* Week Selection */}
-          <Box sx={{ mb: 3 }}>
-            <FormControl size="small" sx={{ minWidth: 300 }}>
-              <InputLabel>Tuần học</InputLabel>
-              <Select
-                value={selectedWeekId}
-                onChange={(e) => setSelectedWeekId(e.target.value)}
-                label="Tuần học"
-                disabled={isWeeksLoading}
-              >
-                {isWeeksLoading ? (
-                  <MenuItem disabled>Đang tải...</MenuItem>
-                ) : weeks.length === 0 ? (
-                  <MenuItem disabled>Không có dữ liệu</MenuItem>
-                ) : (
-                  weeks.map((week: WeekResponseDto) => {
-                    const startDate = new Date(week.startDate)
-                    const endDate = new Date(startDate)
-                    endDate.setDate(endDate.getDate() + 6)
-
-                    return (
-                      <MenuItem key={week.id} value={week.id}>
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <i className="ri-calendar-line" style={{ color: '#1976d2' }} />
-                          <Box>
-                            <Typography variant="body2">
-                              {startDate.toLocaleDateString('vi-VN', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric'
-                              })} - {endDate.toLocaleDateString('vi-VN', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric'
-                              })}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {week.scheduleStatus === WeekStatus.OPEN ? 'Mở' :
-                                week.scheduleStatus === WeekStatus.CLOSED ? 'Đóng' : 'Chờ duyệt'}
-                              {openWeek?.id === week.id && ' (Đang chọn)'}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      </MenuItem>
-                    )
-                  })
-                )}
-              </Select>
-            </FormControl>
-          </Box>
-
-          {/* Filter Section */}
-          <Box sx={{ mb: 3 }}>
-            <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} md={4}>
-                <Autocomplete
-                  multiple
-                  options={teachers || []}
-                  getOptionLabel={(option) => option.name}
-                  value={selectedTeachers}
-                  onChange={(event, newValue) => {
-                    setSelectedTeachers(newValue)
-                  }}
-                  filterOptions={(options, { inputValue }) => {
-                    return options.filter(option =>
-                      option.name.toLowerCase().includes(inputValue.toLowerCase()) ||
-                      option.skills.some((skill: string) =>
-                        skill.toLowerCase().includes(inputValue.toLowerCase())
-                      )
-                    )
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      placeholder="Chọn giáo viên để lọc..."
-                      InputProps={{
-                        ...params.InputProps,
-                        startAdornment: (
-                          <>
-                            <i className="ri-search-line" style={{ color: '#666', marginRight: 8 }} />
-                            {params.InputProps.startAdornment}
-                          </>
-                        ),
-                      }}
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          backgroundColor: 'white',
-                          '&:hover fieldset': {
-                            borderColor: '#1976d2',
-                          },
-                          '&.Mui-focused fieldset': {
-                            borderColor: '#1976d2',
-                          },
-                        }
-                      }}
-                    />
-                  )}
-                  renderTags={(value, getTagProps) =>
-                    value.map((option, index) => (
-                      <Chip
-                        {...getTagProps({ index })}
-                        key={option.id}
-                        label={option.name}
-                        size="small"
-                        sx={{
-                          backgroundColor: '#e3f2fd',
-                          color: '#1976d2',
-                          border: '1px solid #bbdefb'
-                        }}
-                      />
-                    ))
-                  }
-                  renderOption={(props, option) => (
-                    <Box component="li" {...props}>
-                      <Box>
-                        <Typography variant="body2" fontWeight={600}>
-                          {option.name}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {option.skills?.length || 0} kỹ năng: {option.skills?.join(', ') || 'Không có'}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  )}
-                  noOptionsText="Không tìm thấy giáo viên"
-                  clearOnBlur={false}
-                  selectOnFocus
-                  handleHomeEndKeys
-                />
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <FormControl fullWidth>
-                  <InputLabel>Lọc theo ngày</InputLabel>
-                  <Select
-                    value={selectedDay}
-                    onChange={(e) => setSelectedDay(e.target.value)}
-                    label="Lọc theo ngày"
-                  >
-                    <MenuItem value="all">Tất cả các ngày</MenuItem>
-                    {uniqueDayOptions.map((day) => (
-                      <MenuItem key={day.key} value={day.key}>
-                        {day.label}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <Autocomplete
-                  multiple
-                  options={uniqueTimeRanges}
-                  value={selectedTimeRanges}
-                  onChange={(event, newValue) => {
-                    setSelectedTimeRanges(newValue)
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      placeholder="Chọn khung giờ để lọc..."
-                      label="Lọc theo khung giờ"
-                      InputProps={{
-                        ...params.InputProps,
-                        startAdornment: (
-                          <>
-                            <i className="ri-time-line" style={{ color: '#666', marginRight: 8 }} />
-                            {params.InputProps.startAdornment}
-                          </>
-                        ),
-                      }}
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          backgroundColor: 'white',
-                          '&:hover fieldset': {
-                            borderColor: '#1976d2',
-                          },
-                          '&.Mui-focused fieldset': {
-                            borderColor: '#1976d2',
-                          },
-                        }
-                      }}
-                    />
-                  )}
-                  renderTags={(value, getTagProps) =>
-                    value.map((option, index) => (
-                      <Chip
-                        {...getTagProps({ index })}
-                        key={option}
-                        label={option}
-                        size="small"
-                        sx={{
-                          backgroundColor: '#fff3e0',
-                          color: '#e65100',
-                          border: '1px solid #ffcc80'
-                        }}
-                      />
-                    ))
-                  }
-                  noOptionsText="Không có khung giờ nào"
-                  clearOnBlur={false}
-                  selectOnFocus
-                  handleHomeEndKeys
-                />
-              </Grid>
-            </Grid>
-
-            {/* Selected Teachers Display */}
-            {selectedTeachers.length > 0 && (
-              <Box sx={{ mt: 2, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  <i className="ri-filter-line" style={{ marginRight: 8 }} />
-                  Giáo viên đã chọn ({selectedTeachers.length}):
-                </Typography>
-                <Box display="flex" gap={1} flexWrap="wrap">
-                  {selectedTeachers.map((teacher) => (
-                    <Chip
-                      key={teacher.id}
-                      label={teacher.name}
-                      size="small"
-                      onDelete={() => {
-                        setSelectedTeachers(prev => prev.filter(t => t.id !== teacher.id))
-                      }}
-                      sx={{
-                        backgroundColor: '#e3f2fd',
-                        color: '#1976d2',
-                        border: '1px solid #bbdefb'
-                      }}
-                    />
-                  ))}
-                  <Chip
-                    label="Xóa tất cả"
-                    size="small"
-                    variant="outlined"
-                    onClick={() => setSelectedTeachers([])}
-                    sx={{
-                      color: '#d32f2f',
-                      borderColor: '#d32f2f',
-                      '&:hover': {
-                        backgroundColor: '#ffebee'
-                      }
-                    }}
-                  />
-                </Box>
-              </Box>
-            )}
-
-            {/* Filter Summary */}
-            {(selectedDay !== 'all' || selectedTimeRanges.length > 0) && (
-              <Box sx={{ mt: 2, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
-                <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1 }}>
-                  <i className="ri-filter-line" style={{ marginRight: 8 }} />
-                  Đang lọc:
-                  {selectedDay !== 'all' && (
-                    <Chip
-                      label={`Ngày: ${selectedDayLabel || selectedDay}`}
-                      size="small"
-                      onDelete={() => setSelectedDay('all')}
-                    />
-                  )}
-                  {selectedTimeRanges.length > 0 && (
-                    <>
-                      {selectedTimeRanges.map((timeRange) => (
-                        <Chip
-                          key={timeRange}
-                          label={`Khung giờ: ${timeRange}`}
-                          size="small"
-                          onDelete={() => {
-                            setSelectedTimeRanges(prev => prev.filter(t => t !== timeRange))
-                          }}
-                        />
-                      ))}
-                      {selectedTimeRanges.length > 1 && (
-                        <Chip
-                          label="Xóa tất cả khung giờ"
-                          size="small"
-                          variant="outlined"
-                          onClick={() => setSelectedTimeRanges([])}
-                          sx={{
-                            color: '#d32f2f',
-                            borderColor: '#d32f2f',
-                            '&:hover': {
-                              backgroundColor: '#ffebee'
-                            }
-                          }}
-                        />
-                      )}
-                    </>
-                  )}
-                </Typography>
-              </Box>
-            )}
-          </Box>
-
-          <TableContainer sx={{
-            maxHeight: '70vh',
-            overflow: 'auto',
-            border: '1px solid #e0e0e0',
-            borderRadius: '8px'
-          }}>
-            <Table stickyHeader>
-              <TableHead>
-                <TableRow>
-                  <StyledHeaderCell sx={{
-                    minWidth: '150px',
-                    position: 'sticky',
-                    left: 0,
-                    top: 0,
-                    zIndex: 3
-                  }}>
-                    <Box>
-                      <Typography variant="body2" fontWeight={600}>
-                        Khung giờ
-                      </Typography>
-                      <Typography variant="caption" color="textSecondary">
-                        {selectedDay === 'all' ? 'Theo tuần' : (selectedDayLabel || selectedDay)}
-                      </Typography>
-                    </Box>
-                  </StyledHeaderCell>
-                  {filteredTeachers.map((teacher) => (
-                    <StyledHeaderCell key={teacher.id}>
-                      <Box display="flex" alignItems="flex-start" gap={0.5}>
-                        <Box flex={1}>
-                          <Box display="flex" alignItems="center" gap={0.5} mb={0.5}>
-                            <Typography variant="body2" fontWeight={600}>
-                              {teacher.name}
-                            </Typography>
-                            <Tooltip title="Chỉnh sửa ghi chú">
-                              <IconButton
-                                size="small"
-                                onClick={() => handleOpenEditNoteDialog(teacher.id, teacher.name, teacher.note)}
-                                sx={{
-                                  padding: '2px',
-                                  '&:hover': {
-                                    backgroundColor: 'rgba(25, 118, 210, 0.1)'
-                                  }
-                                }}
-                              >
-                                <i className="ri-edit-line" style={{ fontSize: '14px', color: '#1976d2' }} />
-                              </IconButton>
-                            </Tooltip>
-                          </Box>
-                          <Typography variant="caption" color="textSecondary" display="block">
-                            {teacher.skills?.length || 0} kỹ năng
-                          </Typography>
-                          {teacher.note && (
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                              sx={{
-                                display: 'block',
-                                mt: 0.5,
-                                fontStyle: 'italic',
-                                color: '#666',
-                                maxWidth: '120px',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap'
-                              }}
-                              title={teacher.note}
-                            >
-                              <i className="ri-file-text-line" style={{ marginRight: 4, fontSize: '12px' }} />
-                              {teacher.note}
-                            </Typography>
-                          )}
-                        </Box>
-                      </Box>
-                    </StyledHeaderCell>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredTimeSlots.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={filteredTeachers.length + 1} align="center" sx={{ py: 4 }}>
-                      <Box display="flex" flexDirection="column" alignItems="center" gap={2}>
-                        <i className="ri-calendar-line" style={{ fontSize: '48px', color: '#ccc' }} />
-                        <Typography variant="h6" color="text.secondary">
-                          Không có dữ liệu phù hợp
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Thử thay đổi bộ lọc để xem kết quả khác
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredTimeSlots.map((slot, index) => (
-                    <TableRow key={index}>
-                      <StyledTimeCell>
-                        <Box>
-                          <Typography variant="body2" fontWeight={600}>
-                            {slot.dayLabel}
-                          </Typography>
-                          <Typography variant="caption" color="primary">
-                            {slot.time}
-                          </Typography>
-                        </Box>
-                      </StyledTimeCell>
-                      {filteredTeachers.map((teacher) => {
-                        const isBusy = isTeacherBusy(teacher.registeredBusySchedule, slot.slot)
-                        const isTeaching = isTeacherTeaching(teacher.id, slot.slot)
-                        const teachingInfo = getTeachingInfo(teacher.id, slot.slot)
-
-                        return (
-                          <ScheduleCell
-                            key={`${teacher.id}-${slot.slot}`}
-                            isBusy={isBusy}
-                            isTeaching={isTeaching}
-                            onClick={isTeaching && teachingInfo ? () => handleTeachingCellClick(
-                              teachingInfo.class_id,
-                              teachingInfo.lesson,
-                              teacher.name,
-                              teachingInfo.class_name,
-                              teachingInfo.schedule_time
-                            ) : undefined}
-                          >
-                            {isTeaching && teachingInfo ? (
-                              <TeachingInfo>
-                                <Box className="lesson-header">
-                                  <Box className="class-name" title={teachingInfo.class_name}>
-                                    {teachingInfo.class_name}
-                                  </Box>
-                                  {teachingInfo.note && (
-                                    <Box className="lesson-note" title={teachingInfo.note}>
-                                      <i className="ri-file-text-line" style={{ marginRight: 4, fontSize: '12px' }} />
-                                      {teachingInfo.note}
-                                    </Box>
-                                  )}
-                                </Box>
-                                {teachingInfo.students && Array.isArray(teachingInfo.students) && teachingInfo.students.length > 0 && (
-                                  <Box className="students-content">
-                                    <Box className="students-list">
-                                      {teachingInfo.students.map((student: any) => {
-                                        const coursename = student.coursename ? ` - ${student.coursename}` : '';
-                                        const displayLabel = student.note
-                                          ? `${student.fullname}${coursename} (${student.note})`
-                                          : `${student.fullname}${coursename}`;
-                                        const rollcallStatusConfig = getRollcallStatusConfig(student.rollcall_status as RollcallStatus | undefined)
-                                        const isNotRollcall = !student.rollcall_status || student.rollcall_status === RollcallStatus.NOT_ROLLCALL
-
-                                        const studentSx = rollcallStatusConfig && !isNotRollcall
-                                          ? {
-                                            backgroundColor: `${rollcallStatusConfig.backgroundColor} !important`,
-                                            borderColor: `${rollcallStatusConfig.borderColor} !important`,
-                                            color: `${rollcallStatusConfig.textColor} !important`,
-                                            borderLeft: `4px solid ${rollcallStatusConfig.accentColor}`
-                                          }
-                                          : undefined
-
-                                        return (
-                                          <Box
-                                            key={student.id}
-                                            className="student-item"
-                                            title={displayLabel}
-                                            sx={studentSx}
-                                          >
-                                            <Typography component="span" variant="caption" sx={{ fontWeight: 500 }}>
-                                              {displayLabel}
-                                            </Typography>
-                                          </Box>
-                                        );
-                                      })}
-                                    </Box>
-                                  </Box>
-                                )}
-                              </TeachingInfo>
-                            ) : (
-                              <Tooltip
-                                title={
-                                  isBusy
-                                    ? `${teacher.name} bận vào ${slot.dayLabel} ${slot.time}`
-                                    : `${teacher.name} rảnh vào ${slot.dayLabel} ${slot.time}`
-                                }
-                              >
-                                <IconButton size="small">
-                                  {isBusy ? (
-                                    <i className="ri-close-line" style={{ color: '#c62828', fontSize: '18px' }} />
-                                  ) : (
-                                    <i className="ri-check-line" style={{ color: '#2e7d32', fontSize: '18px' }} />
-                                  )}
-                                </IconButton>
-                              </Tooltip>
-                            )}
-                          </ScheduleCell>
-                        )
-                      })}
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          {renderFilterSection()}
+          {renderScheduleTable(false)}
         </CardContent>
       </Card>
 
@@ -1236,6 +1259,117 @@ const TeachersSchedule = () => {
             {isUpdatingTeacher ? 'Đang lưu...' : 'Lưu'}
           </Button>
         </DialogActions>
+      </Dialog>
+
+      {/* Full Screen Schedule Dialog */}
+      <Dialog
+        open={fullScreenOpen}
+        onClose={() => setFullScreenOpen(false)}
+        maxWidth={false}
+        fullWidth
+        fullScreen
+        PaperProps={{
+          sx: {
+            m: 0,
+            height: '100vh',
+            maxHeight: '100vh',
+            borderRadius: 0
+          }
+        }}
+      >
+        <DialogTitle>
+          <Box display="flex" alignItems="center" justifyContent="space-between">
+            <Box display="flex" alignItems="center" gap={2}>
+              <i className="ri-calendar-schedule-line" style={{ fontSize: 28, color: '#1976d2' }} />
+              <Box>
+                <Typography variant="h5" fontWeight={600}>
+                  Lịch rảnh giáo viên - Toàn màn hình
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Quản lý lịch rảnh của tất cả giáo viên theo từng khung giờ trong tuần
+                </Typography>
+              </Box>
+            </Box>
+            <Box display="flex" gap={1} alignItems="center">
+              <Chip
+                size="small"
+                label="Rảnh"
+                sx={{
+                  backgroundColor: '#f1f8e9',
+                  color: '#2e7d32',
+                  border: '1px solid #c8e6c9'
+                }}
+              />
+              <Chip
+                size="small"
+                label="Bận"
+                sx={{
+                  backgroundColor: '#ffebee',
+                  color: '#c62828',
+                  border: '1px solid #ffcdd2'
+                }}
+              />
+              <Chip
+                size="small"
+                label="Đang dạy"
+                sx={{
+                  backgroundColor: '#e3f2fd',
+                  color: '#1976d2',
+                  border: '1px solid #bbdefb'
+                }}
+              />
+              <Button
+                variant="outlined"
+                startIcon={<i className="ri-download-line" />}
+                onClick={handleExportClick}
+                disabled={!filteredTeachers || filteredTeachers.length === 0}
+              >
+                Xuất file
+              </Button>
+              <Menu
+                anchorEl={anchorEl}
+                open={Boolean(anchorEl)}
+                onClose={handleExportClose}
+                anchorOrigin={{
+                  vertical: 'bottom',
+                  horizontal: 'right',
+                }}
+                transformOrigin={{
+                  vertical: 'top',
+                  horizontal: 'right',
+                }}
+              >
+                <MenuItem onClick={handleExportExcel}>
+                  <i className="ri-file-excel-line" style={{ marginRight: 8 }} />
+                  Xuất Excel (.xlsx)
+                </MenuItem>
+                <MenuItem onClick={handleExportCSV}>
+                  <i className="ri-file-text-line" style={{ marginRight: 8 }} />
+                  Xuất CSV (.csv)
+                </MenuItem>
+                <MenuItem onClick={handleExportSummary}>
+                  <i className="ri-bar-chart-line" style={{ marginRight: 8 }} />
+                  Xuất thống kê
+                </MenuItem>
+              </Menu>
+              <IconButton
+                onClick={() => setFullScreenOpen(false)}
+                sx={{
+                  color: 'text.secondary',
+                  '&:hover': {
+                    backgroundColor: 'rgba(0, 0, 0, 0.04)'
+                  }
+                }}
+              >
+                <i className="ri-fullscreen-exit-line" style={{ fontSize: 24 }} />
+              </IconButton>
+            </Box>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ p: 3, height: 'calc(100vh - 120px)', overflow: 'auto' }}>
+          {renderFilterSection()}
+          {renderScheduleTable(true)}
+        </DialogContent>
       </Dialog>
     </>
   )

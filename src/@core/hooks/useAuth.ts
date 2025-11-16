@@ -33,7 +33,8 @@ const ROLE_COLUMNS = [
     { column: 'Quản lý lịch học', key: 'schedule' },
     { column: 'Kế toán', key: 'accounting' },
     { column: 'Quản lý lớp học', key: 'class' },
-    { column: 'Quản lý giáo viên', key: 'teacher' }
+    { column: 'Quản lý giáo viên', key: 'teacher' },
+    { column: 'Quản lý người dùng', key: 'user' }
 ]
 
 const ADMIN_PREFIX = 'admin'

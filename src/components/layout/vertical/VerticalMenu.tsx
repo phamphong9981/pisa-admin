@@ -45,6 +45,7 @@ const VerticalMenu = ({ scrollMenu }: { scrollMenu: (container: any, isPerfectSc
   const canAccessAccounting = hasPermission('accounting')
   const canAccessSchedule = hasPermission('schedule')
   const canAccessTeacher = hasPermission('teacher')
+  const canAccessUser = hasPermission('user')
 
   return (
     // eslint-disable-next-line lines-around-comment
@@ -88,6 +89,9 @@ const VerticalMenu = ({ scrollMenu }: { scrollMenu: (container: any, isPerfectSc
             <MenuItem href='/teachers-info' icon={<i className='ri-user-settings-line' />}>Thông tin giáo viên</MenuItem>
             <MenuItem href='/teachers-schedule' icon={<i className='ri-calendar-time-line' />}>Lịch giáo viên</MenuItem>
           </SubMenu>
+        )}
+        {canAccessUser && (
+          <MenuItem href='/users' icon={<i className='ri-user-line' />}>Quản lý người dùng</MenuItem>
         )}
         {/* <MenuSection label='Apps & Pages'>
           <MenuItem href='/account-settings' icon={<i className='ri-user-settings-line' />}>
