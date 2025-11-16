@@ -67,6 +67,20 @@ const StyledTimeCell = styled(TableCell)(({ theme }) => ({
   zIndex: 1
 }))
 
+const StyledDayCell = styled(TableCell)(({ theme }) => ({
+  fontWeight: 700,
+  fontSize: '0.8rem',
+  padding: theme.spacing(1),
+  backgroundColor: '#f0f0f0',
+  color: '#424242',
+  border: `1px solid ${theme.palette.divider}`,
+  textAlign: 'left',
+  minWidth: '120px',
+  position: 'sticky',
+  left: 0,
+  zIndex: 2
+}))
+
 const ScheduleCell = styled(TableCell, {
   shouldForwardProp: (prop) => prop !== 'isBusy' && prop !== 'isTeaching' && prop !== 'isEditable'
 })<{ isBusy?: boolean; isTeaching?: boolean; isEditable?: boolean }>(({ theme, isBusy, isTeaching, isEditable }) => ({
@@ -468,15 +482,11 @@ const EditStudentSchedule = () => {
             <Table stickyHeader>
               <TableHead>
                 <TableRow>
-                  <StyledHeaderCell sx={{ minWidth: '150px' }}>
-                    <Box>
-                      <Typography variant="body2" fontWeight={600}>
-                        Khung giờ
-                      </Typography>
-                      <Typography variant="caption" color="textSecondary">
-                        {selectedDay === 'all' ? 'Theo tuần' : selectedDay}
-                      </Typography>
-                    </Box>
+                  <StyledHeaderCell sx={{ minWidth: '120px', position: 'sticky', left: 0, zIndex: 3 }}>
+                    <Typography variant="body2" fontWeight={600}>Thứ</Typography>
+                  </StyledHeaderCell>
+                  <StyledHeaderCell sx={{ minWidth: '100px', position: 'sticky', left: 120, zIndex: 3 }}>
+                    <Typography variant="body2" fontWeight={600}>Khung giờ</Typography>
                   </StyledHeaderCell>
                   {filteredStudents.map((student) => (
                     <StyledHeaderCell key={student.id}>
@@ -495,7 +505,7 @@ const EditStudentSchedule = () => {
               <TableBody>
                 {filteredTimeSlots.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={filteredStudents.length + 1} align="center" sx={{ py: 4 }}>
+                    <TableCell colSpan={filteredStudents.length + 2} align="center" sx={{ py: 4 }}>
                       <Box display="flex" flexDirection="column" alignItems="center" gap={2}>
                         <i className="ri-calendar-line" style={{ fontSize: '48px', color: '#ccc' }} />
                         <Typography variant="h6" color="text.secondary">
@@ -508,56 +518,64 @@ const EditStudentSchedule = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredTimeSlots.map((slot, index) => (
-                    <TableRow key={index}>
-                      <StyledTimeCell>
-                        <Box>
-                          <Typography variant="body2" fontWeight={600}>
-                            {slot.day}
-                          </Typography>
-                          <Typography variant="caption" color="primary">
-                            {slot.time}
-                          </Typography>
-                        </Box>
-                      </StyledTimeCell>
-                      {filteredStudents.map((student) => {
-                        const isBusy = isStudentBusy(student.profile.busyScheduleArr, slot.slot)
+                  (() => {
+                    const groups: Record<string, { day: string; slots: typeof filteredTimeSlots }> = {}
+                    filteredTimeSlots.forEach(s => {
+                      const key = s.day
+                      if (!groups[key]) groups[key] = { day: s.day, slots: [] as any }
+                      groups[key].slots.push(s)
+                    })
+                    return Object.values(groups).flatMap(group =>
+                      group.slots.map((slot, idx) => (
+                        <TableRow key={`${group.day}-${slot.time}`}>
+                          {idx === 0 && (
+                            <StyledDayCell rowSpan={group.slots.length}>
+                              {group.day}
+                            </StyledDayCell>
+                          )}
+                          <StyledTimeCell sx={{ left: 120 }}>
+                            <Typography variant="caption" color="primary">{slot.time}</Typography>
+                          </StyledTimeCell>
+                          {filteredStudents.map((student) => {
+                            const isBusy = isStudentBusy(student.profile.busyScheduleArr, slot.slot)
 
-                        return (
-                          <ScheduleCell
-                            key={`${student.id}-${slot.slot}`}
-                            isBusy={isBusy}
-                            isTeaching={false}
-                            isEditable={true}
-                            onClick={() => handleCellClick(
-                              student.id,
-                              slot.slot,
-                              slot.day,
-                              slot.time
-                            )}
-                          >
-
-                            <Tooltip
-                              title={
-                                isBusy
-                                  ? `${student.profile.fullname} bận vào ${slot.day} ${slot.time}`
-                                  : `${student.profile.fullname} rảnh vào ${slot.day} ${slot.time}`
-                              }
-                            >
-                              <IconButton size="small">
-                                {isBusy ? (
-                                  <i className="ri-close-line" style={{ color: '#c62828', fontSize: '18px' }} />
-                                ) : (
-                                  <i className="ri-check-line" style={{ color: '#2e7d32', fontSize: '18px' }} />
+                            return (
+                              <ScheduleCell
+                                key={`${student.id}-${slot.slot}`}
+                                isBusy={isBusy}
+                                isTeaching={false}
+                                isEditable={true}
+                                onClick={() => handleCellClick(
+                                  student.id,
+                                  slot.slot,
+                                  slot.day,
+                                  slot.time
                                 )}
-                              </IconButton>
-                            </Tooltip>
+                              >
 
-                          </ScheduleCell>
-                        )
-                      })}
-                    </TableRow>
-                  ))
+                                <Tooltip
+                                  title={
+                                    isBusy
+                                      ? `${student.profile.fullname} bận vào ${slot.day} ${slot.time}`
+                                      : `${student.profile.fullname} rảnh vào ${slot.day} ${slot.time}`
+                                  }
+                                >
+                                  <IconButton size="small">
+                                    {isBusy ? (
+                                      <i className="ri-close-line" style={{ color: '#c62828', fontSize: '18px' }} />
+                                    ) : (
+                                      <i className="ri-check-line" style={{ color: '#2e7d32', fontSize: '18px' }} />
+                                    )}
+                                  </IconButton>
+                                </Tooltip>
+
+                              </ScheduleCell>
+                            )
+                          })}
+                        </TableRow>
+                      ))
+                    )
+                  })()
                 )}
               </TableBody>
             </Table>

@@ -78,6 +78,20 @@ const StyledTimeCell = styled(TableCell)(({ theme }) => ({
   zIndex: 2
 }))
 
+const StyledDayCell = styled(TableCell)(({ theme }) => ({
+  fontWeight: 700,
+  fontSize: '0.8rem',
+  padding: theme.spacing(1),
+  backgroundColor: '#f0f0f0',
+  color: '#424242',
+  border: `1px solid ${theme.palette.divider}`,
+  textAlign: 'left',
+  minWidth: '120px',
+  position: 'sticky',
+  left: 0,
+  zIndex: 3
+}))
+
 const ScheduleCell = styled(TableCell, {
   shouldForwardProp: (prop) => prop !== 'isBusy' && prop !== 'isTeaching'
 })<{ isBusy?: boolean; isTeaching?: boolean }>(({ theme, isBusy, isTeaching }) => ({
@@ -593,21 +607,11 @@ const TeachersSchedule = () => {
       <Table stickyHeader>
         <TableHead>
           <TableRow>
-            <StyledHeaderCell sx={{
-              minWidth: '150px',
-              position: 'sticky',
-              left: 0,
-              top: 0,
-              zIndex: 3
-            }}>
-              <Box>
-                <Typography variant="body2" fontWeight={600}>
-                  Khung giờ
-                </Typography>
-                <Typography variant="caption" color="textSecondary">
-                  {selectedDay === 'all' ? 'Theo tuần' : (selectedDayLabel || selectedDay)}
-                </Typography>
-              </Box>
+            <StyledHeaderCell sx={{ position: 'sticky', left: 0, top: 0, zIndex: 4, minWidth: '120px' }}>
+              <Typography variant="body2" fontWeight={600}>Thứ</Typography>
+            </StyledHeaderCell>
+            <StyledHeaderCell sx={{ position: 'sticky', left: 120, top: 0, zIndex: 4, minWidth: '100px' }}>
+              <Typography variant="body2" fontWeight={600}>Khung giờ</Typography>
             </StyledHeaderCell>
             {filteredTeachers.map((teacher) => (
               <StyledHeaderCell key={teacher.id}>
@@ -664,7 +668,7 @@ const TeachersSchedule = () => {
         <TableBody>
           {filteredTimeSlots.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={filteredTeachers.length + 1} align="center" sx={{ py: 4 }}>
+              <TableCell colSpan={filteredTeachers.length + 2} align="center" sx={{ py: 4 }}>
                 <Box display="flex" flexDirection="column" alignItems="center" gap={2}>
                   <i className="ri-calendar-line" style={{ fontSize: '48px', color: '#ccc' }} />
                   <Typography variant="h6" color="text.secondary">
@@ -677,108 +681,118 @@ const TeachersSchedule = () => {
               </TableCell>
             </TableRow>
           ) : (
-            filteredTimeSlots.map((slot, index) => (
-              <TableRow key={index}>
-                <StyledTimeCell>
-                  <Box>
-                    <Typography variant="body2" fontWeight={600}>
-                      {slot.dayLabel}
-                    </Typography>
-                    <Typography variant="caption" color="primary">
-                      {slot.time}
-                    </Typography>
-                  </Box>
-                </StyledTimeCell>
-                {filteredTeachers.map((teacher) => {
-                  const isBusy = isTeacherBusy(teacher.registeredBusySchedule, slot.slot)
-                  const isTeaching = isTeacherTeaching(teacher.id, slot.slot)
-                  const teachingInfo = getTeachingInfo(teacher.id, slot.slot)
+            (() => {
+              // group by dayKey label
+              const groups: Record<string, { label: string; slots: typeof filteredTimeSlots }> = {}
+              filteredTimeSlots.forEach(s => {
+                const key = s.dayKey
+                if (!groups[key]) groups[key] = { label: s.dayLabel, slots: [] as any }
+                groups[key].slots.push(s)
+              })
+              const orderedGroups = Object.values(groups)
+              return orderedGroups.flatMap(group =>
+                group.slots.map((slot, idx) => (
+                  <TableRow key={`${group.label}-${slot.time}`}>
+                    {idx === 0 && (
+                      <StyledDayCell rowSpan={group.slots.length}>
+                        {group.label}
+                      </StyledDayCell>
+                    )}
+                    <StyledTimeCell sx={{ left: 120, zIndex: 2 }}>
+                      <Typography variant="caption" color="primary">{slot.time}</Typography>
+                    </StyledTimeCell>
+                    {filteredTeachers.map((teacher) => {
+                      const isBusy = isTeacherBusy(teacher.registeredBusySchedule, slot.slot)
+                      const isTeaching = isTeacherTeaching(teacher.id, slot.slot)
+                      const teachingInfo = getTeachingInfo(teacher.id, slot.slot)
 
-                  return (
-                    <ScheduleCell
-                      key={`${teacher.id}-${slot.slot}`}
-                      isBusy={isBusy}
-                      isTeaching={isTeaching}
-                      onClick={isTeaching && teachingInfo ? () => handleTeachingCellClick(
-                        teachingInfo.class_id,
-                        teachingInfo.lesson,
-                        teacher.name,
-                        teachingInfo.class_name,
-                        teachingInfo.schedule_time
-                      ) : undefined}
-                    >
-                      {isTeaching && teachingInfo ? (
-                        <TeachingInfo>
-                          <Box className="lesson-header">
-                            <Box className="class-name" title={teachingInfo.class_name}>
-                              {teachingInfo.class_name}
-                              {teachingInfo.note && (
-                                <Box className="lesson-note" title={teachingInfo.note}>
-                                  <i className="ri-file-text-line" style={{ marginRight: 4, fontSize: '12px' }} />
-                                  {teachingInfo.note}
+                      return (
+                        <ScheduleCell
+                          key={`${teacher.id}-${slot.slot}`}
+                          isBusy={isBusy}
+                          isTeaching={isTeaching}
+                          onClick={isTeaching && teachingInfo ? () => handleTeachingCellClick(
+                            teachingInfo.class_id,
+                            teachingInfo.lesson,
+                            teacher.name,
+                            teachingInfo.class_name,
+                            teachingInfo.schedule_time
+                          ) : undefined}
+                        >
+                          {isTeaching && teachingInfo ? (
+                            <TeachingInfo>
+                              <Box className="lesson-header">
+                                <Box className="class-name" title={teachingInfo.class_name}>
+                                  {teachingInfo.class_name}
+                                  {teachingInfo.note && (
+                                    <Box className="lesson-note" title={teachingInfo.note}>
+                                      <i className="ri-file-text-line" style={{ marginRight: 4, fontSize: '12px' }} />
+                                      {teachingInfo.note}
+                                    </Box>
+                                  )}
+                                </Box>
+                              </Box>
+                              {teachingInfo.students && Array.isArray(teachingInfo.students) && teachingInfo.students.length > 0 && (
+                                <Box className="students-content">
+                                  <Box className="students-list">
+                                    {teachingInfo.students.map((student: any) => {
+                                      const coursename = student.coursename ? ` - ${student.coursename}` : '';
+                                      const displayLabel = student.note
+                                        ? `${student.fullname}${coursename} (${student.note})`
+                                        : `${student.fullname}${coursename}`;
+                                      const rollcallStatusConfig = getRollcallStatusConfig(student.rollcall_status as RollcallStatus | undefined)
+                                      const isNotRollcall = !student.rollcall_status || student.rollcall_status === RollcallStatus.NOT_ROLLCALL
+
+                                      const studentSx = rollcallStatusConfig && !isNotRollcall
+                                        ? {
+                                          backgroundColor: `${rollcallStatusConfig.backgroundColor} !important`,
+                                          borderColor: `${rollcallStatusConfig.borderColor} !important`,
+                                          color: `${rollcallStatusConfig.textColor} !important`,
+                                          borderLeft: `4px solid ${rollcallStatusConfig.accentColor}`
+                                        }
+                                        : undefined
+
+                                      return (
+                                        <Box
+                                          key={student.id}
+                                          className="student-item"
+                                          title={displayLabel}
+                                          sx={studentSx}
+                                        >
+                                          <Typography component="span" variant="caption" sx={{ fontWeight: 500 }}>
+                                            {displayLabel}
+                                          </Typography>
+                                        </Box>
+                                      );
+                                    })}
+                                  </Box>
                                 </Box>
                               )}
-                            </Box>
-                          </Box>
-                          {teachingInfo.students && Array.isArray(teachingInfo.students) && teachingInfo.students.length > 0 && (
-                            <Box className="students-content">
-                              <Box className="students-list">
-                                {teachingInfo.students.map((student: any) => {
-                                  const coursename = student.coursename ? ` - ${student.coursename}` : '';
-                                  const displayLabel = student.note
-                                    ? `${student.fullname}${coursename} (${student.note})`
-                                    : `${student.fullname}${coursename}`;
-                                  const rollcallStatusConfig = getRollcallStatusConfig(student.rollcall_status as RollcallStatus | undefined)
-                                  const isNotRollcall = !student.rollcall_status || student.rollcall_status === RollcallStatus.NOT_ROLLCALL
-
-                                  const studentSx = rollcallStatusConfig && !isNotRollcall
-                                    ? {
-                                      backgroundColor: `${rollcallStatusConfig.backgroundColor} !important`,
-                                      borderColor: `${rollcallStatusConfig.borderColor} !important`,
-                                      color: `${rollcallStatusConfig.textColor} !important`,
-                                      borderLeft: `4px solid ${rollcallStatusConfig.accentColor}`
-                                    }
-                                    : undefined
-
-                                  return (
-                                    <Box
-                                      key={student.id}
-                                      className="student-item"
-                                      title={displayLabel}
-                                      sx={studentSx}
-                                    >
-                                      <Typography component="span" variant="caption" sx={{ fontWeight: 500 }}>
-                                        {displayLabel}
-                                      </Typography>
-                                    </Box>
-                                  );
-                                })}
-                              </Box>
-                            </Box>
+                            </TeachingInfo>
+                          ) : (
+                            <Tooltip
+                              title={
+                                isBusy
+                                  ? `${teacher.name} bận vào ${slot.dayLabel} ${slot.time}`
+                                  : `${teacher.name} rảnh vào ${slot.dayLabel} ${slot.time}`
+                              }
+                            >
+                              <IconButton size="small">
+                                {isBusy ? (
+                                  <i className="ri-close-line" style={{ color: '#c62828', fontSize: '18px' }} />
+                                ) : (
+                                  <i className="ri-check-line" style={{ color: '#2e7d32', fontSize: '18px' }} />
+                                )}
+                              </IconButton>
+                            </Tooltip>
                           )}
-                        </TeachingInfo>
-                      ) : (
-                        <Tooltip
-                          title={
-                            isBusy
-                              ? `${teacher.name} bận vào ${slot.dayLabel} ${slot.time}`
-                              : `${teacher.name} rảnh vào ${slot.dayLabel} ${slot.time}`
-                          }
-                        >
-                          <IconButton size="small">
-                            {isBusy ? (
-                              <i className="ri-close-line" style={{ color: '#c62828', fontSize: '18px' }} />
-                            ) : (
-                              <i className="ri-check-line" style={{ color: '#2e7d32', fontSize: '18px' }} />
-                            )}
-                          </IconButton>
-                        </Tooltip>
-                      )}
-                    </ScheduleCell>
-                  )
-                })}
-              </TableRow>
-            ))
+                        </ScheduleCell>
+                      )
+                    })}
+                  </TableRow>
+                ))
+              )
+            })()
           )}
         </TableBody>
       </Table>
