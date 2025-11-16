@@ -4,6 +4,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 // Axios Import
 import { apiClient } from './apiClient'
 
+export enum CourseStatus {
+    ACTIVE = 'active',
+    INACTIVE = 'inactive',
+}
 // Type Imports
 import type { TeacherListResponse } from './useTeacher'
 import type { ClassListResponse } from './useClass'
@@ -12,6 +16,7 @@ import type { Profile } from './useStudent'
 interface CourseListResponse {
     id: string,
     name: string,
+    status: CourseStatus,
     type: string,
     teacher: {
         name: string
@@ -37,9 +42,19 @@ const fetchCourseList = async (region?: number, weekId?: string): Promise<Course
     return data.data;
 }
 
-const enum Region {
+// Region ids and labels used consistently across app
+export enum RegionId {
     HALONG = 1,
-    UONGBI = 2
+    UONGBI = 2,
+    CAMPHA = 3,
+    BAICHAY = 4
+}
+
+export const RegionLabel: Record<RegionId, string> = {
+    [RegionId.HALONG]: 'Hạ Long',
+    [RegionId.UONGBI]: 'Uông Bí',
+    [RegionId.CAMPHA]: 'Cẩm Phả',
+    [RegionId.BAICHAY]: 'Bãi Cháy'
 }
 
 export const useCourseList = (region?: number, weekId?: string) => {
@@ -55,6 +70,7 @@ export const useCourseList = (region?: number, weekId?: string) => {
 
 interface CourseInfo {
     name: string,
+    status: CourseStatus,
     type: string,
     teacher: TeacherListResponse,
     classes: ClassListResponse[],
@@ -98,6 +114,7 @@ export const useCourseInfoWithReload = (courseId: string, weekId: string) => {
     })
 }
 
+// Optional client-side course type enum (not enforced by API)
 export enum CourseType {
     FOUNDATION = 'foundation',
     INTERMEDIATE = 'intermediate',
@@ -109,7 +126,8 @@ export enum CourseType {
 
 interface CreateCourseRequest {
     name: string,
-    type: CourseType,
+    // Accept raw API type strings (e.g., FT_listening) or mapped enum values
+    type: string | CourseType,
     teacher_id: string,
     region: number
 }
@@ -176,5 +194,36 @@ export const useUnregisterCourse = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['courseInfo'] })
         },
+    })
+}
+
+
+export interface UpdateCourseRequest {
+    name?: string
+    // Accept backend type string directly for flexibility
+    type?: string | CourseType
+    teacherId?: string
+    region?: number
+    status?: CourseStatus
+}
+
+const updateCourse = async (courseId: string, updateCourseRequest: UpdateCourseRequest) => {
+    const { data } = await apiClient.put(`/courses/${courseId}`, updateCourseRequest);
+
+    return data.data;
+}
+
+export const useUpdateCourse = () => {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: ({ courseId, updateCourseRequest }: { courseId: string, updateCourseRequest: UpdateCourseRequest }) => updateCourse(courseId, updateCourseRequest),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['courseInfo'] })
+            queryClient.invalidateQueries({ queryKey: ['courses'] })
+        },
+        onError: (error) => {
+            console.error('Error updating course:', error)
+        }
     })
 }

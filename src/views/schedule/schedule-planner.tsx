@@ -34,7 +34,7 @@ import {
 } from '@mui/material'
 
 // Hooks
-import { useCourseInfo, useCourseInfoWithReload, useCourseList } from '@/@core/hooks/useCourse'
+import { useCourseInfo, useCourseInfoWithReload, useCourseList, RegionId, RegionLabel } from '@/@core/hooks/useCourse'
 import { SCHEDULE_TIME, useAutoScheduleCourse, useGetAllSchedule } from '@/@core/hooks/useSchedule'
 import { useGetWeeks, WeekResponseDto } from '@/@core/hooks/useWeek'
 import { useTeacherList, TeacherListResponse } from '@/@core/hooks/useTeacher'
@@ -161,9 +161,12 @@ const dayOffsetMap: Record<string, number> = {
 }
 
 const SchedulePlanner = () => {
-  const [selectedRegion, setSelectedRegion] = useState<number>(1) // Default to HALONG
+  const [selectedRegion, setSelectedRegion] = useState<number>(RegionId.HALONG) // Default to HALONG
   const [selectedWeekId, setSelectedWeekId] = useState<string>('')
   const { data: courses, isLoading: isCoursesLoading, error: coursesError } = useCourseList(selectedRegion, selectedWeekId)
+  const activeCourses = useMemo(() => {
+    return (courses || []).filter(c => c.status === 'active')
+  }, [courses])
   const [selectedCourseId, setSelectedCourseId] = useState<string>('')
   const [classSearch, setClassSearch] = useState<string>('')
 
@@ -406,9 +409,9 @@ const SchedulePlanner = () => {
   // Calculate classes with complete schedule (all 42 time slots filled)
   // Only count classes with autoSchedule: true
   const classesWithCompleteSchedule = useMemo(() => {
-    if (!courses) return []
+    if (!activeCourses) return []
 
-    return courses.map(course => {
+    return activeCourses.map(course => {
       // Filter only classes with autoSchedule: true
       const autoScheduleClasses = course.classes.filter(cls => cls.autoSchedule !== false)
 
@@ -721,7 +724,7 @@ const SchedulePlanner = () => {
             selectedCourseId && (
               <Box display="flex" alignItems="center" gap={1}>
                 <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                  Khóa học: {courses?.find(c => c.id === selectedCourseId)?.name}
+                  Khóa học: {activeCourses?.find(c => c.id === selectedCourseId)?.name}
                 </Typography>
                 <Button
                   variant="outlined"
@@ -791,18 +794,17 @@ const SchedulePlanner = () => {
                 onChange={(e) => setSelectedRegion(Number(e.target.value))}
                 label="Khu vực"
               >
-                <MenuItem value={1}>
-                  <Box display="flex" alignItems="center" gap={1}>
-                    <i className="ri-map-pin-line" style={{ color: '#1976d2' }} />
-                    <span>Hạ Long</span>
-                  </Box>
-                </MenuItem>
-                <MenuItem value={2}>
-                  <Box display="flex" alignItems="center" gap={1}>
-                    <i className="ri-map-pin-line" style={{ color: '#1976d2' }} />
-                    <span>Uông Bí</span>
-                  </Box>
-                </MenuItem>
+                {(Object.keys(RegionLabel) as Array<keyof typeof RegionLabel>).map((key) => {
+                  const id = Number(key) as RegionId
+                  return (
+                    <MenuItem key={id} value={id}>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <i className="ri-map-pin-line" />
+                        <span>{RegionLabel[id]}</span>
+                      </Box>
+                    </MenuItem>
+                  )
+                })}
               </Select>
             </FormControl>
 
@@ -863,7 +865,7 @@ const SchedulePlanner = () => {
                 <CircularProgress size={20} />
               ) : coursesError ? (
                 <Alert severity="error">Lỗi tải danh sách khóa học: {coursesError.message}</Alert>
-              ) : (courses || []).map(course => {
+              ) : (activeCourses || []).map(course => {
                 // Check if this course has all classes scheduled
                 const courseScheduleInfo = classesWithCompleteSchedule.find(c => c.courseId === course.id)
                 const isFullyScheduled = courseScheduleInfo?.isComplete || false

@@ -37,7 +37,7 @@ import {
 import { styled } from '@mui/material/styles'
 
 // Hook Imports
-import { useCourseList } from '@/@core/hooks/useCourse'
+import { useCourseList, useUpdateCourse, CourseStatus, RegionId, RegionLabel } from '@/@core/hooks/useCourse'
 
 // Component Imports
 import CreateCourseForm from './CreateCourseForm'
@@ -81,23 +81,18 @@ const getInitials = (name: string) => {
   return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)
 }
 
-const getRegionName = (region: number) => {
-  switch (region) {
-    case 1:
-      return 'Hạ Long'
-    case 2:
-      return 'Uông Bí'
-    default:
-      return 'Không xác định'
-  }
-}
+const getRegionName = (region: number) => RegionLabel[region as RegionId] || 'Không xác định'
 
 const getRegionColor = (region: number) => {
   switch (region) {
-    case 1:
+    case RegionId.HALONG:
       return 'primary'
-    case 2:
+    case RegionId.UONGBI:
       return 'secondary'
+    case RegionId.CAMPHA:
+      return 'success'
+    case RegionId.BAICHAY:
+      return 'warning'
     default:
       return 'default'
   }
@@ -109,9 +104,30 @@ const CoursesList = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedRegion, setSelectedRegion] = useState<number | 'all'>('all')
+  const [selectedStatus, setSelectedStatus] = useState<CourseStatus | 'all'>('all')
   const [openCreateDialog, setOpenCreateDialog] = useState(false)
+  const [openEditDialog, setOpenEditDialog] = useState(false)
+  const [editingCourse, setEditingCourse] = useState<{
+    id: string
+    name: string
+    type: string
+    status: CourseStatus
+    region: number
+  } | null>(null)
+  const [editForm, setEditForm] = useState<{
+    name: string
+    type: string
+    status: CourseStatus
+    region: number
+  }>({
+    name: '',
+    type: '',
+    status: CourseStatus.ACTIVE,
+    region: 1
+  })
 
   const { data: courses, isLoading, error } = useCourseList(selectedRegion === 'all' ? undefined : selectedRegion)
+  const updateCourseMutation = useUpdateCourse()
 
   // Router
   const router = useRouter()
@@ -121,15 +137,17 @@ const CoursesList = () => {
     if (!courses) return []
 
     return courses.filter(course => {
+      const statusMatch = selectedStatus === 'all' || course.status === selectedStatus
       const teacherName = course.teacher?.name || ''
       const regionName = getRegionName(course.region)
 
-      return course.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      const searchMatch = course.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         getDisplayCourseTypeLabel(course.type).toLowerCase().includes(searchTerm.toLowerCase()) ||
         teacherName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         regionName.toLowerCase().includes(searchTerm.toLowerCase())
+      return statusMatch && searchMatch
     })
-  }, [searchTerm, courses])
+  }, [searchTerm, courses, selectedStatus])
 
   // Paginate data
   const paginatedData = useMemo(() => {
@@ -171,6 +189,33 @@ const CoursesList = () => {
           subheader="Quản lý các lớp học tại trung tâm"
           action={
             <Box display="flex" gap={2} alignItems="center" flexWrap="wrap">
+              <FormControl size="small" sx={{ minWidth: 180 }}>
+                <InputLabel>Trạng thái</InputLabel>
+                <Select
+                  value={selectedStatus}
+                  onChange={(e) => setSelectedStatus(e.target.value as CourseStatus | 'all')}
+                  label="Trạng thái"
+                >
+                  <MenuItem value="all">
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <i className="ri-toggle-line" style={{ color: '#666' }} />
+                      <span>Tất cả trạng thái</span>
+                    </Box>
+                  </MenuItem>
+                  <MenuItem value={CourseStatus.ACTIVE}>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <i className="ri-checkbox-circle-line" style={{ color: '#2e7d32' }} />
+                      <span>Đang hoạt động</span>
+                    </Box>
+                  </MenuItem>
+                  <MenuItem value={CourseStatus.INACTIVE}>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <i className="ri-close-circle-line" style={{ color: '#c62828' }} />
+                      <span>Ngưng hoạt động</span>
+                    </Box>
+                  </MenuItem>
+                </Select>
+              </FormControl>
               <FormControl size="small" sx={{ minWidth: 150 }}>
                 <InputLabel>Khu vực</InputLabel>
                 <Select
@@ -184,18 +229,17 @@ const CoursesList = () => {
                       <span>Tất cả</span>
                     </Box>
                   </MenuItem>
-                  <MenuItem value={1}>
-                    <Box display="flex" alignItems="center" gap={1}>
-                      <i className="ri-map-pin-line" style={{ color: '#1976d2' }} />
-                      <span>Hạ Long</span>
-                    </Box>
-                  </MenuItem>
-                  <MenuItem value={2}>
-                    <Box display="flex" alignItems="center" gap={1}>
-                      <i className="ri-map-pin-line" style={{ color: '#9c27b0' }} />
-                      <span>Uông Bí</span>
-                    </Box>
-                  </MenuItem>
+                  {(Object.keys(RegionLabel) as Array<string>).map((key) => {
+                    const id = Number(key) as RegionId
+                    return (
+                      <MenuItem key={id} value={id}>
+                        <Box display="flex" alignItems="center" gap={1}>
+                          <i className="ri-map-pin-line" />
+                          <span>{RegionLabel[id]}</span>
+                        </Box>
+                      </MenuItem>
+                    )
+                  })}
                 </Select>
               </FormControl>
               <Button
@@ -297,6 +341,31 @@ const CoursesList = () => {
                             <i className="ri-eye-line" />
                           </IconButton>
                         </Tooltip>
+                        <Tooltip title="Chỉnh sửa lớp">
+                          <IconButton
+                            size="small"
+                            color="warning"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              setEditingCourse({
+                                id: course.id,
+                                name: course.name,
+                                type: course.type,
+                                status: course.status,
+                                region: course.region
+                              })
+                              setEditForm({
+                                name: course.name,
+                                type: course.type,
+                                status: course.status,
+                                region: course.region
+                              })
+                              setOpenEditDialog(true)
+                            }}
+                          >
+                            <i className="ri-edit-line" />
+                          </IconButton>
+                        </Tooltip>
                         {/* <Tooltip title="Xem lịch học">
                           <IconButton 
                             size="small" 
@@ -341,6 +410,85 @@ const CoursesList = () => {
       >
         <DialogContent>
           <CreateCourseForm onSuccess={() => setOpenCreateDialog(false)} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Course Dialog */}
+      <Dialog
+        open={openEditDialog}
+        onClose={() => setOpenEditDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogContent>
+          <Box display="flex" flexDirection="column" gap={2}>
+            <TextField
+              label="Tên lớp"
+              value={editForm.name}
+              onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+              fullWidth
+            />
+            <TextField
+              label="Loại lớp"
+              value={editForm.type}
+              onChange={(e) => setEditForm(prev => ({ ...prev, type: e.target.value }))}
+              fullWidth
+              helperText="Ví dụ: FT_listening, FT_writing, ..."
+            />
+            <FormControl fullWidth>
+              <InputLabel>Trạng thái</InputLabel>
+              <Select
+                value={editForm.status}
+                label="Trạng thái"
+                onChange={(e) => setEditForm(prev => ({ ...prev, status: e.target.value as CourseStatus }))}
+              >
+                <MenuItem value={CourseStatus.ACTIVE}>Đang hoạt động</MenuItem>
+                <MenuItem value={CourseStatus.INACTIVE}>Ngưng hoạt động</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl fullWidth>
+              <InputLabel>Khu vực</InputLabel>
+              <Select
+                value={editForm.region}
+                label="Khu vực"
+                onChange={(e) => setEditForm(prev => ({ ...prev, region: Number(e.target.value) }))}
+              >
+                {(Object.keys(RegionLabel) as Array<string>).map((key) => {
+                  const id = Number(key) as RegionId
+                  return (
+                    <MenuItem key={id} value={id}>{RegionLabel[id]}</MenuItem>
+                  )
+                })}
+              </Select>
+            </FormControl>
+            <Box display="flex" justifyContent="flex-end" gap={1} mt={1}>
+              <Button variant="outlined" onClick={() => setOpenEditDialog(false)}>
+                Hủy
+              </Button>
+              <Button
+                variant="contained"
+                onClick={() => {
+                  if (!editingCourse) return
+                  updateCourseMutation.mutate({
+                    courseId: editingCourse.id,
+                    updateCourseRequest: {
+                      name: editForm.name,
+                      type: editForm.type,
+                      status: editForm.status,
+                      region: editForm.region
+                    }
+                  }, {
+                    onSuccess: () => {
+                      setOpenEditDialog(false)
+                    }
+                  })
+                }}
+                disabled={updateCourseMutation.isPending}
+              >
+                {updateCourseMutation.isPending ? 'Đang lưu...' : 'Lưu thay đổi'}
+              </Button>
+            </Box>
+          </Box>
         </DialogContent>
       </Dialog>
     </>

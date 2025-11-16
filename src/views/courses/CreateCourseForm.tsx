@@ -18,7 +18,7 @@ import {
   InputAdornment
 } from '@mui/material'
 
-import { CourseType, useCreateCourse } from '@/@core/hooks/useCourse'
+import { CourseType, useCreateCourse, RegionId, RegionLabel } from '@/@core/hooks/useCourse'
 import { useTeacherList } from '@/@core/hooks/useTeacher'
 
 interface CreateCourseFormProps {
@@ -35,7 +35,7 @@ const CreateCourseForm = ({ onSuccess }: CreateCourseFormProps) => {
     name: '',
     type: CourseType.FOUNDATION,
     teacher_id: '',
-    region: 1 // Default to HALONG
+    region: RegionId.HALONG // Default to HALONG
   })
 
   const [openSnackbar, setOpenSnackbar] = useState(false)
@@ -63,7 +63,7 @@ const CreateCourseForm = ({ onSuccess }: CreateCourseFormProps) => {
         name: '',
         type: CourseType.FOUNDATION,
         teacher_id: '',
-        region: 1
+        region: RegionId.HALONG
       })
 
       // Call onSuccess callback
@@ -147,18 +147,17 @@ const CreateCourseForm = ({ onSuccess }: CreateCourseFormProps) => {
                 onChange={(e) => handleChange('region', Number(e.target.value))}
                 label="Khu vực"
               >
-                <MenuItem value={1}>
-                  <Box display="flex" alignItems="center" gap={1}>
-                    <i className="ri-map-pin-line" style={{ color: '#1976d2' }} />
-                    <span>Hạ Long</span>
-                  </Box>
-                </MenuItem>
-                <MenuItem value={2}>
-                  <Box display="flex" alignItems="center" gap={1}>
-                    <i className="ri-map-pin-line" style={{ color: '#9c27b0' }} />
-                    <span>Uông Bí</span>
-                  </Box>
-                </MenuItem>
+                {(Object.keys(RegionLabel) as Array<keyof typeof RegionLabel>).map((key) => {
+                  const id = Number(key) as RegionId
+                  return (
+                    <MenuItem key={id} value={id}>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <i className="ri-map-pin-line" />
+                        <span>{RegionLabel[id]}</span>
+                      </Box>
+                    </MenuItem>
+                  )
+                })}
               </Select>
             </FormControl>
           </Grid>
