@@ -37,7 +37,7 @@ import {
 import { styled } from '@mui/material/styles'
 
 // Hooks
-import { SCHEDULE_TIME } from '@/@core/hooks/useSchedule'
+import { SCHEDULE_TIME, useBatchOrderSchedule } from '@/@core/hooks/useSchedule'
 import { useTeacherList , useUpdateTeacherBusySchedule } from '@/@core/hooks/useTeacher'
 
 
@@ -164,6 +164,9 @@ const EditTeacherSchedule = () => {
   
   // Hook for updating teacher busy schedule
   const updateTeacherBusyScheduleMutation = useUpdateTeacherBusySchedule()
+  
+  // Hook for batch order schedule
+  const batchOrderScheduleMutation = useBatchOrderSchedule()
 
   // Add CSS for spinner animation
   React.useEffect(() => {
@@ -215,6 +218,20 @@ return () => {
     open: false,
     message: '',
     severity: 'success'
+  })
+
+  // States for CSV upload
+  const [uploadDialog, setUploadDialog] = useState<{
+    open: boolean
+    previewData: Array<{
+      email: string
+      teacherName: string
+      busyScheduleArr: number[]
+      errors?: string[]
+    }> | null
+  }>({
+    open: false,
+    previewData: null
   })
 
   // Generate time slots for all 7 days
@@ -296,6 +313,288 @@ return teacherSchedule.includes(slotIndex + 1)
   // Check if slot is editable (not teaching)
   const isSlotEditable = (teacherId: string, slotIndex: number) => {
     return !isTeacherTeaching(teacherId, slotIndex)
+  }
+
+  // Map time range string to slot number for teacher format
+  // Examples: "8am-10am" -> slot 1, "10am-12pm" -> slot 2, "1-3pm" -> slot 3, etc.
+  const mapTeacherTimeRangeToSlot = (timeRange: string, day: string): number | null => {
+    if (!timeRange || !timeRange.trim()) return null
+
+    // Normalize time range - remove spaces
+    let normalized = timeRange.trim().toLowerCase().replace(/\s+/g, '')
+
+    // Map to standard format
+    let standardTime = ''
+    
+    // Handle "8am-10am" or "8:00-10:00"
+    if (normalized.match(/^8am[-:]?10am|^8[-:]?00?[-:]?10/)) {
+      standardTime = '8:00-10:00'
+    }
+    // Handle "10am-12pm" or "10:00-12:00"
+    else if (normalized.match(/^10am[-:]?12pm|^10[-:]?00?[-:]?12/)) {
+      standardTime = '10:00-12:00'
+    }
+    // Handle "1-3pm" or "13:30-15:00" or "1:30-3pm"
+    else if (normalized.match(/^1[-:]?3pm|^1[.:]?30[-:]?3|^13:30[-:]?15/)) {
+      standardTime = '13:30-15:00'
+    }
+    // Handle "3-5pm" or "15:00-17:00" (but not "13:30-15:00")
+    else if (normalized.match(/^3[-:]?5pm/) && !normalized.startsWith('13') && !normalized.startsWith('1.30') && !normalized.startsWith('1:30')) {
+      standardTime = '15:00-17:00'
+    }
+    // Handle "5-7pm" or "17:00-19:00" (but not "15:00-17:00")
+    else if (normalized.match(/^5[-:]?7pm/) && !normalized.startsWith('15') && !normalized.startsWith('3-5') && !normalized.startsWith('3:5')) {
+      standardTime = '17:00-19:00'
+    }
+    // Handle "7.30-9.30pm" or "19:30-21:30" or "7:30-9:30pm"
+    else if (normalized.match(/^7[.:]?30[-:]?9[.:]?30pm|^19:30[-:]?21:30/)) {
+      standardTime = '19:30-21:30'
+    }
+    else {
+      return null
+    }
+
+    // Find slot index
+    const slotIndex = SCHEDULE_TIME.findIndex(slot => {
+      const parts = slot.split(' ')
+      const time = parts[0]
+      const englishDay = parts[1]
+      return time === standardTime && englishDay === day
+    })
+
+    return slotIndex >= 0 ? slotIndex + 1 : null // API uses 1-42
+  }
+
+  // Parse CSV line (handle quoted fields properly)
+  const parseCSVLine = (line: string): string[] => {
+    const fields: string[] = []
+    let currentField = ''
+    let inQuotes = false
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i]
+      const nextChar = line[i + 1]
+
+      if (char === '"') {
+        if (inQuotes && nextChar === '"') {
+          // Escaped quote
+          currentField += '"'
+          i++ // Skip next quote
+        } else {
+          // Toggle quote state
+          inQuotes = !inQuotes
+        }
+      } else if (char === ',' && !inQuotes) {
+        fields.push(currentField.trim())
+        currentField = ''
+      } else {
+        currentField += char
+      }
+    }
+    fields.push(currentField.trim())
+
+    return fields
+  }
+
+  // Verify CSV header format for teacher
+  const verifyTeacherCSVHeader = (headerLine: string): { valid: boolean; errors: string[] } => {
+    const errors: string[] = []
+    const fields = parseCSVLine(headerLine)
+
+    // Expected columns (based on teacher-example.csv):
+    // 0: Dấu thời gian
+    // 1: Địa chỉ email
+    // 2: Tên giáo viên
+    // 3-9: Monday-Sunday columns
+    // 10+: Other columns
+
+    if (fields.length < 10) {
+      errors.push(`Số cột không đúng. Mong đợi ít nhất 10 cột, nhận được ${fields.length}`)
+    }
+
+    // Check email column
+    if (fields.length > 1 && !fields[1].toLowerCase().includes('email')) {
+      errors.push('Cột 2 phải là "Địa chỉ email"')
+    }
+
+    // Check for day columns
+    const expectedDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    expectedDays.forEach((day, index) => {
+      const columnIndex = index + 3
+      if (fields.length > columnIndex && !fields[columnIndex].toLowerCase().includes(day.toLowerCase())) {
+        errors.push(`Cột ${columnIndex + 1} phải chứa "${day}"`)
+      }
+    })
+
+    return {
+      valid: errors.length === 0,
+      errors
+    }
+  }
+
+  // Parse CSV file for teachers
+  const parseTeacherCSV = (csvText: string): Array<{
+    email: string
+    teacherName: string
+    busyScheduleArr: number[]
+    errors?: string[]
+  }> => {
+    const lines = csvText.split('\n').filter(line => line.trim())
+    if (lines.length < 2) {
+      return []
+    }
+
+    // Verify header
+    const headerVerification = verifyTeacherCSVHeader(lines[0])
+    if (!headerVerification.valid) {
+      // Return error result
+      return [{
+        email: '',
+        teacherName: '',
+        busyScheduleArr: [],
+        errors: ['Lỗi định dạng header: ' + headerVerification.errors.join(', ')]
+      }]
+    }
+
+    // Skip header row
+    const dataLines = lines.slice(1)
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    const dayColumnIndices = [3, 4, 5, 6, 7, 8, 9] // Columns for Monday-Sunday (0-indexed)
+
+    const results: Array<{
+      email: string
+      teacherName: string
+      busyScheduleArr: number[]
+      errors?: string[]
+    }> = []
+
+    dataLines.forEach((line, lineIndex) => {
+      // Skip empty lines
+      if (!line.trim()) return
+
+      const fields = parseCSVLine(line)
+
+      if (fields.length < 10) {
+        results.push({
+          email: '',
+          teacherName: `Dòng ${lineIndex + 2}`,
+          busyScheduleArr: [],
+          errors: [`Số cột không đủ. Mong đợi ít nhất 10 cột, nhận được ${fields.length}`]
+        })
+        return
+      }
+
+      const email = fields[1]?.trim() || ''
+      const teacherName = fields[2]?.trim() || ''
+      const errors: string[] = []
+
+      if (!email) {
+        errors.push('Thiếu email')
+      }
+
+      const busyScheduleArr: number[] = []
+
+      days.forEach((day, dayIndex) => {
+        const dayColumnIndex = dayColumnIndices[dayIndex]
+        const dayData = fields[dayColumnIndex]?.trim() || ''
+
+        if (dayData) {
+          // Remove quotes if present
+          const cleanDayData = dayData.replace(/^"|"$/g, '')
+          
+          // Split by comma and process each time range
+          const timeRanges = cleanDayData.split(',').map(t => t.trim()).filter(t => t)
+          timeRanges.forEach(timeRange => {
+            const slot = mapTeacherTimeRangeToSlot(timeRange, day)
+            if (slot !== null && !busyScheduleArr.includes(slot)) {
+              busyScheduleArr.push(slot)
+            } else if (slot === null) {
+              errors.push(`Không thể parse khung giờ "${timeRange}" cho ${getDayInVietnamese(day)}`)
+            }
+          })
+        }
+      })
+
+      if (email || errors.length > 0) {
+        results.push({
+          email,
+          teacherName: teacherName || `Dòng ${lineIndex + 2}`,
+          busyScheduleArr: busyScheduleArr.sort((a, b) => a - b),
+          errors: errors.length > 0 ? errors : undefined
+        })
+      }
+    })
+
+    return results
+  }
+
+  // Handle file upload
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const text = e.target?.result as string
+      const previewData = parseTeacherCSV(text)
+      setUploadDialog({
+        open: true,
+        previewData
+      })
+    }
+    reader.readAsText(file, 'UTF-8')
+
+    // Reset input
+    event.target.value = ''
+  }
+
+  // Handle close upload dialog
+  const handleCloseUploadDialog = () => {
+    setUploadDialog({
+      open: false,
+      previewData: null
+    })
+  }
+
+  // Handle submit batch update
+  const handleSubmitBatchUpdate = async () => {
+    if (!uploadDialog.previewData) return
+
+    try {
+      const data = uploadDialog.previewData
+        .filter(item => !item.errors || item.errors.length === 0)
+        .map(item => ({
+          email: item.email,
+          busy_schedule_arr: item.busyScheduleArr,
+          type: 'teacher' as const
+        }))
+
+      if (data.length === 0) {
+        setNotification({
+          open: true,
+          message: 'Không có dữ liệu hợp lệ để cập nhật!',
+          severity: 'error'
+        })
+        return
+      }
+
+      await batchOrderScheduleMutation.mutateAsync({ data })
+
+      setNotification({
+        open: true,
+        message: `Đã cập nhật lịch cho ${data.length} giáo viên thành công!`,
+        severity: 'success'
+      })
+
+      handleCloseUploadDialog()
+    } catch (error) {
+      console.error('Error batch updating schedule:', error)
+      setNotification({
+        open: true,
+        message: 'Có lỗi xảy ra khi cập nhật lịch!',
+        severity: 'error'
+      })
+    }
   }
 
   // Handle cell click for editing
@@ -407,6 +706,22 @@ return teacherSchedule.includes(slotIndex + 1)
           subheader="Click vào ô lịch để thay đổi trạng thái bận/rảnh của giáo viên (42 khung giờ/tuần)"
           action={
             <Box display="flex" gap={1} alignItems="center">
+              <input
+                accept=".csv"
+                style={{ display: 'none' }}
+                id="csv-upload-input-teacher"
+                type="file"
+                onChange={handleFileUpload}
+              />
+              <label htmlFor="csv-upload-input-teacher">
+                <Button
+                  variant="outlined"
+                  component="span"
+                  startIcon={<i className="ri-upload-line" />}
+                >
+                  Upload CSV
+                </Button>
+              </label>
               <Chip 
                 size="small" 
                 label="Rảnh" 
@@ -776,6 +1091,115 @@ return teacherSchedule.includes(slotIndex + 1)
             }
           >
             {updateTeacherBusyScheduleMutation.isPending ? 'Đang lưu...' : 'Lưu thay đổi'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* CSV Upload Preview Dialog */}
+      <Dialog
+        open={uploadDialog.open}
+        onClose={handleCloseUploadDialog}
+        maxWidth="lg"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box display="flex" alignItems="center" justifyContent="space-between">
+            <Box display="flex" alignItems="center" gap={2}>
+              <i className="ri-file-upload-line" style={{ fontSize: '24px', color: '#1976d2' }} />
+              <Typography variant="h6" fontWeight={600}>
+                Xem trước dữ liệu CSV
+              </Typography>
+            </Box>
+            {uploadDialog.previewData && (
+              <Chip
+                label={`${uploadDialog.previewData.filter(item => !item.errors || item.errors.length === 0).length}/${uploadDialog.previewData.length} hợp lệ`}
+                color={uploadDialog.previewData.some(item => item.errors && item.errors.length > 0) ? 'warning' : 'success'}
+                size="small"
+              />
+            )}
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          {uploadDialog.previewData && (
+            <Box sx={{ mt: 2 }}>
+              <TableContainer sx={{ maxHeight: '60vh', overflow: 'auto' }}>
+                <Table stickyHeader size="small">
+                  <TableHead>
+                    <TableRow>
+                      <StyledHeaderCell>Email</StyledHeaderCell>
+                      <StyledHeaderCell>Tên giáo viên</StyledHeaderCell>
+                      <StyledHeaderCell>Số khung giờ bận</StyledHeaderCell>
+                      <StyledHeaderCell>Khung giờ bận</StyledHeaderCell>
+                      <StyledHeaderCell>Lỗi</StyledHeaderCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {uploadDialog.previewData.map((item, index) => (
+                      <TableRow key={index}>
+                        <TableCell>{item.email}</TableCell>
+                        <TableCell>{item.teacherName}</TableCell>
+                        <TableCell>{item.busyScheduleArr.length}</TableCell>
+                        <TableCell>
+                          <Box display="flex" gap={0.5} flexWrap="wrap">
+                            {item.busyScheduleArr.map(slot => {
+                              const slotIndex = slot - 1 // Convert to 0-based
+                              const scheduleTime = SCHEDULE_TIME[slotIndex]
+                              if (!scheduleTime) return null
+                              const parts = scheduleTime.split(' ')
+                              const time = parts[0]
+                              const day = getDayInVietnamese(parts[1])
+                              return (
+                                <Chip
+                                  key={slot}
+                                  label={`${day} ${time}`}
+                                  size="small"
+                                  variant="outlined"
+                                />
+                              )
+                            })}
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          {item.errors && item.errors.length > 0 ? (
+                            <Box>
+                              {item.errors.map((error, errIndex) => (
+                                <Typography
+                                  key={errIndex}
+                                  variant="caption"
+                                  color="error"
+                                  display="block"
+                                >
+                                  {error}
+                                </Typography>
+                              ))}
+                            </Box>
+                          ) : (
+                            <Chip label="Hợp lệ" color="success" size="small" />
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseUploadDialog} color="inherit">
+            Hủy
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleSubmitBatchUpdate}
+            disabled={batchOrderScheduleMutation.isPending || !uploadDialog.previewData || uploadDialog.previewData.filter(item => !item.errors || item.errors.length === 0).length === 0}
+            startIcon={
+              batchOrderScheduleMutation.isPending ?
+                <i className="ri-loader-4-line" style={{ animation: 'spin 1s linear infinite' }} /> :
+                <i className="ri-check-line" />
+            }
+          >
+            {batchOrderScheduleMutation.isPending ? 'Đang cập nhật...' : 'Xác nhận cập nhật'}
           </Button>
         </DialogActions>
       </Dialog>

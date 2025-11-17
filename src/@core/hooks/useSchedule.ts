@@ -559,6 +559,39 @@ export const useRequestSchedule = () => {
     })
 }
 
+// Batch order schedule
+export interface BatchOrderScheduleItem {
+    email: string
+    busy_schedule_arr: number[]
+    type?: 'teacher' | 'user'
+}
+
+export interface BatchOrderScheduleRequest {
+    data: BatchOrderScheduleItem[]
+}
+
+const batchOrderSchedule = async (request: BatchOrderScheduleRequest) => {
+    const { data } = await apiClient.put('/admin/batch-order-schedule', request)
+
+    return data.data
+}
+
+export const useBatchOrderSchedule = () => {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: (request: BatchOrderScheduleRequest) => batchOrderSchedule(request),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['teachers'] })
+            queryClient.invalidateQueries({ queryKey: ['students'] })
+            queryClient.invalidateQueries({ queryKey: ['schedules'] })
+        },
+        onError: (error) => {
+            console.error('Error batch ordering schedule:', error)
+        }
+    })
+}
+
 // Export schedule info CSV
 export interface ExportScheduleInfoResponse {
     filename: string
