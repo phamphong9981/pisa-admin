@@ -794,17 +794,14 @@ const SchedulePlanner = () => {
                 onChange={(e) => setSelectedRegion(Number(e.target.value))}
                 label="Khu vực"
               >
-                {(Object.keys(RegionLabel) as Array<keyof typeof RegionLabel>).map((key) => {
-                  const id = Number(key) as RegionId
-                  return (
-                    <MenuItem key={id} value={id}>
-                      <Box display="flex" alignItems="center" gap={1}>
-                        <i className="ri-map-pin-line" />
-                        <span>{RegionLabel[id]}</span>
-                      </Box>
-                    </MenuItem>
-                  )
-                })}
+                {(Object.values(RegionId).filter((v): v is RegionId => typeof v === 'number')).map((id) => (
+                  <MenuItem key={id} value={id}>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <i className="ri-map-pin-line" />
+                      <span>{RegionLabel[id]}</span>
+                    </Box>
+                  </MenuItem>
+                ))}
               </Select>
             </FormControl>
 
