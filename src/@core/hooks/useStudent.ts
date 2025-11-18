@@ -109,6 +109,7 @@ export interface CreateUserDto {
     phone?: string
     courseId?: string,
     type?: UserType
+    ieltsPoint?: string
 }
 
 const registerUser = async (createUserDto: CreateUserDto) => {
@@ -117,12 +118,16 @@ const registerUser = async (createUserDto: CreateUserDto) => {
     return data.data;
 }
 
-export const useCreateUser = (courseId: string) => {
+export const useCreateUser = (courseId?: string) => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: registerUser,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['courseInfo', courseId] })
+            if (courseId) {
+                queryClient.invalidateQueries({ queryKey: ['courseInfo', courseId] })
+            }
+            queryClient.invalidateQueries({ queryKey: ['users'] })
+            queryClient.invalidateQueries({ queryKey: ['students'] })
         },
         onError: (error) => {
             console.error('Error registering user:', error)
