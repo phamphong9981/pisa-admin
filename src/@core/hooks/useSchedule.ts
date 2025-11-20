@@ -148,6 +148,7 @@ export interface AllScheduleStudentDto {
     coursename?: string
     rollcall_status?: RollcallStatus
     teacher_id?: string
+    rollcall_reason?: string
 }
 
 export interface AllScheduleResponse {

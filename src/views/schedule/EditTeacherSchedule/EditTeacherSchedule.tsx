@@ -190,6 +190,7 @@ return () => {
   // States for filtering
   const [teacherSearch, setTeacherSearch] = useState('')
   const [selectedDay, setSelectedDay] = useState<string>('all')
+  const [completionStatus, setCompletionStatus] = useState<string>('all') // 'all' | 'completed' | 'incomplete'
 
   // States for edit dialog
   const [editDialog, setEditDialog] = useState<{
@@ -254,19 +255,39 @@ return () => {
     return slots
   }, [])
 
-  // Filter teachers based on search term
+  // Filter teachers based on search term and completion status
   const filteredTeachers = useMemo(() => {
     if (!teachers) return []
     
-    if (!teacherSearch.trim()) return teachers
+    let result = teachers
     
-    return teachers.filter(teacher => 
-      teacher.name.toLowerCase().includes(teacherSearch.toLowerCase()) ||
-      teacher.skills.some(skill => 
-        skill.toLowerCase().includes(teacherSearch.toLowerCase())
+    // Filter by search term
+    if (teacherSearch.trim()) {
+      result = result.filter(teacher => 
+        teacher.name.toLowerCase().includes(teacherSearch.toLowerCase()) ||
+        teacher.skills.some(skill => 
+          skill.toLowerCase().includes(teacherSearch.toLowerCase())
+        )
       )
-    )
-  }, [teachers, teacherSearch])
+    }
+    
+    // Filter by completion status
+    if (completionStatus === 'completed') {
+      // Đã hoàn thành: có ít nhất 1 slot rảnh (busyScheduleArr.length < 42)
+      result = result.filter(teacher => {
+        const busySlots = teacher.registeredBusySchedule?.length || 0
+        return busySlots < SCHEDULE_TIME.length
+      })
+    } else if (completionStatus === 'incomplete') {
+      // Chưa hoàn thành: tất cả 42 slot đều bận (busyScheduleArr.length === 42)
+      result = result.filter(teacher => {
+        const busySlots = teacher.registeredBusySchedule?.length || 0
+        return busySlots === SCHEDULE_TIME.length
+      })
+    }
+    
+    return result
+  }, [teachers, teacherSearch, completionStatus])
 
   // Filter time slots based on selected day
   const filteredTimeSlots = useMemo(() => {
@@ -786,7 +807,7 @@ return teacherSchedule.includes(slotIndex + 1)
           {/* Filter Section */}
           <Box sx={{ mb: 3 }}>
             <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth
                   placeholder="Tìm kiếm theo tên giáo viên hoặc kỹ năng..."
@@ -825,7 +846,7 @@ return teacherSchedule.includes(slotIndex + 1)
                   }}
                 />
               </Grid>
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={4}>
                 <FormControl fullWidth>
                   <InputLabel>Lọc theo ngày</InputLabel>
                   <Select
@@ -841,10 +862,24 @@ return teacherSchedule.includes(slotIndex + 1)
                   </Select>
                 </FormControl>
               </Grid>
+              <Grid item xs={12} md={4}>
+                <FormControl fullWidth>
+                  <InputLabel>Trạng thái hoàn thành</InputLabel>
+                  <Select
+                    value={completionStatus}
+                    onChange={(e) => setCompletionStatus(e.target.value)}
+                    label="Trạng thái hoàn thành"
+                  >
+                    <MenuItem value="all">Tất cả</MenuItem>
+                    <MenuItem value="completed">Đã hoàn thành</MenuItem>
+                    <MenuItem value="incomplete">Chưa hoàn thành</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
             </Grid>
             
             {/* Filter Summary */}
-            {(teacherSearch || selectedDay !== 'all') && (
+            {(teacherSearch || selectedDay !== 'all' || completionStatus !== 'all') && (
               <Box sx={{ mt: 2, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
                 <Typography variant="body2" color="text.secondary">
                   <i className="ri-filter-line" style={{ marginRight: 8 }} />
@@ -861,8 +896,16 @@ return teacherSchedule.includes(slotIndex + 1)
                     <Chip 
                       label={`Ngày: ${selectedDay}`} 
                       size="small" 
-                      sx={{ ml: 1 }}
+                      sx={{ ml: 1, mr: 1 }}
                       onDelete={() => setSelectedDay('all')}
+                    />
+                  )}
+                  {completionStatus !== 'all' && (
+                    <Chip 
+                      label={`Trạng thái: ${completionStatus === 'completed' ? 'Đã hoàn thành' : 'Chưa hoàn thành'}`} 
+                      size="small" 
+                      sx={{ ml: 1 }}
+                      onDelete={() => setCompletionStatus('all')}
                     />
                   )}
                 </Typography>

@@ -2,7 +2,7 @@ import { saveAs } from 'file-saver'
 import * as XLSX from 'xlsx'
 
 import type { TeacherListResponse } from './useTeacher'
-import { SCHEDULE_TIME, type AllScheduleResponse, type AllScheduleStudentDto } from './useSchedule'
+import { RollcallStatus, SCHEDULE_TIME, type AllScheduleResponse, type AllScheduleStudentDto } from './useSchedule'
 
 const DAY_MAP: Record<string, string> = {
     Monday: 'Thứ 2',
@@ -47,7 +47,19 @@ export const useExport = () => {
 
     const formatStudentLabel = (student: AllScheduleStudentDto) => {
         const courseName = student.coursename ? ` - ${student.coursename}` : ''
-        return student.note ? `${student.fullname}${courseName} (${student.note})` : `${student.fullname}${courseName}`
+        let label = student.note ? `${student.fullname}${courseName} (${student.note})` : `${student.fullname}${courseName}`
+
+        if (student.rollcall_status === RollcallStatus.ATTENDING) {
+            label += ` v `
+        } else {
+            label += ` x `
+        }
+        // Thêm rollcall_reason ở cuối với format đặc biệt để nhận biết khi format Excel
+        if (student.rollcall_reason) {
+            label += ` ${student.rollcall_reason}`
+        }
+
+        return label
     }
 
     // Format dữ liệu cho export
