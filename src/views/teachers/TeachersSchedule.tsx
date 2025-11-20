@@ -392,7 +392,7 @@ const TeachersSchedule = () => {
     if (!schedules) return false
 
     return schedules.some(schedule =>
-      schedule.teacher_id === teacherId && schedule.schedule_time === slotIndex + 1
+      (schedule.teacher_id === teacherId || schedule.students?.some(student => student.teacher_id === teacherId)) && schedule.schedule_time === slotIndex + 1
     )
   }
 
@@ -401,7 +401,7 @@ const TeachersSchedule = () => {
     if (!schedules) return null
 
     return schedules.find(schedule =>
-      schedule.teacher_id === teacherId && schedule.schedule_time === slotIndex + 1
+      (schedule.teacher_id === teacherId || schedule.students?.some(student => student.teacher_id === teacherId)) && schedule.schedule_time === slotIndex + 1
     )
   }
 
@@ -705,7 +705,6 @@ const TeachersSchedule = () => {
                       const isBusy = isTeacherBusy(teacher.registeredBusySchedule, slot.slot)
                       const isTeaching = isTeacherTeaching(teacher.id, slot.slot)
                       const teachingInfo = getTeachingInfo(teacher.id, slot.slot)
-
                       return (
                         <ScheduleCell
                           key={`${teacher.id}-${slot.slot}`}

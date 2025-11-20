@@ -147,6 +147,7 @@ export interface AllScheduleStudentDto {
     note?: string
     coursename?: string
     rollcall_status?: RollcallStatus
+    teacher_id?: string
 }
 
 export interface AllScheduleResponse {
@@ -161,7 +162,7 @@ export interface AllScheduleResponse {
     fullname?: string
     email?: string
     phone?: string
-    students?: AllScheduleStudentDto[] | AllScheduleStudentDto | null
+    students?: AllScheduleStudentDto[] | null
     note?: string
     start_time?: string
     end_time?: string
