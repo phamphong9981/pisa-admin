@@ -83,29 +83,34 @@ const StyledDayCell = styled(TableCell)(({ theme }) => ({
 }))
 
 const ScheduleCell = styled(TableCell, {
-  shouldForwardProp: (prop) => prop !== 'isBusy' && prop !== 'isTeaching' && prop !== 'isEditable'
-})<{ isBusy?: boolean; isTeaching?: boolean; isEditable?: boolean }>(({ theme, isBusy, isTeaching, isEditable }) => ({
+  shouldForwardProp: (prop) => prop !== 'isBusy' && prop !== 'isTeaching' && prop !== 'isEditable' && prop !== 'isSelected'
+})<{ isBusy?: boolean; isTeaching?: boolean; isEditable?: boolean; isSelected?: boolean }>(({ theme, isBusy, isTeaching, isEditable, isSelected }) => ({
   padding: theme.spacing(0.5),
-  border: `1px solid ${theme.palette.divider}`,
+  border: `1px solid ${isSelected ? '#1976d2' : theme.palette.divider}`,
+  borderWidth: isSelected ? '2px' : '1px',
   textAlign: 'center',
   cursor: isEditable ? 'pointer' : isTeaching ? 'pointer' : 'default',
   minWidth: '120px',
   minHeight: '60px',
-  backgroundColor: isTeaching
-    ? '#e3f2fd' // Light blue for teaching
-    : isBusy
-      ? '#ffebee' // Light red for busy
-      : '#f1f8e9', // Light green for free
+  backgroundColor: isSelected
+    ? '#fff3e0' // Orange tint for selected
+    : isTeaching
+      ? '#e3f2fd' // Light blue for teaching
+      : isBusy
+        ? '#ffebee' // Light red for busy
+        : '#f1f8e9', // Light green for free
   '&:hover': {
-    backgroundColor: isEditable
-      ? '#e8f5e8' // Light green on hover for editable
-      : isTeaching
-        ? '#bbdefb' // Darker blue on hover
-        : isBusy
-          ? '#ffcdd2' // Darker red on hover
-          : '#dcedc8', // Darker green on hover
+    backgroundColor: isSelected
+      ? '#ffe0b2' // Darker orange on hover when selected
+      : isEditable
+        ? '#e8f5e8' // Light green on hover for editable
+        : isTeaching
+          ? '#bbdefb' // Darker blue on hover
+          : isBusy
+            ? '#ffcdd2' // Darker red on hover
+            : '#dcedc8', // Darker green on hover
   },
-  transition: 'background-color 0.2s ease',
+  transition: 'background-color 0.2s ease, border 0.2s ease',
   position: 'relative'
 }))
 
@@ -210,6 +215,16 @@ const EditStudentSchedule = () => {
     open: false,
     previewData: null
   })
+
+  // States for multi-select mode
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false)
+  const [selectedCells, setSelectedCells] = useState<Array<{
+    studentId: string
+    slotIndex: number
+    day: string
+    time: string
+    studentName: string
+  }>>([])
 
   // Generate time slots for all 7 days
   const allTimeSlots = useMemo(() => {
@@ -583,17 +598,134 @@ const EditStudentSchedule = () => {
 
     if (!student) return
 
-    const isBusy = isStudentBusy(student.profile.busyScheduleArr, slotIndex)
+    // Multi-select mode
+    if (isMultiSelectMode) {
+      const cellKey = `${studentId}-${slotIndex}`
+      const isAlreadySelected = selectedCells.some(cell => `${cell.studentId}-${cell.slotIndex}` === cellKey)
 
-    setEditDialog({
-      open: true,
-      studentId,
-      studentName: student.profile.fullname,
-      slotIndex,
-      day,
-      time,
-      currentStatus: isBusy ? 'busy' : 'free'
-    })
+      if (isAlreadySelected) {
+        // Deselect
+        setSelectedCells(prev => prev.filter(cell => `${cell.studentId}-${cell.slotIndex}` !== cellKey))
+      } else {
+        // Select
+        setSelectedCells(prev => [...prev, {
+          studentId,
+          slotIndex,
+          day,
+          time,
+          studentName: student.profile.fullname
+        }])
+      }
+    } else {
+      // Single select mode - open edit dialog
+      const isBusy = isStudentBusy(student.profile.busyScheduleArr, slotIndex)
+
+      setEditDialog({
+        open: true,
+        studentId,
+        studentName: student.profile.fullname,
+        slotIndex,
+        day,
+        time,
+        currentStatus: isBusy ? 'busy' : 'free'
+      })
+    }
+  }
+
+  // Handle batch update selected cells
+  const handleBatchUpdateSelected = async (status: 'busy' | 'free') => {
+    if (selectedCells.length === 0) return
+
+    try {
+      // Group by studentId to batch updates per student
+      const updatesByStudent: Record<string, {
+        studentId: string
+        slots: number[]
+      }> = {}
+
+      selectedCells.forEach(cell => {
+        // Initialize if not exists
+        if (!updatesByStudent[cell.studentId]) {
+          // Try to find student in filteredStudents first, then in full studentData
+          let student = filteredStudents.find(s => s.id === cell.studentId)
+          if (!student && studentData?.users) {
+            student = studentData.users.find(s => s.id === cell.studentId)
+          }
+
+          if (student) {
+            updatesByStudent[cell.studentId] = {
+              studentId: cell.studentId,
+              slots: [...(student.profile.busyScheduleArr || [])]
+            }
+          } else {
+            // Skip if student not found
+            console.warn(`Student not found: ${cell.studentId}`)
+            return
+          }
+        }
+
+        // Ensure updatesByStudent[cell.studentId] exists before accessing slots
+        if (!updatesByStudent[cell.studentId]) {
+          console.warn(`Failed to initialize student: ${cell.studentId}`)
+          return
+        }
+
+        const apiSlotIndex = cell.slotIndex + 1 // Convert to 1-based
+
+        if (status === 'busy') {
+          // Add slot if not already there
+          if (!updatesByStudent[cell.studentId].slots.includes(apiSlotIndex)) {
+            updatesByStudent[cell.studentId].slots.push(apiSlotIndex)
+          }
+        } else {
+          // Remove slot
+          updatesByStudent[cell.studentId].slots = updatesByStudent[cell.studentId].slots.filter(
+            slot => slot !== apiSlotIndex
+          )
+        }
+      })
+
+      // Update all students
+      const updatePromises = Object.values(updatesByStudent).map(({ studentId, slots }) =>
+        updateStudentBusyScheduleMutation.mutateAsync({
+          studentId,
+          busySchedule: slots.sort((a, b) => a - b)
+        })
+      )
+
+      await Promise.all(updatePromises)
+
+      setNotification({
+        open: true,
+        message: `Đã cập nhật ${selectedCells.length} ô thành công!`,
+        severity: 'success'
+      })
+
+      // Clear selection
+      setSelectedCells([])
+      setIsMultiSelectMode(false)
+    } catch (error) {
+      console.error('Error batch updating cells:', error)
+      setNotification({
+        open: true,
+        message: 'Có lỗi xảy ra khi cập nhật!',
+        severity: 'error'
+      })
+    }
+  }
+
+  // Clear selection
+  const handleClearSelection = () => {
+    setSelectedCells([])
+  }
+
+  // Toggle multi-select mode
+  const handleToggleMultiSelect = () => {
+    setIsMultiSelectMode(prev => !prev)
+    if (isMultiSelectMode) {
+      // Clear selection when disabling multi-select mode
+      setSelectedCells([])
+    }
   }
 
   // Handle close edit dialog
@@ -719,6 +851,23 @@ const EditStudentSchedule = () => {
                   Tải file mẫu
                 </Link>
               </Box>
+              <Button
+                variant={isMultiSelectMode ? 'contained' : 'outlined'}
+                color={isMultiSelectMode ? 'primary' : 'inherit'}
+                onClick={handleToggleMultiSelect}
+                startIcon={<i className={isMultiSelectMode ? 'ri-checkbox-multiple-fill' : 'ri-checkbox-multiple-line'} />}
+                size="small"
+              >
+                Chọn nhiều
+              </Button>
+              {selectedCells.length > 0 && (
+                <Chip
+                  label={`Đã chọn: ${selectedCells.length} ô`}
+                  color="primary"
+                  onDelete={handleClearSelection}
+                  deleteIcon={<i className="ri-close-line" />}
+                />
+              )}
               <Chip
                 size="small"
                 label="Rảnh"
@@ -925,13 +1074,16 @@ const EditStudentSchedule = () => {
                           </StyledTimeCell>
                           {filteredStudents.map((student) => {
                             const isBusy = isStudentBusy(student.profile.busyScheduleArr, slot.slot)
+                            const cellKey = `${student.id}-${slot.slot}`
+                            const isSelected = selectedCells.some(cell => `${cell.studentId}-${cell.slotIndex}` === cellKey)
 
                             return (
                               <ScheduleCell
-                                key={`${student.id}-${slot.slot}`}
+                                key={cellKey}
                                 isBusy={isBusy}
                                 isTeaching={false}
                                 isEditable={true}
+                                isSelected={isSelected}
                                 onClick={() => handleCellClick(
                                   student.id,
                                   slot.slot,
@@ -939,7 +1091,27 @@ const EditStudentSchedule = () => {
                                   slot.time
                                 )}
                               >
-
+                                {isSelected && (
+                                  <Box
+                                    sx={{
+                                      position: 'absolute',
+                                      top: 4,
+                                      right: 4,
+                                      width: 20,
+                                      height: 20,
+                                      borderRadius: '50%',
+                                      backgroundColor: '#1976d2',
+                                      color: 'white',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      fontSize: '12px',
+                                      fontWeight: 'bold'
+                                    }}
+                                  >
+                                    ✓
+                                  </Box>
+                                )}
                                 <Tooltip
                                   title={
                                     isBusy
@@ -967,6 +1139,71 @@ const EditStudentSchedule = () => {
               </TableBody>
             </Table>
           </TableContainer>
+
+          {/* Batch Update Panel */}
+          {selectedCells.length > 0 && (
+            <Box
+              sx={{
+                mt: 2,
+                p: 2,
+                backgroundColor: '#e3f2fd',
+                borderRadius: 1,
+                border: '2px solid #1976d2',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 2,
+                flexWrap: 'wrap'
+              }}
+            >
+              <Box display="flex" alignItems="center" gap={2}>
+                <Typography variant="body1" fontWeight={600} color="primary">
+                  <i className="ri-checkbox-multiple-fill" style={{ marginRight: 8 }} />
+                  Đã chọn: {selectedCells.length} ô
+                </Typography>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={handleClearSelection}
+                  startIcon={<i className="ri-close-line" />}
+                >
+                  Bỏ chọn
+                </Button>
+              </Box>
+              <Box display="flex" gap={1}>
+                <Button
+                  variant="contained"
+                  color="success"
+                  onClick={() => handleBatchUpdateSelected('free')}
+                  disabled={updateStudentBusyScheduleMutation.isPending}
+                  startIcon={
+                    updateStudentBusyScheduleMutation.isPending ? (
+                      <i className="ri-loader-4-line" style={{ animation: 'spin 1s linear infinite' }} />
+                    ) : (
+                      <i className="ri-check-line" />
+                    )
+                  }
+                >
+                  Đặt tất cả là Rảnh
+                </Button>
+                <Button
+                  variant="contained"
+                  color="error"
+                  onClick={() => handleBatchUpdateSelected('busy')}
+                  disabled={updateStudentBusyScheduleMutation.isPending}
+                  startIcon={
+                    updateStudentBusyScheduleMutation.isPending ? (
+                      <i className="ri-loader-4-line" style={{ animation: 'spin 1s linear infinite' }} />
+                    ) : (
+                      <i className="ri-close-line" />
+                    )
+                  }
+                >
+                  Đặt tất cả là Bận
+                </Button>
+              </Box>
+            </Box>
+          )}
 
           {/* Summary */}
           <Box mt={3}>
