@@ -1062,7 +1062,7 @@ const CreateLessonSchedule = ({
                         {teacherList?.filter(teacher =>
                           teacher.name.toLowerCase().includes(teacherSearch.toLowerCase())
                         ).map((teacher) => {
-                          const isDefaultTeacher = selectedClass ? selectedClass.teacherId === teacher.id : false
+                          const isDefaultTeacher = selectedClass && selectedClass.teacherId ? selectedClass.teacherId === teacher.id : false
 
                           const isTeacherBusy = teacher.registeredBusySchedule?.includes(selectedSlot!.slotIndex)
                           const isSelected = selectedTeacherId === teacher.id
@@ -1134,7 +1134,9 @@ const CreateLessonSchedule = ({
 
                       if (!selectedTeacher) return null
 
-                      const isDefaultTeacher = selectedClass ? selectedClass.teacherId === selectedTeacher.id : false
+                      const isDefaultTeacher = selectedClass && selectedClass.teacherId ? selectedClass.teacherId === selectedTeacher.id : false
+                      // registeredBusySchedule uses 1-based index (1-42), so we need to add 1 to slotIndex (0-based)
+                      const isTeacherBusy = selectedTeacher.registeredBusySchedule?.includes(selectedSlot!.slotIndex + 1)
 
                       return (
                         <Box sx={{
@@ -1150,12 +1152,6 @@ const CreateLessonSchedule = ({
                             <Typography variant="body2" fontWeight={600}>
                               {selectedTeacher.name}
                             </Typography>
-                            {isDefaultTeacher && (
-                              <Typography variant="caption" color="primary" display="block">
-                                <i className="ri-user-star-line" style={{ marginRight: 4, fontSize: '12px' }} />
-                                Giáo viên mặc định của lớp
-                              </Typography>
-                            )}
                           </Box>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             {isDefaultTeacher && (
@@ -1167,13 +1163,15 @@ const CreateLessonSchedule = ({
                                 sx={{ fontSize: '0.7rem' }}
                               />
                             )}
-                            {/* <Chip
-                              size="small"
-                              label={isTeacherBusy ? "Bận" : "Rảnh"}
-                              color={isTeacherBusy ? "error" : "success"}
-                              variant="outlined"
-                              sx={{ fontSize: '0.7rem' }}
-                            /> */}
+                            {isDefaultTeacher && (
+                              <Chip
+                                size="small"
+                                label={isTeacherBusy ? "Bận" : "Rảnh"}
+                                color={isTeacherBusy ? "error" : "success"}
+                                variant="outlined"
+                                sx={{ fontSize: '0.7rem' }}
+                              />
+                            )}
                             <Button
                               size="small"
                               variant="outlined"
@@ -1191,8 +1189,8 @@ const CreateLessonSchedule = ({
                       )
                     })()}
 
-                    {/* Default Teacher Quick Select */}
-                    {selectedClass && !selectedTeacherId && !showTeacherSearchResults && (() => {
+                    {/* Default Teacher Quick Select - Only show if class has a teacher */}
+                    {selectedClass && selectedClass.teacherId && selectedClass.teacher && !selectedTeacherId && !showTeacherSearchResults && (() => {
                       const isDefaultTeacherBusy = teacherList?.find(t => t.id === selectedClass.teacherId)?.registeredBusySchedule?.includes(selectedSlot!.slotIndex + 1)
 
                       return (
@@ -1242,6 +1240,45 @@ const CreateLessonSchedule = ({
                         </Box>
                       )
                     })()}
+
+                    {/* Warning when class has no teacher */}
+                    {selectedClass && (!selectedClass.teacherId || !selectedClass.teacher) && !selectedTeacherId && !showTeacherSearchResults && (
+                      <Box sx={{
+                        p: 1.5,
+                        backgroundColor: '#fff3e0',
+                        borderRadius: 1,
+                        border: '1px solid #ff9800',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 1
+                      }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
+                          <i className="ri-error-warning-line" style={{ fontSize: '20px', color: '#ff9800' }} />
+                          <Box sx={{ flex: 1 }}>
+                            <Typography variant="body2" fontWeight={600} color="warning.main">
+                              Lớp học này chưa có giáo viên
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" display="block">
+                              Vui lòng chọn giáo viên để tạo lịch học
+                            </Typography>
+                          </Box>
+                        </Box>
+                        <Button
+                          size="small"
+                          variant="contained"
+                          color="warning"
+                          startIcon={<i className="ri-search-line" />}
+                          onClick={() => {
+                            setTeacherSearch('')
+                            setShowTeacherSearchResults(true)
+                          }}
+                          sx={{ fontSize: '0.75rem', py: 0.5, px: 1.5, whiteSpace: 'nowrap' }}
+                        >
+                          Tìm kiếm giáo viên
+                        </Button>
+                      </Box>
+                    )}
                   </Box>
                 </Grid>
 
