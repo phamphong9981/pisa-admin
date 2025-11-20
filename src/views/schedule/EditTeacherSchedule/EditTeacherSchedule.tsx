@@ -17,6 +17,7 @@ import {
   IconButton,
   InputAdornment,
   InputLabel,
+  Link,
   MenuItem,
   Select,
   Snackbar,
@@ -706,22 +707,41 @@ return teacherSchedule.includes(slotIndex + 1)
           subheader="Click vào ô lịch để thay đổi trạng thái bận/rảnh của giáo viên (42 khung giờ/tuần)"
           action={
             <Box display="flex" gap={1} alignItems="center">
-              <input
-                accept=".csv"
-                style={{ display: 'none' }}
-                id="csv-upload-input-teacher"
-                type="file"
-                onChange={handleFileUpload}
-              />
-              <label htmlFor="csv-upload-input-teacher">
-                <Button
-                  variant="outlined"
-                  component="span"
-                  startIcon={<i className="ri-upload-line" />}
+              <Box display="flex" flexDirection="column" alignItems="center">
+                <input
+                  accept=".csv"
+                  style={{ display: 'none' }}
+                  id="csv-upload-input-teacher"
+                  type="file"
+                  onChange={handleFileUpload}
+                />
+                <label htmlFor="csv-upload-input-teacher">
+                  <Button
+                    variant="outlined"
+                    component="span"
+                    startIcon={<i className="ri-upload-line" />}
+                  >
+                    Upload CSV
+                  </Button>
+                </label>
+                <Link
+                  href="/teacher-example.csv"
+                  download="teacher-example.csv"
+                  variant="caption"
+                  sx={{
+                    mt: 0.5,
+                    color: 'primary.main',
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    display: 'block',
+                    '&:hover': {
+                      color: 'primary.dark'
+                    }
+                  }}
                 >
-                  Upload CSV
-                </Button>
-              </label>
+                  Tải file mẫu
+                </Link>
+              </Box>
               <Chip 
                 size="small" 
                 label="Rảnh" 

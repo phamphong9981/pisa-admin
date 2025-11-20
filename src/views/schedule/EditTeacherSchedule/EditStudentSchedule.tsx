@@ -17,6 +17,7 @@ import {
   IconButton,
   InputAdornment,
   InputLabel,
+  Link,
   MenuItem,
   Select,
   Snackbar,
@@ -512,6 +513,7 @@ const EditStudentSchedule = () => {
     })
   }
 
+
   // Handle submit batch update
   const handleSubmitBatchUpdate = async () => {
     if (!uploadDialog.previewData) return
@@ -661,22 +663,41 @@ const EditStudentSchedule = () => {
           subheader="Click vào ô lịch để thay đổi trạng thái bận/rảnh của học sinh (42 khung giờ/tuần)"
           action={
             <Box display="flex" gap={1} alignItems="center">
-              <input
-                accept=".csv"
-                style={{ display: 'none' }}
-                id="csv-upload-input"
-                type="file"
-                onChange={handleFileUpload}
-              />
-              <label htmlFor="csv-upload-input">
-                <Button
-                  variant="outlined"
-                  component="span"
-                  startIcon={<i className="ri-upload-line" />}
+              <Box display="flex" flexDirection="column" alignItems="center">
+                <input
+                  accept=".csv"
+                  style={{ display: 'none' }}
+                  id="csv-upload-input"
+                  type="file"
+                  onChange={handleFileUpload}
+                />
+                <label htmlFor="csv-upload-input">
+                  <Button
+                    variant="outlined"
+                    component="span"
+                    startIcon={<i className="ri-upload-line" />}
+                  >
+                    Upload CSV
+                  </Button>
+                </label>
+                <Link
+                  href="/student-example.csv"
+                  download="student-example.csv"
+                  variant="caption"
+                  sx={{
+                    mt: 0.5,
+                    color: 'primary.main',
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    display: 'block',
+                    '&:hover': {
+                      color: 'primary.dark'
+                    }
+                  }}
                 >
-                  Upload CSV
-                </Button>
-              </label>
+                  Tải file mẫu
+                </Link>
+              </Box>
               <Chip
                 size="small"
                 label="Rảnh"
