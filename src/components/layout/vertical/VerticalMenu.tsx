@@ -69,7 +69,7 @@ const VerticalMenu = ({ scrollMenu }: { scrollMenu: (container: any, isPerfectSc
         renderExpandedMenuItemIcon={{ icon: <i className='ri-circle-line' /> }}
         menuSectionStyles={menuSectionStyles(theme)}
       >
-        <MenuItem href='/' icon={<i className='ri-dashboard-line' />}>Analytics</MenuItem>
+        {/* <MenuItem href='/' icon={<i className='ri-dashboard-line' />}>Analytics</MenuItem> */}
         {canAccessClasses && (
           <MenuItem href='/courses' icon={<i className='ri-book-open-line' />}>Quản lý lớp học</MenuItem>
         )}
