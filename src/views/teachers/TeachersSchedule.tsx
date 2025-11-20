@@ -299,6 +299,21 @@ const TeachersSchedule = () => {
   // State for full screen modal
   const [fullScreenOpen, setFullScreenOpen] = useState(false)
 
+  // State for pinned teachers (loaded from localStorage)
+  const [pinnedTeacherIds, setPinnedTeacherIds] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('pinned-teacher-ids')
+      if (stored) {
+        try {
+          return JSON.parse(stored)
+        } catch (e) {
+          return []
+        }
+      }
+    }
+    return []
+  })
+
   // Generate time slots for all 7 days
   const allTimeSlots = useMemo(() => {
     const slots: { dayKey: string; dayLabel: string; time: string; slot: number }[] = []
@@ -333,16 +348,33 @@ const TeachersSchedule = () => {
     return slots
   }, [selectedWeekInfo?.startDate])
 
-  // Filter teachers based on selected teachers
+  // Filter teachers based on selected teachers and sort by pinned status
   const filteredTeachers = useMemo(() => {
     if (!teachers) return []
 
-    if (selectedTeachers.length === 0) return teachers
+    let result = teachers
 
-    return teachers.filter(teacher =>
-      selectedTeachers.some(selected => selected.id === teacher.id)
-    )
-  }, [teachers, selectedTeachers])
+    // Filter by selected teachers
+    if (selectedTeachers.length > 0) {
+      result = result.filter(teacher =>
+        selectedTeachers.some(selected => selected.id === teacher.id)
+      )
+    }
+
+    // Sort: pinned teachers first, then others
+    result = [...result].sort((a, b) => {
+      const aIsPinned = pinnedTeacherIds.includes(a.id)
+      const bIsPinned = pinnedTeacherIds.includes(b.id)
+
+      if (aIsPinned && !bIsPinned) return -1
+      if (!aIsPinned && bIsPinned) return 1
+
+      // If both pinned or both not pinned, maintain original order
+      return 0
+    })
+
+    return result
+  }, [teachers, selectedTeachers, pinnedTeacherIds])
 
   // Filter time slots based on selected day
   const filteredTimeSlots = useMemo(() => {
@@ -596,6 +628,25 @@ const TeachersSchedule = () => {
     )
   }
 
+  // Handle toggle pin teacher
+  const handleTogglePinTeacher = (teacherId: string) => {
+    const newPinnedIds = pinnedTeacherIds.includes(teacherId)
+      ? pinnedTeacherIds.filter(id => id !== teacherId)
+      : [...pinnedTeacherIds, teacherId]
+
+    setPinnedTeacherIds(newPinnedIds)
+
+    // Save to localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pinned-teacher-ids', JSON.stringify(newPinnedIds))
+    }
+  }
+
+  // Check if teacher is pinned
+  const isTeacherPinned = (teacherId: string) => {
+    return pinnedTeacherIds.includes(teacherId)
+  }
+
   // Render schedule table (reusable for both card and full screen modal)
   const renderScheduleTable = (isFullScreen: boolean = false) => (
     <TableContainer sx={{
@@ -613,56 +664,84 @@ const TeachersSchedule = () => {
             <StyledHeaderCell sx={{ position: 'sticky', left: 120, top: 0, zIndex: 4, minWidth: '100px' }}>
               <Typography variant="body2" fontWeight={600}>Khung giờ</Typography>
             </StyledHeaderCell>
-            {filteredTeachers.map((teacher) => (
-              <StyledHeaderCell key={teacher.id}>
-                <Box display="flex" alignItems="flex-start" gap={0.5}>
-                  <Box flex={1}>
-                    <Box display="flex" alignItems="center" gap={0.5} mb={0.5}>
-                      <Typography variant="body2" fontWeight={600}>
-                        {teacher.name}
+            {filteredTeachers.map((teacher) => {
+              const isPinned = isTeacherPinned(teacher.id)
+              return (
+                <StyledHeaderCell key={teacher.id}>
+                  <Box display="flex" alignItems="flex-start" gap={0.5}>
+                    <Box flex={1}>
+                      <Box display="flex" alignItems="center" gap={0.5} mb={0.5}>
+                        {isPinned && (
+                          <Tooltip title="Đã ghim">
+                            <i className="ri-pushpin-fill" style={{ fontSize: '14px', color: '#ff9800' }} />
+                          </Tooltip>
+                        )}
+                        <Typography variant="body2" fontWeight={600}>
+                          {teacher.name}
+                        </Typography>
+                        <Tooltip title={isPinned ? "Bỏ ghim" : "Ghim giáo viên"}>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleTogglePinTeacher(teacher.id)}
+                            sx={{
+                              padding: '2px',
+                              '&:hover': {
+                                backgroundColor: isPinned ? 'rgba(255, 152, 0, 0.1)' : 'rgba(25, 118, 210, 0.1)'
+                              }
+                            }}
+                          >
+                            <i
+                              className={isPinned ? "ri-pushpin-fill" : "ri-pushpin-line"}
+                              style={{
+                                fontSize: '14px',
+                                color: isPinned ? '#ff9800' : '#1976d2'
+                              }}
+                            />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Chỉnh sửa ghi chú">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleOpenEditNoteDialog(teacher.id, teacher.name, teacher.note)}
+                            sx={{
+                              padding: '2px',
+                              '&:hover': {
+                                backgroundColor: 'rgba(25, 118, 210, 0.1)'
+                              }
+                            }}
+                          >
+                            <i className="ri-edit-line" style={{ fontSize: '14px', color: '#1976d2' }} />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                      <Typography variant="caption" color="textSecondary" display="block">
+                        {teacher.skills?.length || 0} kỹ năng
                       </Typography>
-                      <Tooltip title="Chỉnh sửa ghi chú">
-                        <IconButton
-                          size="small"
-                          onClick={() => handleOpenEditNoteDialog(teacher.id, teacher.name, teacher.note)}
+                      {teacher.note && (
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
                           sx={{
-                            padding: '2px',
-                            '&:hover': {
-                              backgroundColor: 'rgba(25, 118, 210, 0.1)'
-                            }
+                            display: 'block',
+                            mt: 0.5,
+                            fontStyle: 'italic',
+                            color: '#666',
+                            maxWidth: '120px',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
                           }}
+                          title={teacher.note}
                         >
-                          <i className="ri-edit-line" style={{ fontSize: '14px', color: '#1976d2' }} />
-                        </IconButton>
-                      </Tooltip>
+                          <i className="ri-file-text-line" style={{ marginRight: 4, fontSize: '12px' }} />
+                          {teacher.note}
+                        </Typography>
+                      )}
                     </Box>
-                    <Typography variant="caption" color="textSecondary" display="block">
-                      {teacher.skills?.length || 0} kỹ năng
-                    </Typography>
-                    {teacher.note && (
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        sx={{
-                          display: 'block',
-                          mt: 0.5,
-                          fontStyle: 'italic',
-                          color: '#666',
-                          maxWidth: '120px',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap'
-                        }}
-                        title={teacher.note}
-                      >
-                        <i className="ri-file-text-line" style={{ marginRight: 4, fontSize: '12px' }} />
-                        {teacher.note}
-                      </Typography>
-                    )}
                   </Box>
-                </Box>
-              </StyledHeaderCell>
-            ))}
+                </StyledHeaderCell>
+              )
+            })}
           </TableRow>
         </TableHead>
         <TableBody>
