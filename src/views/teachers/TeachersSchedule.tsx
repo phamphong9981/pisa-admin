@@ -256,11 +256,13 @@ const TeachersSchedule = () => {
     open: boolean
     teacherId: string
     teacherName: string
+    teacherSkills: string[]
     currentNote?: string
   }>({
     open: false,
     teacherId: '',
     teacherName: '',
+    teacherSkills: [],
     currentNote: undefined
   })
 
@@ -573,11 +575,12 @@ const TeachersSchedule = () => {
   }
 
   // Handle open edit note dialog
-  const handleOpenEditNoteDialog = (teacherId: string, teacherName: string, currentNote?: string) => {
+  const handleOpenEditNoteDialog = (teacherId: string, teacherName: string, teacherSkills: string[], currentNote?: string) => {
     setEditNoteDialog({
       open: true,
       teacherId,
       teacherName,
+      teacherSkills,
       currentNote
     })
   }
@@ -588,6 +591,7 @@ const TeachersSchedule = () => {
       open: false,
       teacherId: '',
       teacherName: '',
+      teacherSkills: [],
       currentNote: undefined
     })
   }
@@ -685,7 +689,7 @@ const TeachersSchedule = () => {
                         <Tooltip title="Chỉnh sửa ghi chú">
                           <IconButton
                             size="small"
-                            onClick={() => handleOpenEditNoteDialog(teacher.id, teacher.name, teacher.note)}
+                            onClick={() => handleOpenEditNoteDialog(teacher.id, teacher.name, teacher.skills || [], teacher.note)}
                             sx={{
                               padding: '2px',
                               '&:hover': {
@@ -1301,6 +1305,7 @@ const TeachersSchedule = () => {
         onClose={handleCloseEditNoteDialog}
         teacherId={editNoteDialog.teacherId}
         teacherName={editNoteDialog.teacherName}
+        teacherSkills={editNoteDialog.teacherSkills}
         currentNote={editNoteDialog.currentNote}
         onSuccess={handleSaveNoteSuccess}
         onError={handleSaveNoteError}

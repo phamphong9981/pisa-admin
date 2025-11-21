@@ -20,6 +20,7 @@ interface EditTeacherNoteDialogProps {
   onClose: () => void
   teacherId: string
   teacherName: string
+  teacherSkills: string[]
   currentNote?: string
   onSuccess?: () => void
   onError?: () => void
@@ -30,6 +31,7 @@ const EditTeacherNoteDialog = ({
   onClose,
   teacherId,
   teacherName,
+  teacherSkills,
   currentNote = '',
   onSuccess,
   onError
@@ -56,6 +58,8 @@ const EditTeacherNoteDialog = ({
       {
         teacherId,
         teacher: {
+          name: teacherName,
+          skills: teacherSkills,
           note: note.trim() || undefined
         }
       },
