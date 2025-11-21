@@ -157,16 +157,16 @@ const ImportClassesFromCSV = ({ courseId, onSuccess, open, onClose }: ImportClas
                 errorList.push(`Dòng ${index + 2}: Không tìm thấy giáo viên "${row.teacherName}"`)
             }
 
-            if (!row.className || !row.classType) {
+            if (!row.className || !row.classType || !row.courseName) {
                 errorList.push(`Dòng ${index + 2}: Thiếu thông tin tên lớp hoặc kỹ năng`)
             }
 
-            if (!teacherId || !row.className || !row.classType) {
+            if (!teacherId || !row.className || !row.classType || !row.courseName) {
                 return // Skip this row
             }
 
             const classData: ProcessedClass = {
-                name: row.className.trim(),
+                name: row.courseName + ' - ' + row.className.trim(),
                 totalLessonPerWeek: 2,
                 classType: getClassType(row.classType),
                 teacherId: teacherId,
@@ -358,10 +358,11 @@ const ImportClassesFromCSV = ({ courseId, onSuccess, open, onClose }: ImportClas
                                 <TableHead>
                                     <TableRow>
                                         <TableCell>STT</TableCell>
-                                        <TableCell>Tên lớp</TableCell>
-                                        <TableCell>Kỹ năng</TableCell>
+                                        <TableCell>Tên lớp học</TableCell>
+                                        <TableCell>Tên kỹ năng</TableCell>
+                                        <TableCell>Loại kỹ năng</TableCell>
                                         <TableCell>Giáo viên</TableCell>
-                                        <TableCell>Loại</TableCell>
+                                        <TableCell>Loại lớp học</TableCell>
                                         <TableCell>Trạng thái</TableCell>
                                     </TableRow>
                                 </TableHead>
@@ -373,6 +374,7 @@ const ImportClassesFromCSV = ({ courseId, onSuccess, open, onClose }: ImportClas
                                         return (
                                             <TableRow key={index} hover>
                                                 <TableCell>{index + 1}</TableCell>
+                                                <TableCell>{row.courseName}</TableCell>
                                                 <TableCell>{row.className}</TableCell>
                                                 <TableCell>
                                                     {processed && (
