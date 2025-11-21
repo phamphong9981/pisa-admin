@@ -36,34 +36,22 @@ import { Alert } from '@mui/material'
 import { Icon } from '@iconify/react'
 
 // Hooks
-import { useCreateTeacherAccount, useDeleteTeacherAccount, CreateTeacherAccountDto, useTeacherList, useUpdateTeacher, UpdateTeacherDto } from '@/@core/hooks/useTeacher'
+import { useDeleteTeacherAccount, useTeacherList, useUpdateTeacher, UpdateTeacherDto } from '@/@core/hooks/useTeacher'
 import { Skills } from '@/@core/hooks/skills.constant'
 import { useClassList } from '@/@core/hooks/useClass'
 
 // Icon Imports
 
 const TeachersInfoPage = () => {
-  const createTeacherMutation = useCreateTeacherAccount()
   const deleteTeacherMutation = useDeleteTeacherAccount()
   const updateTeacherMutation = useUpdateTeacher()
   const { data: teachers, isLoading: isLoadingTeachers, error: teachersError } = useTeacherList()
   const { data: classes, isLoading: isLoadingClasses } = useClassList()
-  const [openAddDialog, setOpenAddDialog] = useState(false)
   const [openEditDialog, setOpenEditDialog] = useState(false)
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false)
   const [teacherToEdit, setTeacherToEdit] = useState<{ id: string; name: string; skills: string[] } | null>(null)
   const [teacherToDelete, setTeacherToDelete] = useState<{ id: string; name: string; userId: string } | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [teacherForm, setTeacherForm] = useState<CreateTeacherAccountDto>({
-    username: '',
-    password: '',
-    fullname: '',
-    email: '',
-    phone: '',
-    name: '',
-    skills: []
-  })
-  const [selectedSkills, setSelectedSkills] = useState<string[]>([])
   const [editTeacherForm, setEditTeacherForm] = useState<UpdateTeacherDto>({
     name: '',
     skills: []
@@ -109,51 +97,6 @@ const TeachersInfoPage = () => {
       return teacherMatch || classMatch
     })
   }, [teachers, classes, searchTerm])
-
-  const handleOpenAddDialog = () => {
-    setOpenAddDialog(true)
-  }
-
-  const handleCloseAddDialog = () => {
-    setOpenAddDialog(false)
-    setTeacherForm({
-      username: '',
-      password: '',
-      fullname: '',
-      email: '',
-      phone: '',
-      name: '',
-      skills: []
-    })
-    setSelectedSkills([])
-  }
-
-  const handleTeacherFormChange = (field: keyof CreateTeacherAccountDto, value: string | string[]) => {
-    setTeacherForm(prev => ({ ...prev, [field]: value }))
-  }
-
-  const handleSkillsChange = (skills: string[]) => {
-    setSelectedSkills(skills)
-    setTeacherForm(prev => ({ ...prev, skills }))
-  }
-
-  const handleCreateTeacher = async () => {
-    try {
-      await createTeacherMutation.mutateAsync(teacherForm)
-      setNotification({
-        open: true,
-        message: 'Thêm giáo viên thành công!',
-        severity: 'success'
-      })
-      handleCloseAddDialog()
-    } catch (error) {
-      setNotification({
-        open: true,
-        message: 'Có lỗi xảy ra khi thêm giáo viên',
-        severity: 'error'
-      })
-    }
-  }
 
   const handleCloseNotification = () => {
     setNotification(prev => ({ ...prev, open: false }))
@@ -258,15 +201,6 @@ const TeachersInfoPage = () => {
       {/* Action Buttons */}
       <Box sx={{ mb: 4 }}>
         <Grid container spacing={2} alignItems="center">
-          <Grid item>
-            <Button
-              variant='contained'
-              startIcon={<Icon icon='ri:add-line' />}
-              onClick={handleOpenAddDialog}
-            >
-              Thêm giáo viên mới
-            </Button>
-          </Grid>
           <Grid item>
             <Button
               variant='outlined'
@@ -444,136 +378,6 @@ const TeachersInfoPage = () => {
           )}
         </CardContent>
       </Card>
-
-      {/* Add Teacher Dialog */}
-      <Dialog open={openAddDialog} onClose={handleCloseAddDialog} maxWidth='md' fullWidth>
-        <DialogTitle>
-          <Box display="flex" alignItems="center">
-            <Icon icon='ri:user-add-line' style={{ marginRight: '8px' }} />
-            Thêm giáo viên mới
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          <Grid container spacing={3} sx={{ mt: 1 }}>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label='Tên đăng nhập'
-                placeholder='Nhập tên đăng nhập'
-                value={teacherForm.username}
-                onChange={(e) => handleTeacherFormChange('username', e.target.value)}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label='Mật khẩu'
-                type='password'
-                placeholder='Nhập mật khẩu'
-                value={teacherForm.password}
-                onChange={(e) => handleTeacherFormChange('password', e.target.value)}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label='Họ và tên'
-                placeholder='Nhập họ và tên giáo viên'
-                value={teacherForm.fullname}
-                onChange={(e) => handleTeacherFormChange('fullname', e.target.value)}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label='Tên hiển thị'
-                placeholder='Nhập tên hiển thị'
-                value={teacherForm.name}
-                onChange={(e) => handleTeacherFormChange('name', e.target.value)}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label='Email'
-                type='email'
-                placeholder='Nhập email'
-                value={teacherForm.email}
-                onChange={(e) => handleTeacherFormChange('email', e.target.value)}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label='Số điện thoại'
-                placeholder='Nhập số điện thoại'
-                value={teacherForm.phone}
-                onChange={(e) => handleTeacherFormChange('phone', e.target.value)}
-                required
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <Autocomplete
-                multiple
-                options={skillsOptions}
-                value={selectedSkills}
-                onChange={(event, newValue) => handleSkillsChange(newValue)}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Chuyên môn"
-                    placeholder="Chọn các kỹ năng chuyên môn..."
-                    helperText="Chọn các kỹ năng mà giáo viên có thể giảng dạy"
-                  />
-                )}
-                renderTags={(value, getTagProps) =>
-                  value.map((option, index) => (
-                    <Chip
-                      {...getTagProps({ index })}
-                      key={option}
-                      label={option}
-                      size="small"
-                      sx={{
-                        backgroundColor: '#e3f2fd',
-                        color: '#1976d2',
-                        border: '1px solid #bbdefb'
-                      }}
-                    />
-                  ))
-                }
-                renderOption={(props, option) => (
-                  <Box component="li" {...props}>
-                    <Typography variant="body2">
-                      {option}
-                    </Typography>
-                  </Box>
-                )}
-                noOptionsText="Không có kỹ năng nào"
-                clearOnBlur={false}
-                selectOnFocus
-                handleHomeEndKeys
-              />
-            </Grid>
-          </Grid>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseAddDialog} color='secondary'>
-            Hủy
-          </Button>
-          <Button
-            variant='contained'
-            onClick={handleCreateTeacher}
-            disabled={createTeacherMutation.isPending}
-          >
-            {createTeacherMutation.isPending ? 'Đang thêm...' : 'Thêm giáo viên'}
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       {/* Edit Teacher Dialog */}
       <Dialog open={openEditDialog} onClose={handleCloseEditDialog} maxWidth='md' fullWidth>
