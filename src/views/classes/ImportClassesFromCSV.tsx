@@ -157,16 +157,16 @@ const ImportClassesFromCSV = ({ courseId, onSuccess, open, onClose }: ImportClas
                 errorList.push(`Dòng ${index + 2}: Không tìm thấy giáo viên "${row.teacherName}"`)
             }
 
-            if (!row.className || !row.classType || !row.courseName) {
+            if (!row.className || !row.classType) {
                 errorList.push(`Dòng ${index + 2}: Thiếu thông tin tên lớp hoặc kỹ năng`)
             }
 
-            if (!teacherId || !row.className || !row.classType || !row.courseName) {
+            if (!teacherId || !row.className || !row.classType) {
                 return // Skip this row
             }
 
             const classData: ProcessedClass = {
-                name: row.courseName + ' - ' + row.className.trim(),
+                name: row.className.trim(),
                 totalLessonPerWeek: 2,
                 classType: getClassType(row.classType),
                 teacherId: teacherId,
