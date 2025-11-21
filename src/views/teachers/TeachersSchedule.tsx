@@ -48,6 +48,7 @@ import { useGetWeeks, WeekResponseDto, ScheduleStatus as WeekStatus } from '@/@c
 
 // Components
 import ScheduleDetailPopup from './ScheduleDetailPopup'
+import EditTeacherNoteDialog from './EditTeacherNoteDialog'
 
 
 const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
@@ -246,7 +247,6 @@ const TeachersSchedule = () => {
 
   const { data: schedules, isLoading: isSchedulesLoading } = useGetAllSchedule(true, undefined, selectedWeekId || undefined)
   const { exportToExcel, exportToCSV, exportSummary } = useExport()
-  const { mutate: updateTeacher, isPending: isUpdatingTeacher } = useUpdateTeacher()
 
   // States for export menu
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
@@ -256,12 +256,12 @@ const TeachersSchedule = () => {
     open: boolean
     teacherId: string
     teacherName: string
-    note: string
+    currentNote?: string
   }>({
     open: false,
     teacherId: '',
     teacherName: '',
-    note: ''
+    currentNote: undefined
   })
 
   const [notification, setNotification] = useState<{
@@ -578,7 +578,7 @@ const TeachersSchedule = () => {
       open: true,
       teacherId,
       teacherName,
-      note: currentNote || ''
+      currentNote
     })
   }
 
@@ -588,44 +588,27 @@ const TeachersSchedule = () => {
       open: false,
       teacherId: '',
       teacherName: '',
-      note: ''
+      currentNote: undefined
     })
   }
 
-  // Handle save note
-  const handleSaveNote = () => {
-    if (!editNoteDialog.teacherId || !teachers) return
+  // Handle save note success
+  const handleSaveNoteSuccess = () => {
+    setNotification({
+      open: true,
+      message: 'Cập nhật ghi chú thành công!',
+      severity: 'success'
+    })
+    handleCloseEditNoteDialog()
+  }
 
-    const teacher = teachers.find(t => t.id === editNoteDialog.teacherId)
-    if (!teacher) return
-
-    updateTeacher(
-      {
-        teacherId: editNoteDialog.teacherId,
-        teacher: {
-          name: teacher.name,
-          skills: teacher.skills,
-          note: editNoteDialog.note.trim() || undefined
-        }
-      },
-      {
-        onSuccess: () => {
-          setNotification({
-            open: true,
-            message: 'Cập nhật ghi chú thành công!',
-            severity: 'success'
-          })
-          handleCloseEditNoteDialog()
-        },
-        onError: () => {
-          setNotification({
-            open: true,
-            message: 'Cập nhật ghi chú thất bại!',
-            severity: 'error'
-          })
-        }
-      }
-    )
+  // Handle save note error
+  const handleSaveNoteError = () => {
+    setNotification({
+      open: true,
+      message: 'Cập nhật ghi chú thất bại!',
+      severity: 'error'
+    })
   }
 
   // Handle toggle pin teacher
@@ -1313,45 +1296,15 @@ const TeachersSchedule = () => {
       />
 
       {/* Edit Note Dialog */}
-      <Dialog open={editNoteDialog.open} onClose={handleCloseEditNoteDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          <Box display="flex" alignItems="center" gap={1}>
-            <i className="ri-file-edit-line" style={{ fontSize: 24, color: '#1976d2' }} />
-            <Typography variant="h6">Chỉnh sửa ghi chú</Typography>
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2 }}>
-            <Typography variant="body2" color="text.secondary" gutterBottom>
-              Giáo viên: <strong>{editNoteDialog.teacherName}</strong>
-            </Typography>
-            <TextField
-              fullWidth
-              multiline
-              rows={4}
-              label="Ghi chú"
-              placeholder="Nhập ghi chú cho giáo viên..."
-              value={editNoteDialog.note}
-              onChange={(e) => setEditNoteDialog(prev => ({ ...prev, note: e.target.value }))}
-              sx={{ mt: 2 }}
-              helperText="Ghi chú sẽ hiển thị dưới tên giáo viên trong lịch"
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseEditNoteDialog} disabled={isUpdatingTeacher}>
-            Hủy
-          </Button>
-          <Button
-            variant="contained"
-            onClick={handleSaveNote}
-            disabled={isUpdatingTeacher}
-            startIcon={isUpdatingTeacher ? <i className="ri-loader-4-line" style={{ animation: 'spin 1s linear infinite' }} /> : <i className="ri-save-line" />}
-          >
-            {isUpdatingTeacher ? 'Đang lưu...' : 'Lưu'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <EditTeacherNoteDialog
+        open={editNoteDialog.open}
+        onClose={handleCloseEditNoteDialog}
+        teacherId={editNoteDialog.teacherId}
+        teacherName={editNoteDialog.teacherName}
+        currentNote={editNoteDialog.currentNote}
+        onSuccess={handleSaveNoteSuccess}
+        onError={handleSaveNoteError}
+      />
 
       {/* Full Screen Schedule Dialog */}
       <Dialog
