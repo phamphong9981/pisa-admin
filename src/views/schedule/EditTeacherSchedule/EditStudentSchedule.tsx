@@ -38,7 +38,7 @@ import {
 import { styled } from '@mui/material/styles'
 
 // Hooks
-import { useStudentListWithReload, useUpdateStudentBusySchedule } from '@/@core/hooks/useStudent'
+import { useStudentListWithReload } from '@/@core/hooks/useStudent'
 import { SCHEDULE_TIME, useBatchOrderSchedule } from '@/@core/hooks/useSchedule'
 
 const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
@@ -137,9 +137,6 @@ const EditStudentSchedule = () => {
 
   // Hook for fetching students
   const { data: studentData, isLoading, error } = useStudentListWithReload(debouncedSearch)
-
-  // Hook for updating student busy schedule
-  const updateStudentBusyScheduleMutation = useUpdateStudentBusySchedule()
 
   // Hook for batch order schedule
   const batchOrderScheduleMutation = useBatchOrderSchedule()
@@ -685,15 +682,27 @@ const EditStudentSchedule = () => {
         }
       })
 
-      // Update all students
-      const updatePromises = Object.values(updatesByStudent).map(({ studentId, slots }) =>
-        updateStudentBusyScheduleMutation.mutateAsync({
-          studentId,
-          busySchedule: slots.sort((a, b) => a - b)
-        })
-      )
+      // Prepare batch update data
+      const batchUpdateData = Object.values(updatesByStudent).map(({ studentId, slots }) => {
+        // Find student to get email
+        let student = filteredStudents.find(s => s.id === studentId)
+        if (!student && studentData?.users) {
+          student = studentData.users.find(s => s.id === studentId)
+        }
 
-      await Promise.all(updatePromises)
+        if (!student) {
+          throw new Error(`Student not found: ${studentId}`)
+        }
+
+        return {
+          email: student.profile.email,
+          busy_schedule_arr: slots.sort((a, b) => a - b),
+          type: 'user' as const
+        }
+      })
+
+      // Use batch order schedule to update all students
+      await batchOrderScheduleMutation.mutateAsync({ data: batchUpdateData })
 
       setNotification({
         open: true,
@@ -761,10 +770,13 @@ const EditStudentSchedule = () => {
         newBusySchedule = currentBusySchedule.filter(slot => slot !== apiSlotIndex)
       }
 
-      // Use the hook to update student's busy schedule
-      await updateStudentBusyScheduleMutation.mutateAsync({
-        studentId: editDialog.studentId,
-        busySchedule: newBusySchedule
+      // Use batch order schedule to update student's busy schedule
+      await batchOrderScheduleMutation.mutateAsync({
+        data: [{
+          email: student.profile.email,
+          busy_schedule_arr: newBusySchedule,
+          type: 'user'
+        }]
       })
 
       setNotification({
@@ -1175,9 +1187,9 @@ const EditStudentSchedule = () => {
                   variant="contained"
                   color="success"
                   onClick={() => handleBatchUpdateSelected('free')}
-                  disabled={updateStudentBusyScheduleMutation.isPending}
+                  disabled={batchOrderScheduleMutation.isPending}
                   startIcon={
-                    updateStudentBusyScheduleMutation.isPending ? (
+                    batchOrderScheduleMutation.isPending ? (
                       <i className="ri-loader-4-line" style={{ animation: 'spin 1s linear infinite' }} />
                     ) : (
                       <i className="ri-check-line" />
@@ -1190,9 +1202,9 @@ const EditStudentSchedule = () => {
                   variant="contained"
                   color="error"
                   onClick={() => handleBatchUpdateSelected('busy')}
-                  disabled={updateStudentBusyScheduleMutation.isPending}
+                  disabled={batchOrderScheduleMutation.isPending}
                   startIcon={
-                    updateStudentBusyScheduleMutation.isPending ? (
+                    batchOrderScheduleMutation.isPending ? (
                       <i className="ri-loader-4-line" style={{ animation: 'spin 1s linear infinite' }} />
                     ) : (
                       <i className="ri-close-line" />
@@ -1313,14 +1325,14 @@ const EditStudentSchedule = () => {
           <Button
             variant="contained"
             onClick={handleSaveSchedule}
-            disabled={updateStudentBusyScheduleMutation.isPending}
+            disabled={batchOrderScheduleMutation.isPending}
             startIcon={
-              updateStudentBusyScheduleMutation.isPending ?
+              batchOrderScheduleMutation.isPending ?
                 <i className="ri-loader-4-line" style={{ animation: 'spin 1s linear infinite' }} /> :
                 <i className="ri-save-line" />
             }
           >
-            {updateStudentBusyScheduleMutation.isPending ? 'Đang lưu...' : 'Lưu thay đổi'}
+            {batchOrderScheduleMutation.isPending ? 'Đang lưu...' : 'Lưu thay đổi'}
           </Button>
         </DialogActions>
       </Dialog>

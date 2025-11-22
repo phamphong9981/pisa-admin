@@ -468,7 +468,7 @@ const SchedulePlanner = () => {
     if (!teacherClass?.teacher?.registeredBusySchedule) return false
 
     // Check if the teacher is busy at this slot (slotIndex is 0-based, registeredBusySchedule is 0-based)
-    return teacherClass.teacher.registeredBusySchedule.includes(slotIndex)
+    return teacherClass.teacher.registeredBusySchedule.includes(slotIndex + 1)
   }
 
   // Helper function to check if teacher is teaching at specific time slot
