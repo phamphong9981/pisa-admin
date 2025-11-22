@@ -54,7 +54,7 @@ const UserInfoPage = () => {
     username: string
     fullname: string
     email: string
-    phone: string
+    phone?: string
     type: string
     ieltsPoint?: string
   } | null>(null)
@@ -62,18 +62,18 @@ const UserInfoPage = () => {
     username: '',
     fullname: '',
     email: '',
-    phone: '',
+    phone: undefined,
     type: 'user',
-    ieltsPoint: ''
+    ieltsPoint: undefined
   })
   const [createUserForm, setCreateUserForm] = useState<CreateUserDto>({
     username: '',
     password: '',
     fullname: '',
     email: '',
-    phone: '',
+    phone: undefined,
     type: 'user',
-    ieltsPoint: ''
+    ieltsPoint: undefined
   })
   const [adminModules, setAdminModules] = useState<string[]>([])
   const [createAdminModules, setCreateAdminModules] = useState<string[]>([])
@@ -119,7 +119,7 @@ const UserInfoPage = () => {
       id: string
       fullname: string
       email: string
-      phone: string
+      phone?: string
       ieltsPoint?: string
     }
     type: string
@@ -132,17 +132,17 @@ const UserInfoPage = () => {
       username: user.username,
       fullname: user.profile.fullname,
       email: user.profile.email,
-      phone: user.profile.phone || '',
+      phone: user.profile.phone || undefined,
       type: user.type,
-      ieltsPoint: user.profile.ieltsPoint
+      ieltsPoint: user.profile.ieltsPoint || undefined
     })
     setEditUserForm({
       username: user.username,
       fullname: user.profile.fullname,
       email: user.profile.email,
-      phone: user.profile.phone || '',
+      phone: user.profile.phone || undefined,
       type: (isAdminType ? (modules.length ? (`admin_${modules.join('_')}`) : 'admin') : user.type) as UserType,
-      ieltsPoint: user.profile.ieltsPoint || ''
+      ieltsPoint: user.profile.ieltsPoint || undefined
     })
     setOpenEditDialog(true)
   }
@@ -154,9 +154,9 @@ const UserInfoPage = () => {
       username: '',
       fullname: '',
       email: '',
-      phone: '',
+      phone: undefined,
       type: 'user',
-      ieltsPoint: ''
+      ieltsPoint: undefined
     })
     setAdminModules([])
   }
@@ -246,9 +246,9 @@ const UserInfoPage = () => {
       password: '',
       fullname: '',
       email: '',
-      phone: '',
+      phone: undefined,
       type: 'user',
-      ieltsPoint: ''
+      ieltsPoint: undefined
     })
     setCreateAdminModules([])
     setOpenCreateDialog(true)
@@ -261,9 +261,9 @@ const UserInfoPage = () => {
       password: '',
       fullname: '',
       email: '',
-      phone: '',
+      phone: undefined,
       type: 'user',
-      ieltsPoint: ''
+      ieltsPoint: undefined
     })
     setCreateAdminModules([])
   }
