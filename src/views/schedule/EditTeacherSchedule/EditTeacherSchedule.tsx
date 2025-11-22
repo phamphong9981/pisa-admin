@@ -39,8 +39,7 @@ import { styled } from '@mui/material/styles'
 
 // Hooks
 import { SCHEDULE_TIME, useBatchOrderSchedule } from '@/@core/hooks/useSchedule'
-import { useTeacherList } from '@/@core/hooks/useTeacher'
-import { useUserList } from '@/@core/hooks/useStudent'
+import { useTeacherList, useUpdateTeacherBusySchedule } from '@/@core/hooks/useTeacher'
 
 
 const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
@@ -160,9 +159,6 @@ const getDayInVietnamese = (englishDay: string) => {
 const EditTeacherSchedule = () => {
   const { data: teachers, isLoading, error } = useTeacherList()
 
-  // Fetch user list to get teacher emails
-  const { data: teacherUsers } = useUserList('', 'teacher')
-
   // For now, we'll use empty array for schedules until we have proper courseId and weekId
   const schedules: any[] = []
 
@@ -172,21 +168,11 @@ const EditTeacherSchedule = () => {
   // - When checking if teacher is busy: teacherSchedule.includes(slotIndex + 1)
   // - When updating busy schedule: use (slotIndex + 1) for API calls
 
+  // Hook for updating teacher busy schedule
+  const updateTeacherBusyScheduleMutation = useUpdateTeacherBusySchedule()
+
   // Hook for batch order schedule
   const batchOrderScheduleMutation = useBatchOrderSchedule()
-
-  // Create a map of userId to email for teachers
-  const teacherEmailMap = useMemo(() => {
-    const map: Record<string, string> = {}
-    if (teacherUsers?.users) {
-      teacherUsers.users.forEach(user => {
-        if (user.profile?.email) {
-          map[user.id] = user.profile.email
-        }
-      })
-    }
-    return map
-  }, [teacherUsers])
 
   // Add CSS for spinner animation
   React.useEffect(() => {
@@ -745,27 +731,15 @@ const EditTeacherSchedule = () => {
         }
       })
 
-      // Prepare batch update data
-      const batchUpdateData = Object.values(updatesByTeacher).map(({ teacherId, slots }) => {
-        const teacher = teachers?.find(t => t.id === teacherId)
-        if (!teacher) {
-          throw new Error(`Teacher not found: ${teacherId}`)
-        }
+      // Update all teachers
+      const updatePromises = Object.values(updatesByTeacher).map(({ teacherId, slots }) =>
+        updateTeacherBusyScheduleMutation.mutateAsync({
+          teacherId,
+          busySchedule: slots.sort((a, b) => a - b)
+        })
+      )
 
-        const teacherEmail = teacherEmailMap[teacher.userId]
-        if (!teacherEmail) {
-          throw new Error(`Email not found for teacher: ${teacherId}`)
-        }
-
-        return {
-          email: teacherEmail,
-          busy_schedule_arr: slots.sort((a, b) => a - b),
-          type: 'teacher' as const
-        }
-      })
-
-      // Use batch order schedule to update all teachers
-      await batchOrderScheduleMutation.mutateAsync({ data: batchUpdateData })
+      await Promise.all(updatePromises)
 
       setNotification({
         open: true,
@@ -812,16 +786,6 @@ const EditTeacherSchedule = () => {
 
       if (!teacher) return
 
-      const teacherEmail = teacherEmailMap[teacher.userId]
-      if (!teacherEmail) {
-        setNotification({
-          open: true,
-          message: 'Không tìm thấy email của giáo viên!',
-          severity: 'error'
-        })
-        return
-      }
-
       const currentBusySchedule = [...(teacher.registeredBusySchedule || [])]
       let newBusySchedule: number[]
 
@@ -843,13 +807,10 @@ const EditTeacherSchedule = () => {
         newBusySchedule = currentBusySchedule.filter(slot => slot !== apiSlotIndex)
       }
 
-      // Use batch order schedule to update teacher's busy schedule
-      await batchOrderScheduleMutation.mutateAsync({
-        data: [{
-          email: teacherEmail,
-          busy_schedule_arr: newBusySchedule,
-          type: 'teacher'
-        }]
+      // Use the hook to update teacher's busy schedule
+      await updateTeacherBusyScheduleMutation.mutateAsync({
+        teacherId: editDialog.teacherId,
+        busySchedule: newBusySchedule
       })
 
       setNotification({
@@ -1284,9 +1245,9 @@ const EditTeacherSchedule = () => {
                   variant="contained"
                   color="success"
                   onClick={() => handleBatchUpdateSelected('free')}
-                  disabled={batchOrderScheduleMutation.isPending}
+                  disabled={updateTeacherBusyScheduleMutation.isPending}
                   startIcon={
-                    batchOrderScheduleMutation.isPending ? (
+                    updateTeacherBusyScheduleMutation.isPending ? (
                       <i className="ri-loader-4-line" style={{ animation: 'spin 1s linear infinite' }} />
                     ) : (
                       <i className="ri-check-line" />
@@ -1299,9 +1260,9 @@ const EditTeacherSchedule = () => {
                   variant="contained"
                   color="error"
                   onClick={() => handleBatchUpdateSelected('busy')}
-                  disabled={batchOrderScheduleMutation.isPending}
+                  disabled={updateTeacherBusyScheduleMutation.isPending}
                   startIcon={
-                    batchOrderScheduleMutation.isPending ? (
+                    updateTeacherBusyScheduleMutation.isPending ? (
                       <i className="ri-loader-4-line" style={{ animation: 'spin 1s linear infinite' }} />
                     ) : (
                       <i className="ri-close-line" />
@@ -1425,14 +1386,14 @@ const EditTeacherSchedule = () => {
           <Button
             variant="contained"
             onClick={handleSaveSchedule}
-            disabled={batchOrderScheduleMutation.isPending}
+            disabled={updateTeacherBusyScheduleMutation.isPending}
             startIcon={
-              batchOrderScheduleMutation.isPending ?
+              updateTeacherBusyScheduleMutation.isPending ?
                 <i className="ri-loader-4-line" style={{ animation: 'spin 1s linear infinite' }} /> :
                 <i className="ri-save-line" />
             }
           >
-            {batchOrderScheduleMutation.isPending ? 'Đang lưu...' : 'Lưu thay đổi'}
+            {updateTeacherBusyScheduleMutation.isPending ? 'Đang lưu...' : 'Lưu thay đổi'}
           </Button>
         </DialogActions>
       </Dialog>
