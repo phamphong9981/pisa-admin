@@ -303,6 +303,8 @@ export interface ScheduleDetailResponseDto {
     }
     scheduleInfo: {
         note?: string
+        startTime?: string
+        endTime?: string
     }
 }
 

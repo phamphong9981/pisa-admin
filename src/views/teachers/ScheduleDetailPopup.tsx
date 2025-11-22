@@ -557,7 +557,14 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                   Loại lớp: {classInfo.classType} • Buổi {classInfo.lesson}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Thời gian: {formatScheduleTime(scheduleTime)}
+                  Thời gian: {(() => {
+                    // Lấy startTime và endTime từ scheduleInfo
+                    if (scheduleDetail?.scheduleInfo?.startTime || scheduleDetail?.scheduleInfo?.endTime) {
+                      return formatTimeRange(scheduleDetail.scheduleInfo.startTime, scheduleDetail.scheduleInfo.endTime)
+                    }
+                    // Fallback về formatScheduleTime nếu không có startTime/endTime
+                    return formatScheduleTime(scheduleTime)
+                  })()}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   Ghi chú buổi học: {scheduleDetail?.scheduleInfo?.note}
