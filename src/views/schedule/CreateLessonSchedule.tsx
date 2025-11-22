@@ -1136,7 +1136,7 @@ const CreateLessonSchedule = ({
 
                       const isDefaultTeacher = selectedClass && selectedClass.teacherId ? selectedClass.teacherId === selectedTeacher.id : false
                       // registeredBusySchedule uses 1-based index (1-42), so we need to add 1 to slotIndex (0-based)
-                      const isTeacherBusy = selectedTeacher.registeredBusySchedule?.includes(selectedSlot!.slotIndex + 1)
+                      const isTeacherBusy = selectedTeacher.registeredBusySchedule?.includes(selectedSlot!.slotIndex)
 
                       return (
                         <Box sx={{
@@ -1191,7 +1191,7 @@ const CreateLessonSchedule = ({
 
                     {/* Default Teacher Quick Select - Only show if class has a teacher */}
                     {selectedClass && selectedClass.teacherId && selectedClass.teacher && !selectedTeacherId && !showTeacherSearchResults && (() => {
-                      const isDefaultTeacherBusy = teacherList?.find(t => t.id === selectedClass.teacherId)?.registeredBusySchedule?.includes(selectedSlot!.slotIndex + 1)
+                      const isDefaultTeacherBusy = teacherList?.find(t => t.id === selectedClass.teacherId)?.registeredBusySchedule?.includes(selectedSlot!.slotIndex)
 
                       return (
                         <Box sx={{
