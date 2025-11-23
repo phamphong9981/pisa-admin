@@ -345,7 +345,6 @@ const ScheduleRequests = () => {
                         <TableRow>
                           <StyledHeaderCell>Học sinh</StyledHeaderCell>
                           <StyledHeaderCell>Lớp</StyledHeaderCell>
-                          <StyledHeaderCell>Buổi</StyledHeaderCell>
                           <StyledHeaderCell>Thời gian</StyledHeaderCell>
                           <StyledHeaderCell>Ghi chú</StyledHeaderCell>
                           <StyledHeaderCell>Trạng thái</StyledHeaderCell>
@@ -367,12 +366,7 @@ const ScheduleRequests = () => {
                             </StyledTableCell>
                             <StyledTableCell>
                               <Typography variant="body2">
-                                {request.classname}
-                              </Typography>
-                            </StyledTableCell>
-                            <StyledTableCell>
-                              <Typography variant="body2">
-                                Buổi {request.lesson}
+                                {`${request.courseName} - ${request.classname}`}
                               </Typography>
                             </StyledTableCell>
                             <StyledTableCell>
@@ -447,7 +441,6 @@ const ScheduleRequests = () => {
                         <TableRow>
                           <StyledHeaderCell>Học sinh</StyledHeaderCell>
                           <StyledHeaderCell>Lớp</StyledHeaderCell>
-                          <StyledHeaderCell>Buổi</StyledHeaderCell>
                           <StyledHeaderCell>Thời gian</StyledHeaderCell>
                           <StyledHeaderCell>Ghi chú</StyledHeaderCell>
                           <StyledHeaderCell>Trạng thái</StyledHeaderCell>
@@ -469,12 +462,7 @@ const ScheduleRequests = () => {
                             </StyledTableCell>
                             <StyledTableCell>
                               <Typography variant="body2">
-                                {request.classname}
-                              </Typography>
-                            </StyledTableCell>
-                            <StyledTableCell>
-                              <Typography variant="body2">
-                                Buổi {request.lesson}
+                                {`${request.courseName} - ${request.classname}`}
                               </Typography>
                             </StyledTableCell>
                             <StyledTableCell>
@@ -549,7 +537,6 @@ const ScheduleRequests = () => {
                         <TableRow>
                           <StyledHeaderCell>Học sinh</StyledHeaderCell>
                           <StyledHeaderCell>Lớp</StyledHeaderCell>
-                          <StyledHeaderCell>Buổi</StyledHeaderCell>
                           <StyledHeaderCell>Thời gian</StyledHeaderCell>
                           <StyledHeaderCell>Ghi chú</StyledHeaderCell>
                           <StyledHeaderCell>Trạng thái</StyledHeaderCell>
@@ -570,12 +557,7 @@ const ScheduleRequests = () => {
                             </StyledTableCell>
                             <StyledTableCell>
                               <Typography variant="body2">
-                                {request.classname}
-                              </Typography>
-                            </StyledTableCell>
-                            <StyledTableCell>
-                              <Typography variant="body2">
-                                Buổi {request.lesson}
+                                {`${request.courseName} - ${request.classname}`}
                               </Typography>
                             </StyledTableCell>
                             <StyledTableCell>

@@ -472,6 +472,7 @@ export interface ScheduleByFieldResponseDto {
     // Joined fields
     fullname: string
     classname: string
+    courseName?: string
 }
 
 const getScheduleByFields = async (status: ScheduleStatus, weekId: string = "08a60c9a-b3f8-42f8-8ff8-c7015d4ef3e7"): Promise<ScheduleByFieldResponseDto[]> => {
