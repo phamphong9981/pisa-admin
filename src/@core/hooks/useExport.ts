@@ -51,8 +51,6 @@ export const useExport = () => {
 
         if (student.rollcall_status === RollcallStatus.ATTENDING) {
             label += ` v `
-        } else {
-            label += ` x `
         }
         // Thêm rollcall_reason ở cuối với format đặc biệt để nhận biết khi format Excel
         if (student.rollcall_reason) {
@@ -100,7 +98,7 @@ export const useExport = () => {
 
                 if (teachingInfo) {
                     const students = normalizeStudents(teachingInfo.students)
-                    const baseInfo = `ĐANG DẠY: ${teachingInfo.class_name} (Buổi ${teachingInfo.lesson})`
+                    const baseInfo = `ĐANG DẠY: ${teachingInfo.class_name} (Ghi chú ${teachingInfo.lesson}) ${teachingInfo.note ? ` - ${teachingInfo.note}` : ''}`
 
                     if (students.length === 0) {
                         row[teacher.name] = baseInfo
