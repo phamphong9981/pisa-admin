@@ -22,6 +22,7 @@
     "@mui/lab": "5.0.0-alpha.170",
     "@mui/material": "^5.15.19",
     "@mui/material-nextjs": "^5.15.11",
+    "@mui/x-data-grid": "^8.19.0",
     "@tanstack/react-query": "^5.81.5",
     "@types/papaparse": "^5.5.0",
     "apexcharts": "^4.7.0",

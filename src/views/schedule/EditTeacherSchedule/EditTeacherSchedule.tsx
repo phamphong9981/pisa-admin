@@ -36,6 +36,7 @@ import {
   DialogActions
 } from '@mui/material'
 import { styled } from '@mui/material/styles'
+import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid'
 
 // Hooks
 import { SCHEDULE_TIME, useBatchOrderSchedule } from '@/@core/hooks/useSchedule'
@@ -316,9 +317,240 @@ const EditTeacherSchedule = () => {
     return ['all', ...Array.from(new Set(days))]
   }, [allTimeSlots])
 
+  // Prepare data for DataGrid rows
+  const gridRows = useMemo(() => {
+    if (!filteredTimeSlots.length) return []
+
+    // Group slots by day
+    const groups: Record<string, { day: string; slots: typeof filteredTimeSlots }> = {}
+    filteredTimeSlots.forEach(s => {
+      const key = s.day
+      if (!groups[key]) groups[key] = { day: s.day, slots: [] as any }
+      groups[key].slots.push(s)
+    })
+
+    // Create rows from grouped slots
+    const rows: Array<{
+      id: string
+      day: string
+      time: string
+      slot: number
+      [key: string]: any // Dynamic teacher columns
+    }> = []
+
+    Object.values(groups).forEach(group => {
+      group.slots.forEach((slot, idx) => {
+        const row: any = {
+          id: `${group.day}-${slot.time}`,
+          day: idx === 0 ? group.day : '', // Only show day on first slot of the day
+          time: slot.time,
+          slot: slot.slot,
+          _dayGroup: group.day,
+          _dayRowIndex: idx
+        }
+
+        // Add data for each teacher
+        filteredTeachers.forEach(teacher => {
+          row[`teacher_${teacher.id}`] = {
+            teacherId: teacher.id,
+            teacherName: teacher.name,
+            isBusy: isTeacherBusy(teacher.registeredBusySchedule, slot.slot),
+            isTeaching: isTeacherTeaching(teacher.id, slot.slot),
+            teachingInfo: getTeachingInfo(teacher.id, slot.slot),
+            isEditable: isSlotEditable(teacher.id, slot.slot)
+          }
+        })
+
+        rows.push(row)
+      })
+    })
+
+    return rows
+  }, [filteredTimeSlots, filteredTeachers, teachers, schedules])
+
+  // Prepare columns for DataGrid
+  const gridColumns = useMemo<GridColDef[]>(() => {
+    const columns: GridColDef[] = [
+      {
+        field: 'day',
+        headerName: 'Thứ',
+        width: 120,
+        minWidth: 120,
+        headerAlign: 'center',
+        align: 'left',
+        renderCell: (params: GridRenderCellParams) => {
+          if (!params.value) return null
+          return (
+            <Box
+              sx={{
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                backgroundColor: '#f0f0f0',
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                padding: '0 8px'
+              }}
+            >
+              {params.value}
+            </Box>
+          )
+        }
+      },
+      {
+        field: 'time',
+        headerName: 'Khung giờ',
+        width: 100,
+        minWidth: 100,
+        headerAlign: 'center',
+        align: 'center',
+        renderCell: (params: GridRenderCellParams) => {
+          return (
+            <Typography variant="caption" color="primary" fontWeight={600}>
+              {params.value}
+            </Typography>
+          )
+        }
+      }
+    ]
+
+    // Add dynamic columns for each teacher
+    filteredTeachers.forEach(teacher => {
+      columns.push({
+        field: `teacher_${teacher.id}`,
+        headerName: teacher.name,
+        width: 150,
+        minWidth: 120,
+        headerAlign: 'center',
+        align: 'center',
+        renderHeader: () => (
+          <Box sx={{ textAlign: 'center' }}>
+            <Typography variant="body2" fontWeight={600}>
+              {teacher.name}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {teacher.skills?.length || 0} kỹ năng
+            </Typography>
+          </Box>
+        ),
+        renderCell: (params: GridRenderCellParams) => {
+          const cellData = params.value as {
+            teacherId: string
+            teacherName: string
+            isBusy: boolean
+            isTeaching: boolean
+            teachingInfo: any
+            isEditable: boolean
+          }
+
+          if (!cellData) return null
+
+          const { teacherId, teacherName, isBusy, isTeaching, teachingInfo, isEditable } = cellData
+          const row = params.row as any
+          const slotIndex = row.slot
+          const day = row._dayGroup
+          const time = row.time
+          const cellKey = `${teacherId}-${slotIndex}`
+          const isSelected = selectedCells.some(cell => `${cell.teacherId}-${cell.slotIndex}` === cellKey)
+
+          return (
+            <Box
+              sx={{
+                width: '100%',
+                height: '100%',
+                minHeight: '60px',
+                padding: '4px',
+                border: `2px solid ${isSelected ? '#1976d2' : 'transparent'}`,
+                borderRadius: 1,
+                backgroundColor: isSelected
+                  ? '#fff3e0'
+                  : isTeaching
+                    ? '#e3f2fd'
+                    : isBusy
+                      ? '#ffebee'
+                      : '#f1f8e9',
+                cursor: isEditable ? 'pointer' : 'default',
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'background-color 0.2s ease, border 0.2s ease',
+                '&:hover': {
+                  backgroundColor: isSelected
+                    ? '#ffe0b2'
+                    : isEditable
+                      ? '#e8f5e8'
+                      : isTeaching
+                        ? '#bbdefb'
+                        : isBusy
+                          ? '#ffcdd2'
+                          : '#dcedc8'
+                }
+              }}
+              onClick={isEditable ? () => handleCellClick(teacherId, slotIndex, day, time) : undefined}
+            >
+              {isSelected && (
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    top: 4,
+                    right: 4,
+                    width: 20,
+                    height: 20,
+                    borderRadius: '50%',
+                    backgroundColor: '#1976d2',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '12px',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  ✓
+                </Box>
+              )}
+              {isTeaching && teachingInfo ? (
+                <TeachingInfo>
+                  <Box className="class-name" title={teachingInfo.class_name}>
+                    {teachingInfo.class_name}
+                  </Box>
+                  <Box className="lesson-info">
+                    Buổi {teachingInfo.lesson}
+                  </Box>
+                </TeachingInfo>
+              ) : (
+                <Tooltip
+                  title={
+                    isEditable
+                      ? `Click để thay đổi lịch ${teacherName} vào ${day} ${time}`
+                      : isBusy
+                        ? `${teacherName} bận vào ${day} ${time}`
+                        : `${teacherName} rảnh vào ${day} ${time}`
+                  }
+                >
+                  <IconButton size="small">
+                    {isBusy ? (
+                      <i className="ri-close-line" style={{ color: '#c62828', fontSize: '18px' }} />
+                    ) : (
+                      <i className="ri-check-line" style={{ color: '#2e7d32', fontSize: '18px' }} />
+                    )}
+                  </IconButton>
+                </Tooltip>
+              )}
+            </Box>
+          )
+        }
+      })
+    })
+
+    return columns
+  }, [filteredTeachers, selectedCells, schedules, teachers])
+
   // Check if teacher is busy at specific slot
   // Note: API uses 1-42, UI uses 0-41, so we need to add 1 to convert
-  const isTeacherBusy = (teacherSchedule: number[] | undefined, slotIndex: number) => {
+  function isTeacherBusy(teacherSchedule: number[] | undefined, slotIndex: number) {
     if (!teacherSchedule || !Array.isArray(teacherSchedule)) return false
 
     return teacherSchedule.includes(slotIndex + 1)
@@ -326,7 +558,7 @@ const EditTeacherSchedule = () => {
 
   // Check if teacher is teaching at specific slot
   // Note: API uses 1-42, UI uses 0-41, so we need to add 1 to convert
-  const isTeacherTeaching = (teacherId: string, slotIndex: number) => {
+  function isTeacherTeaching(teacherId: string, slotIndex: number) {
     if (!schedules) return false
 
     return schedules.some(schedule =>
@@ -336,7 +568,7 @@ const EditTeacherSchedule = () => {
 
   // Get teaching info for a teacher at specific slot
   // Note: API uses 1-42, UI uses 0-41, so we need to add 1 to convert
-  const getTeachingInfo = (teacherId: string, slotIndex: number) => {
+  function getTeachingInfo(teacherId: string, slotIndex: number) {
     if (!schedules) return null
 
     return schedules.find(schedule =>
@@ -345,7 +577,7 @@ const EditTeacherSchedule = () => {
   }
 
   // Check if slot is editable (not teaching)
-  const isSlotEditable = (teacherId: string, slotIndex: number) => {
+  function isSlotEditable(teacherId: string, slotIndex: number) {
     return !isTeacherTeaching(teacherId, slotIndex)
   }
 
@@ -1073,151 +1305,91 @@ const EditTeacherSchedule = () => {
             )}
           </Box>
 
-          <TableContainer sx={{
-            maxHeight: '70vh',
-            overflow: 'auto',
-            border: '1px solid #e0e0e0',
-            borderRadius: '8px'
-          }}>
-            <Table stickyHeader>
-              <TableHead>
-                <TableRow>
-                  <StyledHeaderCell sx={{ minWidth: '120px', position: 'sticky', left: 0, zIndex: 3 }}>
-                    <Typography variant="body2" fontWeight={600}>Thứ</Typography>
-                  </StyledHeaderCell>
-                  <StyledHeaderCell sx={{ minWidth: '100px', position: 'sticky', left: 120, zIndex: 3 }}>
-                    <Typography variant="body2" fontWeight={600}>Khung giờ</Typography>
-                  </StyledHeaderCell>
-                  {filteredTeachers.map((teacher) => (
-                    <StyledHeaderCell key={teacher.id}>
-                      <Box>
-                        <Typography variant="body2" fontWeight={600}>
-                          {teacher.name}
-                        </Typography>
-                        <Typography variant="caption" color="textSecondary">
-                          {teacher.skills?.length || 0} kỹ năng
-                        </Typography>
-                      </Box>
-                    </StyledHeaderCell>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredTimeSlots.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={filteredTeachers.length + 2} align="center" sx={{ py: 4 }}>
-                      <Box display="flex" flexDirection="column" alignItems="center" gap={2}>
-                        <i className="ri-calendar-line" style={{ fontSize: '48px', color: '#ccc' }} />
-                        <Typography variant="h6" color="text.secondary">
-                          Không có dữ liệu phù hợp
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Thử thay đổi bộ lọc để xem kết quả khác
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  (() => {
-                    const groups: Record<string, { day: string; slots: typeof filteredTimeSlots }> = {}
-                    filteredTimeSlots.forEach(s => {
-                      const key = s.day
-                      if (!groups[key]) groups[key] = { day: s.day, slots: [] as any }
-                      groups[key].slots.push(s)
-                    })
-                    return Object.values(groups).flatMap(group =>
-                      group.slots.map((slot, idx) => (
-                        <TableRow key={`${group.day}-${slot.time}`}>
-                          {idx === 0 && (
-                            <StyledDayCell rowSpan={group.slots.length}>
-                              {group.day}
-                            </StyledDayCell>
-                          )}
-                          <StyledTimeCell sx={{ left: 120 }}>
-                            <Typography variant="caption" color="primary">{slot.time}</Typography>
-                          </StyledTimeCell>
-                          {filteredTeachers.map((teacher) => {
-                            const isBusy = isTeacherBusy(teacher.registeredBusySchedule, slot.slot)
-                            const isTeaching = isTeacherTeaching(teacher.id, slot.slot)
-                            const teachingInfo = getTeachingInfo(teacher.id, slot.slot)
-                            const isEditable = isSlotEditable(teacher.id, slot.slot)
-                            const cellKey = `${teacher.id}-${slot.slot}`
-                            const isSelected = selectedCells.some(cell => `${cell.teacherId}-${cell.slotIndex}` === cellKey)
-
-                            return (
-                              <ScheduleCell
-                                key={cellKey}
-                                isBusy={isBusy}
-                                isTeaching={isTeaching}
-                                isEditable={isEditable}
-                                isSelected={isSelected}
-                                onClick={isEditable ? () => handleCellClick(
-                                  teacher.id,
-                                  slot.slot,
-                                  slot.day,
-                                  slot.time
-                                ) : undefined}
-                              >
-                                {isSelected && (
-                                  <Box
-                                    sx={{
-                                      position: 'absolute',
-                                      top: 4,
-                                      right: 4,
-                                      width: 20,
-                                      height: 20,
-                                      borderRadius: '50%',
-                                      backgroundColor: '#1976d2',
-                                      color: 'white',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      fontSize: '12px',
-                                      fontWeight: 'bold'
-                                    }}
-                                  >
-                                    ✓
-                                  </Box>
-                                )}
-                                {isTeaching && teachingInfo ? (
-                                  <TeachingInfo>
-                                    <Box className="class-name" title={teachingInfo.class_name}>
-                                      {teachingInfo.class_name}
-                                    </Box>
-                                    <Box className="lesson-info">
-                                      Buổi {teachingInfo.lesson}
-                                    </Box>
-                                  </TeachingInfo>
-                                ) : (
-                                  <Tooltip
-                                    title={
-                                      isEditable
-                                        ? `Click để thay đổi lịch ${teacher.name} vào ${slot.day} ${slot.time}`
-                                        : isBusy
-                                          ? `${teacher.name} bận vào ${slot.day} ${slot.time}`
-                                          : `${teacher.name} rảnh vào ${slot.day} ${slot.time}`
-                                    }
-                                  >
-                                    <IconButton size="small">
-                                      {isBusy ? (
-                                        <i className="ri-close-line" style={{ color: '#c62828', fontSize: '18px' }} />
-                                      ) : (
-                                        <i className="ri-check-line" style={{ color: '#2e7d32', fontSize: '18px' }} />
-                                      )}
-                                    </IconButton>
-                                  </Tooltip>
-                                )}
-                              </ScheduleCell>
-                            )
-                          })}
-                        </TableRow>
-                      ))
-                    )
-                  })()
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <Box
+            sx={{
+              height: '70vh',
+              width: '100%',
+              border: '1px solid #e0e0e0',
+              borderRadius: '8px',
+              overflow: 'hidden',
+              '& .MuiDataGrid-root': {
+                border: 'none'
+              },
+              '& .MuiDataGrid-columnHeaders': {
+                backgroundColor: '#f5f5f5',
+                borderBottom: '1px solid #e0e0e0'
+              },
+              '& .MuiDataGrid-columnHeader': {
+                fontWeight: 600,
+                fontSize: '0.875rem'
+              },
+              '& .MuiDataGrid-cell': {
+                borderRight: '1px solid #e0e0e0',
+                borderBottom: '1px solid #e0e0e0'
+              },
+              '& .MuiDataGrid-cell--pinnedLeft': {
+                backgroundColor: '#fafafa'
+              },
+              '& .MuiDataGrid-row': {
+                '&:hover': {
+                  backgroundColor: 'transparent'
+                }
+              }
+            }}
+          >
+            {filteredTimeSlots.length === 0 ? (
+              <Box
+                display="flex"
+                flexDirection="column"
+                alignItems="center"
+                justifyContent="center"
+                height="100%"
+                gap={2}
+              >
+                <i className="ri-calendar-line" style={{ fontSize: '48px', color: '#ccc' }} />
+                <Typography variant="h6" color="text.secondary">
+                  Không có dữ liệu phù hợp
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Thử thay đổi bộ lọc để xem kết quả khác
+                </Typography>
+              </Box>
+            ) : (
+              <DataGrid
+                rows={gridRows}
+                columns={gridColumns}
+                columnHeaderHeight={80}
+                rowHeight={80}
+                disableRowSelectionOnClick
+                disableColumnMenu
+                disableColumnFilter
+                disableColumnSelector
+                hideFooter
+                sx={{
+                  '& .MuiDataGrid-main': {
+                    overflow: 'auto'
+                  },
+                  '& .MuiDataGrid-virtualScroller': {
+                    overflowX: 'auto',
+                    overflowY: 'auto'
+                  },
+                  // Sticky columns for day and time
+                  '& .MuiDataGrid-columnHeader[data-field="day"], & .MuiDataGrid-cell[data-field="day"]': {
+                    position: 'sticky',
+                    left: 0,
+                    zIndex: 3,
+                    backgroundColor: '#f0f0f0'
+                  },
+                  '& .MuiDataGrid-columnHeader[data-field="time"], & .MuiDataGrid-cell[data-field="time"]': {
+                    position: 'sticky',
+                    left: 120,
+                    zIndex: 2,
+                    backgroundColor: '#fafafa'
+                  }
+                }}
+              />
+            )}
+          </Box>
 
           {/* Batch Update Panel */}
           {selectedCells.length > 0 && (
