@@ -10,6 +10,7 @@ export interface TeacherListResponse {
     updatedAt: string,
     userId: string,
     note?: string
+    username?: string
 }
 
 // Function để gọi API lấy danh sách teacher
@@ -34,30 +35,6 @@ export const useTeacherList = (search?: string) => {
         retryDelay: (attemptIndex) => Math.min(1000 * 1 ** attemptIndex, 30000),
     })
 }
-
-
-const updateTeacherBusySchedule = async (teacherId: string, busySchedule: number[]) => {
-    const { data } = await apiClient.put(`/teachers/${teacherId}/order-schedule`, {
-        registeredBusySchedule: busySchedule
-    });
-
-    return data.data;
-}
-
-export const useUpdateTeacherBusySchedule = () => {
-    const queryClient = useQueryClient();
-
-
-    return useMutation({
-        mutationFn: ({ teacherId, busySchedule }: { teacherId: string; busySchedule: number[] }) =>
-            updateTeacherBusySchedule(teacherId, busySchedule),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['teachers'] })
-        }
-    })
-}
-
-
 export interface CreateTeacherAccountDto {
     username: string
     password: string
