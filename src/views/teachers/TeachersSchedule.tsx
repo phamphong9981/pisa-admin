@@ -37,86 +37,109 @@ import { useExport } from '@/@core/hooks/useExport'
 import { RollcallStatus, SCHEDULE_TIME, useGetAllSchedule } from '@/@core/hooks/useSchedule'
 import { useTeacherList, useUpdateTeacher } from '@/@core/hooks/useTeacher'
 import { useGetWeeks, WeekResponseDto, ScheduleStatus as WeekStatus } from '@/@core/hooks/useWeek'
+import { RegionId } from '@/@core/hooks/useCourse'
 
 // Components
 import ScheduleDetailPopup from './ScheduleDetailPopup'
 import EditTeacherNoteDialog from './EditTeacherNoteDialog'
 
-const TeachingInfo = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  flexDirection: 'column',
-  borderRadius: '8px',
-  overflow: 'hidden',
-  border: '1px solid #e0e0e0',
-  backgroundColor: '#fff',
-  marginBottom: theme.spacing(0.5),
-  '&:last-child': {
-    marginBottom: 0
-  },
-  '& .lesson-header': {
+// Region color mapping
+const REGION_COLORS: Record<number, string> = {
+  [RegionId.HALONG]: '#f6b26b',
+  [RegionId.BAICHAY]: '#24cdb4',
+  [RegionId.CAMPHA]: '#8e7cc3',
+  [RegionId.UONGBI]: '#91e9b2'
+}
+
+const getRegionColor = (region?: number): string => {
+  if (!region || !REGION_COLORS[region]) {
+    return '#e3f2fd' // Default blue color
+  }
+  return REGION_COLORS[region]
+}
+
+const TeachingInfo = styled(Box, {
+  shouldForwardProp: (prop) => prop !== 'region'
+})<{ region?: number }>(({ theme, region }) => {
+  const regionColor = getRegionColor(region)
+  const isLightColor = region && REGION_COLORS[region]
+
+  return {
     display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: theme.spacing(0.5, 0.75),
-    backgroundColor: '#e3f2fd',
-    borderBottom: '1px solid #bbdefb',
-    '& .class-name': {
-      fontSize: '0.7rem',
-      fontWeight: 600,
-      color: '#1976d2',
-      lineHeight: 1.2,
-      flex: 1,
-      marginRight: theme.spacing(0.5),
-      overflow: 'hidden',
-      textOverflow: 'ellipsis',
-      whiteSpace: 'nowrap',
-      minWidth: 0
-    },
-    '& .lesson-badge': {
-      fontSize: '0.6rem',
-      color: '#1976d2',
-      backgroundColor: '#fff',
-      padding: '2px 6px',
-      borderRadius: '6px',
-      border: '1px solid #bbdefb',
-      fontWeight: 600
-    }
-  },
-  '& .lesson-note': {
-    padding: theme.spacing(0.5, 0.75),
-    backgroundColor: '#f5f5f5',
-    borderBottom: '1px solid #e0e0e0',
-    fontSize: '0.65rem',
-    color: '#666',
-    fontStyle: 'italic',
-    lineHeight: 1.3,
-    whiteSpace: 'nowrap',
+    flexDirection: 'column',
+    borderRadius: '8px',
     overflow: 'hidden',
-    textOverflow: 'ellipsis'
-  },
-  '& .students-content': {
-    padding: theme.spacing(0.5),
-    '& .students-list': {
+    border: `1px solid ${isLightColor ? regionColor : '#e0e0e0'}`,
+    backgroundColor: '#fff',
+    marginBottom: theme.spacing(0.5),
+    '&:last-child': {
+      marginBottom: 0
+    },
+    '& .lesson-header': {
       display: 'flex',
-      flexDirection: 'column',
-      gap: theme.spacing(0.25),
-      '& .student-item': {
-        fontSize: '0.65rem',
-        color: '#333',
-        padding: '2px 4px',
-        backgroundColor: '#f8f9fa',
-        borderRadius: '4px',
-        border: '1px solid #e9ecef',
-        whiteSpace: 'nowrap',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: theme.spacing(0.5, 0.75),
+      backgroundColor: isLightColor ? regionColor : '#e3f2fd',
+      borderBottom: `1px solid ${isLightColor ? regionColor : '#bbdefb'}`,
+      '& .class-name': {
+        fontSize: '0.7rem',
+        fontWeight: 600,
+        color: isLightColor ? '#fff' : '#1976d2',
+        lineHeight: 1.2,
+        flex: 1,
+        marginRight: theme.spacing(0.5),
         overflow: 'hidden',
         textOverflow: 'ellipsis',
-        width: '100%',
-        minWidth: 0,
-        maxWidth: '100%'
+        whiteSpace: 'nowrap',
+        minWidth: 0
+      },
+      '& .lesson-badge': {
+        fontSize: '0.6rem',
+        color: isLightColor ? '#fff' : '#1976d2',
+        backgroundColor: isLightColor ? 'rgba(255, 255, 255, 0.3)' : '#fff',
+        padding: '2px 6px',
+        borderRadius: '6px',
+        border: `1px solid ${isLightColor ? 'rgba(255, 255, 255, 0.5)' : '#bbdefb'}`,
+        fontWeight: 600
+      }
+    },
+    '& .lesson-note': {
+      padding: theme.spacing(0.5, 0.75),
+      backgroundColor: '#f5f5f5',
+      borderBottom: '1px solid #e0e0e0',
+      fontSize: '0.65rem',
+      color: '#666',
+      fontStyle: 'italic',
+      lineHeight: 1.3,
+      whiteSpace: 'nowrap',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis'
+    },
+    '& .students-content': {
+      padding: theme.spacing(0.5),
+      '& .students-list': {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: theme.spacing(0.25),
+        '& .student-item': {
+          fontSize: '0.65rem',
+          color: '#333',
+          padding: '2px 4px',
+          backgroundColor: '#f8f9fa',
+          borderRadius: '4px',
+          border: '1px solid #e9ecef',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          width: '100%',
+          minWidth: 0,
+          maxWidth: '100%'
+        }
       }
     }
   }
-}))
+})
 
 const TeachingInfosContainer = styled(Box)(({ theme }) => ({
   display: 'flex',
@@ -910,6 +933,7 @@ const TeachersSchedule = () => {
                   {teachingInfos.map((teachingInfo, index) => (
                     <TeachingInfo
                       key={`${teachingInfo.class_id}-${teachingInfo.lesson}-${index}`}
+                      region={teachingInfo.region}
                       onClick={(e) => {
                         e.stopPropagation()
                         handleTeachingCellClick(
