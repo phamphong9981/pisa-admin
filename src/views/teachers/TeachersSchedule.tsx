@@ -647,10 +647,7 @@ const TeachersSchedule = () => {
                 padding: '0 8px',
                 backgroundColor: '#f0f0f0',
                 borderRight: '2px solid #ccc',
-                borderBottom: '1px solid #e0e0e0',
-                position: 'sticky',
-                left: 0,
-                zIndex: 3
+                borderBottom: '1px solid #e0e0e0'
               }}
             >
               {dayValue ? (
@@ -680,10 +677,7 @@ const TeachersSchedule = () => {
               justifyContent: 'center',
               backgroundColor: '#fafafa',
               borderRight: '2px solid #ccc',
-              borderBottom: '1px solid #e0e0e0',
-              position: 'sticky',
-              left: 120,
-              zIndex: 2
+              borderBottom: '1px solid #e0e0e0'
             }}
           >
             <Typography variant="caption" color="primary" fontWeight={600}>
@@ -990,7 +984,32 @@ const TeachersSchedule = () => {
               display: 'none'
             },
             '& .MuiDataGrid-virtualScroller': {
-              overflowY: 'auto !important'
+              overflowY: 'auto !important',
+              overflowX: 'auto !important'
+            },
+            '& .MuiDataGrid-cell[data-field="day"]': {
+              position: 'sticky',
+              left: 0,
+              zIndex: 3,
+              backgroundColor: '#f0f0f0 !important'
+            },
+            '& .MuiDataGrid-columnHeader[data-field="day"]': {
+              position: 'sticky',
+              left: 0,
+              zIndex: 4,
+              backgroundColor: '#f5f5f5 !important'
+            },
+            '& .MuiDataGrid-cell[data-field="time"]': {
+              position: 'sticky',
+              left: 120,
+              zIndex: 2,
+              backgroundColor: '#fafafa !important'
+            },
+            '& .MuiDataGrid-columnHeader[data-field="time"]': {
+              position: 'sticky',
+              left: 120,
+              zIndex: 3,
+              backgroundColor: '#f5f5f5 !important'
             }
           }}
         />
