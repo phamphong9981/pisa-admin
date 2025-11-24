@@ -305,7 +305,7 @@ const TeachersSchedule = () => {
       )
     }
 
-    // Sort: pinned teachers first, then others
+    // Sort: pinned teachers first (in order of pinnedTeacherIds), then others
     result = [...result].sort((a, b) => {
       const aIsPinned = pinnedTeacherIds.includes(a.id)
       const bIsPinned = pinnedTeacherIds.includes(b.id)
@@ -313,7 +313,14 @@ const TeachersSchedule = () => {
       if (aIsPinned && !bIsPinned) return -1
       if (!aIsPinned && bIsPinned) return 1
 
-      // If both pinned or both not pinned, maintain original order
+      // If both pinned, sort by their order in pinnedTeacherIds
+      if (aIsPinned && bIsPinned) {
+        const aIndex = pinnedTeacherIds.indexOf(a.id)
+        const bIndex = pinnedTeacherIds.indexOf(b.id)
+        return aIndex - bIndex
+      }
+
+      // If both not pinned, maintain original order
       return 0
     })
 
