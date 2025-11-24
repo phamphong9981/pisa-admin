@@ -14,6 +14,7 @@ import {
   CardHeader,
   Chip,
   Dialog,
+  DialogActions,
   DialogContent,
   DialogTitle,
   FormControl,
@@ -222,6 +223,32 @@ const TeachersSchedule = () => {
   const [selectedTeachers, setSelectedTeachers] = useState<any[]>([])
   const [selectedDay, setSelectedDay] = useState<string>('all')
   const [selectedTimeRanges, setSelectedTimeRanges] = useState<string[]>([])
+
+  // States for saved filter groups
+  interface SavedFilterGroup {
+    id: string
+    name: string
+    teacherIds: string[]
+    createdAt: string
+  }
+
+  const [savedFilterGroups, setSavedFilterGroups] = useState<SavedFilterGroup[]>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('teacher-filter-groups')
+      if (stored) {
+        try {
+          return JSON.parse(stored)
+        } catch (e) {
+          return []
+        }
+      }
+    }
+    return []
+  })
+
+  const [saveGroupDialogOpen, setSaveGroupDialogOpen] = useState(false)
+  const [groupName, setGroupName] = useState('')
+  const [loadGroupMenuAnchor, setLoadGroupMenuAnchor] = useState<null | HTMLElement>(null)
 
   // States for schedule detail popup
   const [scheduleDetailPopup, setScheduleDetailPopup] = useState<{
@@ -581,6 +608,75 @@ const TeachersSchedule = () => {
   // Check if teacher is pinned
   const isTeacherPinned = (teacherId: string) => {
     return pinnedTeacherIds.includes(teacherId)
+  }
+
+  // Handle save filter group
+  const handleSaveFilterGroup = () => {
+    if (!groupName.trim() || selectedTeachers.length === 0) {
+      setNotification({
+        open: true,
+        message: 'Vui lòng nhập tên group và chọn ít nhất một giáo viên!',
+        severity: 'error'
+      })
+      return
+    }
+
+    const newGroup: SavedFilterGroup = {
+      id: Date.now().toString(),
+      name: groupName.trim(),
+      teacherIds: selectedTeachers.map(t => t.id),
+      createdAt: new Date().toISOString()
+    }
+
+    const updatedGroups = [...savedFilterGroups, newGroup]
+    setSavedFilterGroups(updatedGroups)
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('teacher-filter-groups', JSON.stringify(updatedGroups))
+    }
+
+    setNotification({
+      open: true,
+      message: `Đã lưu group "${groupName.trim()}" thành công!`,
+      severity: 'success'
+    })
+
+    setGroupName('')
+    setSaveGroupDialogOpen(false)
+  }
+
+  // Handle load filter group
+  const handleLoadFilterGroup = (group: SavedFilterGroup) => {
+    if (!teachers) return
+
+    const groupTeachers = teachers.filter(teacher =>
+      group.teacherIds.includes(teacher.id)
+    )
+    setSelectedTeachers(groupTeachers)
+    setLoadGroupMenuAnchor(null)
+
+    setNotification({
+      open: true,
+      message: `Đã tải group "${group.name}" thành công!`,
+      severity: 'success'
+    })
+  }
+
+  // Handle delete filter group
+  const handleDeleteFilterGroup = (groupId: string, event: React.MouseEvent) => {
+    event.stopPropagation()
+    const updatedGroups = savedFilterGroups.filter(g => g.id !== groupId)
+    setSavedFilterGroups(updatedGroups)
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('teacher-filter-groups', JSON.stringify(updatedGroups))
+    }
+
+    setNotification({
+      open: true,
+      message: 'Đã xóa group thành công!',
+      severity: 'success'
+    })
   }
 
   // Prepare data for DataGrid rows
@@ -1108,6 +1204,72 @@ const TeachersSchedule = () => {
 
       {/* Filter Section */}
       <Box sx={{ mb: 3 }}>
+        {/* Filter Groups Management */}
+        <Box sx={{ mb: 2, display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<i className="ri-save-line" />}
+            onClick={() => setSaveGroupDialogOpen(true)}
+            disabled={selectedTeachers.length === 0}
+          >
+            Lưu group
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<i className="ri-folder-open-line" />}
+            onClick={(e) => setLoadGroupMenuAnchor(e.currentTarget)}
+            disabled={savedFilterGroups.length === 0}
+          >
+            Tải group ({savedFilterGroups.length})
+          </Button>
+          <Menu
+            anchorEl={loadGroupMenuAnchor}
+            open={Boolean(loadGroupMenuAnchor)}
+            onClose={() => setLoadGroupMenuAnchor(null)}
+            PaperProps={{
+              sx: { maxHeight: 400, width: 300 }
+            }}
+          >
+            {savedFilterGroups.length === 0 ? (
+              <MenuItem disabled>
+                <Typography variant="body2" color="text.secondary">
+                  Chưa có group nào được lưu
+                </Typography>
+              </MenuItem>
+            ) : (
+              savedFilterGroups.map((group) => (
+                <MenuItem
+                  key={group.id}
+                  onClick={() => handleLoadFilterGroup(group)}
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}
+                >
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="body2" fontWeight={600}>
+                      {group.name}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {group.teacherIds.length} giáo viên • {new Date(group.createdAt).toLocaleDateString('vi-VN')}
+                    </Typography>
+                  </Box>
+                  <IconButton
+                    size="small"
+                    onClick={(e) => handleDeleteFilterGroup(group.id, e)}
+                    sx={{ ml: 1 }}
+                  >
+                    <i className="ri-delete-bin-line" style={{ fontSize: '16px', color: '#d32f2f' }} />
+                  </IconButton>
+                </MenuItem>
+              ))
+            )}
+          </Menu>
+        </Box>
+
         <Grid container spacing={2} alignItems="center">
           <Grid item xs={12} md={4}>
             <Autocomplete
@@ -1498,6 +1660,73 @@ const TeachersSchedule = () => {
         onSuccess={handleSaveNoteSuccess}
         onError={handleSaveNoteError}
       />
+
+      {/* Save Filter Group Dialog */}
+      <Dialog open={saveGroupDialogOpen} onClose={() => {
+        setSaveGroupDialogOpen(false)
+        setGroupName('')
+      }} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          <Box display="flex" alignItems="center" gap={1}>
+            <i className="ri-save-line" style={{ fontSize: '24px', color: '#1976d2' }} />
+            <Typography variant="h6" fontWeight={600}>
+              Lưu group filter giáo viên
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            <TextField
+              fullWidth
+              label="Tên group"
+              placeholder="Nhập tên group (ví dụ: Giáo viên Toán, Giáo viên Anh văn...)"
+              value={groupName}
+              onChange={(e) => setGroupName(e.target.value)}
+              autoFocus
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  handleSaveFilterGroup()
+                }
+              }}
+            />
+            <Box sx={{ mt: 2, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Số giáo viên đã chọn: <strong>{selectedTeachers.length}</strong>
+              </Typography>
+              <Box display="flex" gap={1} flexWrap="wrap">
+                {selectedTeachers.map((teacher) => (
+                  <Chip
+                    key={teacher.id}
+                    label={teacher.name}
+                    size="small"
+                    sx={{
+                      backgroundColor: '#e3f2fd',
+                      color: '#1976d2',
+                      border: '1px solid #bbdefb'
+                    }}
+                  />
+                ))}
+              </Box>
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setSaveGroupDialogOpen(false)
+            setGroupName('')
+          }}>
+            Hủy
+          </Button>
+          <Button
+            onClick={handleSaveFilterGroup}
+            variant="contained"
+            disabled={!groupName.trim() || selectedTeachers.length === 0}
+            startIcon={<i className="ri-save-line" />}
+          >
+            Lưu
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Full Screen Schedule Dialog */}
       <Dialog
