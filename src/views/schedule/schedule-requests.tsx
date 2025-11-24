@@ -9,6 +9,7 @@ import { styled } from '@mui/material/styles'
 // MUI Imports
 import {
   Alert,
+  Autocomplete,
   Avatar,
   Box,
   Button,
@@ -123,6 +124,7 @@ const ScheduleRequests = () => {
   const [showSuccessMessage, setShowSuccessMessage] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
   const [statusReason, setStatusReason] = useState('')
+  const [courseNameFilter, setCourseNameFilter] = useState<string | null>(null)
 
   // Fetch weeks to get the open week ID
   const {
@@ -285,6 +287,28 @@ const ScheduleRequests = () => {
     return `${startTime || '—'} - ${endTime || '—'}`
   }
 
+  // Get unique course names from all requests
+  const getAllCourseNames = () => {
+    const allRequests = [
+      ...(pendingChangeRequests || []),
+      ...(pendingActiveRequests || []),
+      ...(cancelledRequests || []),
+      ...(approvedActiveRequests || []),
+      ...(changedRequests || [])
+    ]
+    const uniqueCourseNames = Array.from(
+      new Set(allRequests.map(request => request.courseName).filter(Boolean))
+    ).sort()
+    return uniqueCourseNames
+  }
+
+  // Filter requests by course name
+  const filterRequests = (requests: any[] | undefined) => {
+    if (!requests) return []
+    if (!courseNameFilter) return requests
+    return requests.filter(request => request.courseName === courseNameFilter)
+  }
+
   return (
     <Box>
       <Card sx={{ mb: 4 }}>
@@ -293,30 +317,56 @@ const ScheduleRequests = () => {
           subheader="Duyệt hoặc từ chối các yêu cầu hủy lịch học của học sinh"
         />
         <CardContent>
+          {/* Filter Section */}
+          <Box sx={{ mb: 3 }}>
+            <Autocomplete
+              options={getAllCourseNames()}
+              value={courseNameFilter}
+              onChange={(event, newValue) => setCourseNameFilter(newValue || null)}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Lọc theo tên lớp"
+                  placeholder="Chọn hoặc nhập tên lớp"
+                  size="small"
+                  sx={{ maxWidth: 400 }}
+                />
+              )}
+              renderOption={(props, option) => (
+                <Box component="li" {...props}>
+                  {option}
+                </Box>
+              )}
+              clearOnEscape
+              clearText="Xóa bộ lọc"
+              noOptionsText="Không tìm thấy lớp nào"
+            />
+          </Box>
+
           <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
             <StyledTabs value={tabValue} onChange={handleTabChange} aria-label="schedule requests tabs">
               <Tab
-                label={`Yêu cầu đổi lịch (${pendingChangeRequests?.length || 0})`}
+                label={`Yêu cầu đổi lịch (${filterRequests(pendingChangeRequests).length || 0})`}
                 icon={<i className="ri-close-circle-line" />}
                 iconPosition="start"
               />
               <Tab
-                label={`Yêu cầu tham gia lớp (${pendingActiveRequests?.length || 0})`}
+                label={`Yêu cầu tham gia lớp (${filterRequests(pendingActiveRequests).length || 0})`}
                 icon={<i className="ri-play-circle-line" />}
                 iconPosition="start"
               />
               <Tab
-                label={`Đã xin nghỉ (${cancelledRequests?.length || 0})`}
+                label={`Đã xin nghỉ (${filterRequests(cancelledRequests).length || 0})`}
                 icon={<i className="ri-check-line" />}
                 iconPosition="start"
               />
               <Tab
-                label={`Đã chấp thuận tham gia lớp (${approvedActiveRequests?.length || 0})`}
+                label={`Đã chấp thuận tham gia lớp (${filterRequests(approvedActiveRequests).length || 0})`}
                 icon={<i className="ri-check-double-line" />}
                 iconPosition="start"
               />
               <Tab
-                label={`Đã đổi lịch (${changedRequests?.length || 0})`}
+                label={`Đã đổi lịch (${filterRequests(changedRequests).length || 0})`}
                 icon={<i className="ri-repeat-line" />}
                 iconPosition="start"
               />
@@ -338,13 +388,14 @@ const ScheduleRequests = () => {
                   <Alert severity="warning">Không có tuần nào đang mở để xem yêu cầu đổi lịch.</Alert>
                 ) : pendingChangeError ? (
                   <Alert severity="error">Lỗi tải danh sách yêu cầu hủy lịch: {pendingChangeError.message}</Alert>
-                ) : pendingChangeRequests && pendingChangeRequests.length > 0 ? (
+                ) : filterRequests(pendingChangeRequests).length > 0 ? (
                   <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
                     <Table>
                       <TableHead>
                         <TableRow>
                           <StyledHeaderCell>Học sinh</StyledHeaderCell>
                           <StyledHeaderCell>Lớp</StyledHeaderCell>
+                          <StyledHeaderCell>Kỹ năng</StyledHeaderCell>
                           <StyledHeaderCell>Thời gian</StyledHeaderCell>
                           <StyledHeaderCell>Ghi chú</StyledHeaderCell>
                           <StyledHeaderCell>Trạng thái</StyledHeaderCell>
@@ -352,7 +403,7 @@ const ScheduleRequests = () => {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {pendingChangeRequests.map((request) => (
+                        {filterRequests(pendingChangeRequests).map((request) => (
                           <TableRow key={request.id}>
                             <StyledTableCell>
                               <Box display="flex" alignItems="center" gap={2}>
@@ -366,7 +417,12 @@ const ScheduleRequests = () => {
                             </StyledTableCell>
                             <StyledTableCell>
                               <Typography variant="body2">
-                                {`${request.courseName} - ${request.classname}`}
+                                {request.courseName}
+                              </Typography>
+                            </StyledTableCell>
+                            <StyledTableCell>
+                              <Typography variant="body2">
+                                {request.classname}
                               </Typography>
                             </StyledTableCell>
                             <StyledTableCell>
@@ -434,13 +490,14 @@ const ScheduleRequests = () => {
                   <Alert severity="warning">Không có tuần nào đang mở để xem yêu cầu đổi lịch.</Alert>
                 ) : pendingActiveError ? (
                   <Alert severity="error">Lỗi tải danh sách yêu cầu kích hoạt lịch: {pendingActiveError.message}</Alert>
-                ) : pendingActiveRequests && pendingActiveRequests.length > 0 ? (
+                ) : filterRequests(pendingActiveRequests).length > 0 ? (
                   <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
                     <Table>
                       <TableHead>
                         <TableRow>
                           <StyledHeaderCell>Học sinh</StyledHeaderCell>
                           <StyledHeaderCell>Lớp</StyledHeaderCell>
+                          <StyledHeaderCell>Kỹ năng</StyledHeaderCell>
                           <StyledHeaderCell>Thời gian</StyledHeaderCell>
                           <StyledHeaderCell>Ghi chú</StyledHeaderCell>
                           <StyledHeaderCell>Trạng thái</StyledHeaderCell>
@@ -448,7 +505,7 @@ const ScheduleRequests = () => {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {pendingActiveRequests.map((request) => (
+                        {filterRequests(pendingActiveRequests).map((request) => (
                           <TableRow key={request.id}>
                             <StyledTableCell>
                               <Box display="flex" alignItems="center" gap={2}>
@@ -462,7 +519,12 @@ const ScheduleRequests = () => {
                             </StyledTableCell>
                             <StyledTableCell>
                               <Typography variant="body2">
-                                {`${request.courseName} - ${request.classname}`}
+                                {request.courseName}
+                              </Typography>
+                            </StyledTableCell>
+                            <StyledTableCell>
+                              <Typography variant="body2">
+                                {request.classname}
                               </Typography>
                             </StyledTableCell>
                             <StyledTableCell>
@@ -530,20 +592,21 @@ const ScheduleRequests = () => {
                   <Alert severity="warning">Không có tuần nào đang mở để xem yêu cầu đổi lịch.</Alert>
                 ) : cancelledError ? (
                   <Alert severity="error">Lỗi tải danh sách yêu cầu đã duyệt: {cancelledError.message}</Alert>
-                ) : cancelledRequests && cancelledRequests.length > 0 ? (
+                ) : filterRequests(cancelledRequests).length > 0 ? (
                   <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
                     <Table>
                       <TableHead>
                         <TableRow>
                           <StyledHeaderCell>Học sinh</StyledHeaderCell>
                           <StyledHeaderCell>Lớp</StyledHeaderCell>
+                          <StyledHeaderCell>Kỹ năng</StyledHeaderCell>
                           <StyledHeaderCell>Thời gian</StyledHeaderCell>
                           <StyledHeaderCell>Ghi chú</StyledHeaderCell>
                           <StyledHeaderCell>Trạng thái</StyledHeaderCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {cancelledRequests.map((request) => (
+                        {filterRequests(cancelledRequests).map((request) => (
                           <TableRow key={request.id}>
                             <StyledTableCell>
                               <Box display="flex" alignItems="center" gap={2}>
@@ -557,7 +620,12 @@ const ScheduleRequests = () => {
                             </StyledTableCell>
                             <StyledTableCell>
                               <Typography variant="body2">
-                                {`${request.courseName} - ${request.classname}`}
+                                {request.courseName}
+                              </Typography>
+                            </StyledTableCell>
+                            <StyledTableCell>
+                              <Typography variant="body2">
+                                {request.classname}
                               </Typography>
                             </StyledTableCell>
                             <StyledTableCell>
@@ -601,21 +669,21 @@ const ScheduleRequests = () => {
                   <Alert severity="warning">Không có tuần nào đang mở để xem yêu cầu đổi lịch.</Alert>
                 ) : approvedActiveError ? (
                   <Alert severity="error">Lỗi tải danh sách yêu cầu đã kích hoạt: {approvedActiveError.message}</Alert>
-                ) : approvedActiveRequests && approvedActiveRequests.length > 0 ? (
+                ) : filterRequests(approvedActiveRequests).length > 0 ? (
                   <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
                     <Table>
                       <TableHead>
                         <TableRow>
                           <StyledHeaderCell>Học sinh</StyledHeaderCell>
                           <StyledHeaderCell>Lớp</StyledHeaderCell>
-                          <StyledHeaderCell>Buổi</StyledHeaderCell>
+                          <StyledHeaderCell>Kỹ năng</StyledHeaderCell>
                           <StyledHeaderCell>Thời gian</StyledHeaderCell>
                           <StyledHeaderCell>Ghi chú</StyledHeaderCell>
                           <StyledHeaderCell>Trạng thái</StyledHeaderCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {approvedActiveRequests.map((request) => (
+                        {filterRequests(approvedActiveRequests).map((request) => (
                           <TableRow key={request.id}>
                             <StyledTableCell>
                               <Box display="flex" alignItems="center" gap={2}>
@@ -629,12 +697,12 @@ const ScheduleRequests = () => {
                             </StyledTableCell>
                             <StyledTableCell>
                               <Typography variant="body2">
-                                {request.classname}
+                                {request.courseName}
                               </Typography>
                             </StyledTableCell>
                             <StyledTableCell>
                               <Typography variant="body2">
-                                Buổi {request.lesson}
+                                {request.classname}
                               </Typography>
                             </StyledTableCell>
                             <StyledTableCell>
@@ -678,7 +746,7 @@ const ScheduleRequests = () => {
                   <Alert severity="warning">Không có tuần nào đang mở để xem yêu cầu đổi lịch.</Alert>
                 ) : changedError ? (
                   <Alert severity="error">Lỗi tải danh sách yêu cầu đã đổi lịch: {changedError.message}</Alert>
-                ) : changedRequests && changedRequests.length > 0 ? (
+                ) : filterRequests(changedRequests).length > 0 ? (
                   <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
                     <Table>
                       <TableHead>
@@ -692,7 +760,7 @@ const ScheduleRequests = () => {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {changedRequests.map((request) => (
+                        {filterRequests(changedRequests).map((request) => (
                           <TableRow key={request.id}>
                             <StyledTableCell>
                               <Box display="flex" alignItems="center" gap={2}>
