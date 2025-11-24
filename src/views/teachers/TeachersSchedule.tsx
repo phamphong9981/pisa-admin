@@ -3,8 +3,6 @@
 // React Imports
 import { useMemo, useState } from 'react'
 
-
-
 // MUI Imports
 import {
   Alert,
@@ -16,29 +14,22 @@ import {
   CardHeader,
   Chip,
   Dialog,
-  DialogActions,
   DialogContent,
   DialogTitle,
   FormControl,
   Grid,
   IconButton,
-  InputAdornment,
   InputLabel,
   Menu,
   MenuItem,
   Select,
   Snackbar,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
   Tooltip,
   Typography
 } from '@mui/material'
 import { styled } from '@mui/material/styles'
+import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid'
 
 // Hooks
 import { useExport } from '@/@core/hooks/useExport'
@@ -50,74 +41,6 @@ import { useGetWeeks, WeekResponseDto, ScheduleStatus as WeekStatus } from '@/@c
 import ScheduleDetailPopup from './ScheduleDetailPopup'
 import EditTeacherNoteDialog from './EditTeacherNoteDialog'
 
-
-const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
-  fontWeight: 600,
-  fontSize: '0.875rem',
-  padding: theme.spacing(1.5),
-  backgroundColor: '#f5f5f5',
-  color: '#424242',
-  border: `1px solid ${theme.palette.divider}`,
-  textAlign: 'center',
-  position: 'sticky',
-  top: 0,
-  zIndex: 1
-}))
-
-const StyledTimeCell = styled(TableCell)(({ theme }) => ({
-  fontWeight: 600,
-  fontSize: '0.75rem',
-  padding: theme.spacing(1),
-  backgroundColor: '#fafafa',
-  color: '#424242',
-  border: `1px solid ${theme.palette.divider}`,
-  textAlign: 'center',
-  minWidth: '100px',
-  position: 'sticky',
-  left: 0,
-  top: 0,
-  zIndex: 2
-}))
-
-const StyledDayCell = styled(TableCell)(({ theme }) => ({
-  fontWeight: 700,
-  fontSize: '0.8rem',
-  padding: theme.spacing(1),
-  backgroundColor: '#f0f0f0',
-  color: '#424242',
-  border: `1px solid ${theme.palette.divider}`,
-  textAlign: 'left',
-  minWidth: '120px',
-  position: 'sticky',
-  left: 0,
-  zIndex: 3
-}))
-
-const ScheduleCell = styled(TableCell, {
-  shouldForwardProp: (prop) => prop !== 'isBusy' && prop !== 'isTeaching'
-})<{ isBusy?: boolean; isTeaching?: boolean }>(({ theme, isBusy, isTeaching }) => ({
-  padding: theme.spacing(0.5),
-  border: `1px solid ${theme.palette.divider}`,
-  textAlign: 'center',
-  cursor: isTeaching ? 'pointer' : 'default',
-  minWidth: '120px',
-  minHeight: '60px',
-  backgroundColor: isTeaching
-    ? '#e3f2fd' // Light blue for teaching
-    : isBusy
-      ? '#ffebee' // Light red for busy
-      : '#f1f8e9', // Light green for free
-  '&:hover': {
-    backgroundColor: isTeaching
-      ? '#bbdefb' // Darker blue on hover
-      : isBusy
-        ? '#ffcdd2' // Darker red on hover
-        : '#dcedc8', // Darker green on hover
-  },
-  transition: 'background-color 0.2s ease',
-  position: 'relative'
-}))
-
 const TeachingInfo = styled(Box)(({ theme }) => ({
   display: 'flex',
   flexDirection: 'column',
@@ -125,6 +48,10 @@ const TeachingInfo = styled(Box)(({ theme }) => ({
   overflow: 'hidden',
   border: '1px solid #e0e0e0',
   backgroundColor: '#fff',
+  marginBottom: theme.spacing(0.5),
+  '&:last-child': {
+    marginBottom: 0
+  },
   '& .lesson-header': {
     display: 'flex',
     alignItems: 'center',
@@ -181,6 +108,13 @@ const TeachingInfo = styled(Box)(({ theme }) => ({
       }
     }
   }
+}))
+
+const TeachingInfosContainer = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: theme.spacing(0.5),
+  width: '100%'
 }))
 
 
@@ -430,11 +364,11 @@ const TeachersSchedule = () => {
     )
   }
 
-  // Get teaching info for a teacher at specific slot
-  const getTeachingInfo = (teacherId: string, slotIndex: number) => {
-    if (!schedules) return null
+  // Get all teaching infos for a teacher at specific slot (multiple classes can be at same time)
+  const getTeachingInfos = (teacherId: string, slotIndex: number) => {
+    if (!schedules) return []
 
-    return schedules.find(schedule =>
+    return schedules.filter(schedule =>
       (schedule.teacher_id === teacherId || schedule.students?.some(student => student.teacher_id === teacherId)) && schedule.schedule_time === slotIndex + 1
     )
   }
@@ -634,235 +568,435 @@ const TeachersSchedule = () => {
     return pinnedTeacherIds.includes(teacherId)
   }
 
-  // Render schedule table (reusable for both card and full screen modal)
-  const renderScheduleTable = (isFullScreen: boolean = false) => (
-    <TableContainer sx={{
-      maxHeight: isFullScreen ? 'calc(100vh - 300px)' : '70vh',
-      overflow: 'auto',
-      border: '1px solid #e0e0e0',
-      borderRadius: '8px'
-    }}>
-      <Table stickyHeader>
-        <TableHead>
-          <TableRow>
-            <StyledHeaderCell sx={{ position: 'sticky', left: 0, top: 0, zIndex: 4, minWidth: '120px' }}>
-              <Typography variant="body2" fontWeight={600}>Thứ</Typography>
-            </StyledHeaderCell>
-            <StyledHeaderCell sx={{ position: 'sticky', left: 120, top: 0, zIndex: 4, minWidth: '100px' }}>
-              <Typography variant="body2" fontWeight={600}>Khung giờ</Typography>
-            </StyledHeaderCell>
-            {filteredTeachers.map((teacher) => {
-              const isPinned = isTeacherPinned(teacher.id)
-              return (
-                <StyledHeaderCell key={teacher.id}>
-                  <Box display="flex" alignItems="flex-start" gap={0.5}>
-                    <Box flex={1}>
-                      <Box display="flex" alignItems="center" gap={0.5} mb={0.5}>
-                        {isPinned && (
-                          <Tooltip title="Đã ghim">
-                            <i className="ri-pushpin-fill" style={{ fontSize: '14px', color: '#ff9800' }} />
-                          </Tooltip>
+  // Prepare data for DataGrid rows
+  const gridRows = useMemo(() => {
+    if (!filteredTimeSlots.length) return []
+
+    // Group slots by day
+    const groups: Record<string, { label: string; slots: typeof filteredTimeSlots }> = {}
+    filteredTimeSlots.forEach(s => {
+      const key = s.dayKey
+      if (!groups[key]) groups[key] = { label: s.dayLabel, slots: [] as any }
+      groups[key].slots.push(s)
+    })
+
+    const rows: any[] = []
+    Object.values(groups).forEach(group => {
+      const totalRowsInDay = group.slots.length
+      group.slots.forEach((slot, idx) => {
+        const row: any = {
+          id: `${group.label}-${slot.time}-${slot.slot}`,
+          day: group.label, // Show day label in all rows for merge effect
+          dayKey: group.label,
+          dayRowIndex: idx,
+          dayTotalRows: totalRowsInDay,
+          time: slot.time,
+          slot: slot.slot
+        }
+
+        // Add data for each teacher
+        filteredTeachers.forEach(teacher => {
+          const isBusy = isTeacherBusy(teacher.registeredBusySchedule, slot.slot)
+          const isTeaching = isTeacherTeaching(teacher.id, slot.slot)
+          const teachingInfos = getTeachingInfos(teacher.id, slot.slot)
+
+          row[`teacher_${teacher.id}`] = {
+            teacherId: teacher.id,
+            teacherName: teacher.name,
+            isBusy,
+            isTeaching,
+            teachingInfos,
+            slot: slot.slot,
+            dayLabel: slot.dayLabel,
+            time: slot.time
+          }
+        })
+
+        rows.push(row)
+      })
+    })
+
+    return rows
+  }, [filteredTimeSlots, filteredTeachers, schedules])
+
+  // Prepare columns for DataGrid
+  const gridColumns = useMemo<GridColDef[]>(() => {
+    const columns: GridColDef[] = [
+      {
+        field: 'day',
+        headerName: 'Thứ',
+        width: 120,
+        minWidth: 120,
+        headerAlign: 'center',
+        align: 'left',
+        sortable: false,
+        renderCell: (params: GridRenderCellParams) => {
+          const row = params.row as any
+          const dayValue = params.value || row.dayKey // Use value from row data
+
+          return (
+            <Box
+              sx={{
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0 8px',
+                backgroundColor: '#f0f0f0',
+                borderRight: '2px solid #ccc',
+                borderBottom: '1px solid #e0e0e0',
+                position: 'sticky',
+                left: 0,
+                zIndex: 3
+              }}
+            >
+              {dayValue ? (
+                <Typography variant="body2" fontWeight={700} sx={{ textAlign: 'center' }}>
+                  {dayValue}
+                </Typography>
+              ) : null}
+            </Box>
+          )
+        }
+      },
+      {
+        field: 'time',
+        headerName: 'Khung giờ',
+        width: 100,
+        minWidth: 100,
+        headerAlign: 'center',
+        align: 'center',
+        sortable: false,
+        renderCell: (params: GridRenderCellParams) => (
+          <Box
+            sx={{
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: '#fafafa',
+              borderRight: '2px solid #ccc',
+              borderBottom: '1px solid #e0e0e0',
+              position: 'sticky',
+              left: 120,
+              zIndex: 2
+            }}
+          >
+            <Typography variant="caption" color="primary" fontWeight={600}>
+              {params.value}
+            </Typography>
+          </Box>
+        )
+      }
+    ]
+
+    // Add dynamic columns for each teacher
+    filteredTeachers.forEach(teacher => {
+      const isPinned = isTeacherPinned(teacher.id)
+      columns.push({
+        field: `teacher_${teacher.id}`,
+        headerName: teacher.name,
+        width: 200,
+        minWidth: 180,
+        headerAlign: 'center',
+        align: 'center',
+        sortable: false,
+        renderHeader: () => (
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, flexDirection: 'column', width: '100%', p: 1 }}>
+            <Box display="flex" alignItems="center" gap={0.5} width="100%">
+              {isPinned && (
+                <Tooltip title="Đã ghim">
+                  <i className="ri-pushpin-fill" style={{ fontSize: '14px', color: '#ff9800' }} />
+                </Tooltip>
+              )}
+              <Typography variant="body2" fontWeight={600} sx={{ flex: 1 }}>
+                {teacher.name}
+              </Typography>
+              <Tooltip title={isPinned ? "Bỏ ghim" : "Ghim giáo viên"}>
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleTogglePinTeacher(teacher.id)
+                  }}
+                  sx={{ padding: '2px' }}
+                >
+                  <i
+                    className={isPinned ? "ri-pushpin-fill" : "ri-pushpin-line"}
+                    style={{
+                      fontSize: '14px',
+                      color: isPinned ? '#ff9800' : '#1976d2'
+                    }}
+                  />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Chỉnh sửa ghi chú">
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleOpenEditNoteDialog(teacher.id, teacher.name, teacher.skills || [], teacher.note)
+                  }}
+                  sx={{ padding: '2px' }}
+                >
+                  <i className="ri-edit-line" style={{ fontSize: '14px', color: '#1976d2' }} />
+                </IconButton>
+              </Tooltip>
+            </Box>
+            <Typography variant="caption" color="text.secondary" display="block">
+              {teacher.skills?.length || 0} kỹ năng
+            </Typography>
+            {teacher.note && (
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{
+                  fontStyle: 'italic',
+                  color: '#666',
+                  maxWidth: '180px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
+                }}
+                title={teacher.note}
+              >
+                <i className="ri-file-text-line" style={{ marginRight: 4, fontSize: '12px' }} />
+                {teacher.note}
+              </Typography>
+            )}
+          </Box>
+        ),
+        renderCell: (params: GridRenderCellParams) => {
+          const cellData = params.value as {
+            teacherId: string
+            teacherName: string
+            isBusy: boolean
+            isTeaching: boolean
+            teachingInfos: any[]
+            slot: number
+            dayLabel: string
+            time: string
+          }
+
+          if (!cellData) return null
+
+          const { isBusy, isTeaching, teachingInfos, teacherName, dayLabel, time } = cellData
+
+          return (
+            <Box
+              sx={{
+                width: '100%',
+                minHeight: '80px',
+                padding: '4px',
+                display: 'flex',
+                alignItems: 'flex-start',
+                justifyContent: 'center'
+              }}
+            >
+              {isTeaching && teachingInfos.length > 0 ? (
+                <TeachingInfosContainer>
+                  {teachingInfos.map((teachingInfo, index) => (
+                    <TeachingInfo
+                      key={`${teachingInfo.class_id}-${teachingInfo.lesson}-${index}`}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleTeachingCellClick(
+                          teachingInfo.class_id,
+                          teachingInfo.lesson,
+                          teacherName,
+                          teachingInfo.class_name,
+                          teachingInfo.schedule_time
+                        )
+                      }}
+                      sx={{ cursor: 'pointer', width: '100%' }}
+                    >
+                      <Box className="lesson-header">
+                        <Box className="class-name" title={teachingInfo.class_name}>
+                          {teachingInfo.class_name}
+                        </Box>
+                        {teachingInfo.lesson && (
+                          <Box className="lesson-badge">
+                            Buổi {teachingInfo.lesson}
+                          </Box>
                         )}
-                        <Typography variant="body2" fontWeight={600}>
-                          {teacher.name}
-                        </Typography>
-                        <Tooltip title={isPinned ? "Bỏ ghim" : "Ghim giáo viên"}>
-                          <IconButton
-                            size="small"
-                            onClick={() => handleTogglePinTeacher(teacher.id)}
-                            sx={{
-                              padding: '2px',
-                              '&:hover': {
-                                backgroundColor: isPinned ? 'rgba(255, 152, 0, 0.1)' : 'rgba(25, 118, 210, 0.1)'
-                              }
-                            }}
-                          >
-                            <i
-                              className={isPinned ? "ri-pushpin-fill" : "ri-pushpin-line"}
-                              style={{
-                                fontSize: '14px',
-                                color: isPinned ? '#ff9800' : '#1976d2'
-                              }}
-                            />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Chỉnh sửa ghi chú">
-                          <IconButton
-                            size="small"
-                            onClick={() => handleOpenEditNoteDialog(teacher.id, teacher.name, teacher.skills || [], teacher.note)}
-                            sx={{
-                              padding: '2px',
-                              '&:hover': {
-                                backgroundColor: 'rgba(25, 118, 210, 0.1)'
-                              }
-                            }}
-                          >
-                            <i className="ri-edit-line" style={{ fontSize: '14px', color: '#1976d2' }} />
-                          </IconButton>
-                        </Tooltip>
                       </Box>
-                      <Typography variant="caption" color="textSecondary" display="block">
-                        {teacher.skills?.length || 0} kỹ năng
-                      </Typography>
-                      {teacher.note && (
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          sx={{
-                            display: 'block',
-                            mt: 0.5,
-                            fontStyle: 'italic',
-                            color: '#666',
-                            maxWidth: '120px',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
-                          }}
-                          title={teacher.note}
-                        >
+                      {teachingInfo.note && (
+                        <Box className="lesson-note" title={teachingInfo.note}>
                           <i className="ri-file-text-line" style={{ marginRight: 4, fontSize: '12px' }} />
-                          {teacher.note}
-                        </Typography>
+                          {teachingInfo.note}
+                        </Box>
                       )}
-                    </Box>
-                  </Box>
-                </StyledHeaderCell>
-              )
-            })}
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {filteredTimeSlots.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={filteredTeachers.length + 2} align="center" sx={{ py: 4 }}>
-                <Box display="flex" flexDirection="column" alignItems="center" gap={2}>
-                  <i className="ri-calendar-line" style={{ fontSize: '48px', color: '#ccc' }} />
-                  <Typography variant="h6" color="text.secondary">
-                    Không có dữ liệu phù hợp
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Thử thay đổi bộ lọc để xem kết quả khác
-                  </Typography>
-                </Box>
-              </TableCell>
-            </TableRow>
-          ) : (
-            (() => {
-              // group by dayKey label
-              const groups: Record<string, { label: string; slots: typeof filteredTimeSlots }> = {}
-              filteredTimeSlots.forEach(s => {
-                const key = s.dayKey
-                if (!groups[key]) groups[key] = { label: s.dayLabel, slots: [] as any }
-                groups[key].slots.push(s)
-              })
-              const orderedGroups = Object.values(groups)
-              return orderedGroups.flatMap(group =>
-                group.slots.map((slot, idx) => (
-                  <TableRow key={`${group.label}-${slot.time}`}>
-                    {idx === 0 && (
-                      <StyledDayCell rowSpan={group.slots.length}>
-                        {group.label}
-                      </StyledDayCell>
-                    )}
-                    <StyledTimeCell sx={{ left: 120, zIndex: 2 }}>
-                      <Typography variant="caption" color="primary">{slot.time}</Typography>
-                    </StyledTimeCell>
-                    {filteredTeachers.map((teacher) => {
-                      const isBusy = isTeacherBusy(teacher.registeredBusySchedule, slot.slot)
-                      const isTeaching = isTeacherTeaching(teacher.id, slot.slot)
-                      const teachingInfo = getTeachingInfo(teacher.id, slot.slot)
-                      return (
-                        <ScheduleCell
-                          key={`${teacher.id}-${slot.slot}`}
-                          isBusy={isBusy}
-                          isTeaching={isTeaching}
-                          onClick={isTeaching && teachingInfo ? () => handleTeachingCellClick(
-                            teachingInfo.class_id,
-                            teachingInfo.lesson,
-                            teacher.name,
-                            teachingInfo.class_name,
-                            teachingInfo.schedule_time
-                          ) : undefined}
-                        >
-                          {isTeaching && teachingInfo ? (
-                            <TeachingInfo>
-                              <Box className="lesson-header">
-                                <Box className="class-name" title={teachingInfo.class_name}>
-                                  {teachingInfo.class_name}
-                                  {teachingInfo.note && (
-                                    <Box className="lesson-note" title={teachingInfo.note}>
-                                      <i className="ri-file-text-line" style={{ marginRight: 4, fontSize: '12px' }} />
-                                      {teachingInfo.note}
-                                    </Box>
-                                  )}
+                      {teachingInfo.students && Array.isArray(teachingInfo.students) && teachingInfo.students.length > 0 && (
+                        <Box className="students-content">
+                          <Box className="students-list">
+                            {teachingInfo.students.slice(0, 7).map((student: any) => {
+                              const coursename = student.coursename ? ` - ${student.coursename}` : ''
+                              const displayLabel = student.note
+                                ? `${student.fullname}${coursename} (${student.note})`
+                                : `${student.fullname}${coursename}`
+                              const rollcallStatusConfig = getRollcallStatusConfig(student.rollcall_status as RollcallStatus | undefined)
+                              const isNotRollcall = !student.rollcall_status || student.rollcall_status === RollcallStatus.NOT_ROLLCALL
+
+                              const studentSx = rollcallStatusConfig && !isNotRollcall
+                                ? {
+                                  backgroundColor: `${rollcallStatusConfig.backgroundColor} !important`,
+                                  borderColor: `${rollcallStatusConfig.borderColor} !important`,
+                                  color: `${rollcallStatusConfig.textColor} !important`,
+                                  borderLeft: `4px solid ${rollcallStatusConfig.accentColor}`
+                                }
+                                : undefined
+
+                              return (
+                                <Box
+                                  key={student.id}
+                                  className="student-item"
+                                  title={displayLabel}
+                                  sx={studentSx}
+                                >
+                                  <Typography component="span" variant="caption" sx={{ fontWeight: 500 }}>
+                                    {displayLabel}
+                                  </Typography>
                                 </Box>
+                              )
+                            })}
+                            {teachingInfo.students.length > 7 && (
+                              <Box
+                                className="student-item"
+                                sx={{
+                                  backgroundColor: '#e3f2fd !important',
+                                  borderColor: '#90caf9 !important',
+                                  color: '#1976d2 !important',
+                                  fontStyle: 'italic',
+                                  textAlign: 'center'
+                                }}
+                              >
+                                <Typography component="span" variant="caption" sx={{ fontWeight: 600 }}>
+                                  ...và {teachingInfo.students.length - 7} học sinh khác
+                                </Typography>
                               </Box>
-                              {teachingInfo.students && Array.isArray(teachingInfo.students) && teachingInfo.students.length > 0 && (
-                                <Box className="students-content">
-                                  <Box className="students-list">
-                                    {teachingInfo.students.map((student: any) => {
-                                      const coursename = student.coursename ? ` - ${student.coursename}` : '';
-                                      const displayLabel = student.note
-                                        ? `${student.fullname}${coursename} (${student.note})`
-                                        : `${student.fullname}${coursename}`;
-                                      const rollcallStatusConfig = getRollcallStatusConfig(student.rollcall_status as RollcallStatus | undefined)
-                                      const isNotRollcall = !student.rollcall_status || student.rollcall_status === RollcallStatus.NOT_ROLLCALL
+                            )}
+                          </Box>
+                        </Box>
+                      )}
+                    </TeachingInfo>
+                  ))}
+                </TeachingInfosContainer>
+              ) : (
+                <Tooltip
+                  title={
+                    isBusy
+                      ? `${teacherName} bận vào ${dayLabel} ${time}`
+                      : `${teacherName} rảnh vào ${dayLabel} ${time}`
+                  }
+                >
+                  <Box
+                    sx={{
+                      width: '100%',
+                      height: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: isBusy ? '#ffebee' : '#f1f8e9',
+                      borderRadius: 1,
+                      '&:hover': {
+                        backgroundColor: isBusy ? '#ffcdd2' : '#dcedc8'
+                      }
+                    }}
+                  >
+                    <IconButton size="small">
+                      {isBusy ? (
+                        <i className="ri-close-line" style={{ color: '#c62828', fontSize: '18px' }} />
+                      ) : (
+                        <i className="ri-check-line" style={{ color: '#2e7d32', fontSize: '18px' }} />
+                      )}
+                    </IconButton>
+                  </Box>
+                </Tooltip>
+              )}
+            </Box>
+          )
+        }
+      })
+    })
 
-                                      const studentSx = rollcallStatusConfig && !isNotRollcall
-                                        ? {
-                                          backgroundColor: `${rollcallStatusConfig.backgroundColor} !important`,
-                                          borderColor: `${rollcallStatusConfig.borderColor} !important`,
-                                          color: `${rollcallStatusConfig.textColor} !important`,
-                                          borderLeft: `4px solid ${rollcallStatusConfig.accentColor}`
-                                        }
-                                        : undefined
+    return columns
+  }, [filteredTeachers, pinnedTeacherIds, schedules])
 
-                                      return (
-                                        <Box
-                                          key={student.id}
-                                          className="student-item"
-                                          title={displayLabel}
-                                          sx={studentSx}
-                                        >
-                                          <Typography component="span" variant="caption" sx={{ fontWeight: 500 }}>
-                                            {displayLabel}
-                                          </Typography>
-                                        </Box>
-                                      );
-                                    })}
-                                  </Box>
-                                </Box>
-                              )}
-                            </TeachingInfo>
-                          ) : (
-                            <Tooltip
-                              title={
-                                isBusy
-                                  ? `${teacher.name} bận vào ${slot.dayLabel} ${slot.time}`
-                                  : `${teacher.name} rảnh vào ${slot.dayLabel} ${slot.time}`
-                              }
-                            >
-                              <IconButton size="small">
-                                {isBusy ? (
-                                  <i className="ri-close-line" style={{ color: '#c62828', fontSize: '18px' }} />
-                                ) : (
-                                  <i className="ri-check-line" style={{ color: '#2e7d32', fontSize: '18px' }} />
-                                )}
-                              </IconButton>
-                            </Tooltip>
-                          )}
-                        </ScheduleCell>
-                      )
-                    })}
-                  </TableRow>
-                ))
-              )
-            })()
-          )}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  )
+  // Render schedule table (reusable for both card and full screen modal)
+  const renderScheduleTable = (isFullScreen: boolean = false) => {
+    if (filteredTimeSlots.length === 0) {
+      return (
+        <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" minHeight={400} gap={2}>
+          <i className="ri-calendar-line" style={{ fontSize: '48px', color: '#ccc' }} />
+          <Typography variant="h6" color="text.secondary">
+            Không có dữ liệu phù hợp
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Thử thay đổi bộ lọc để xem kết quả khác
+          </Typography>
+        </Box>
+      )
+    }
+
+    return (
+      <Box sx={{ height: isFullScreen ? 'calc(100vh - 300px)' : '70vh', width: '100%' }}>
+        <DataGrid
+          rows={gridRows}
+          columns={gridColumns}
+          disableColumnMenu
+          disableRowSelectionOnClick
+          disableDensitySelector
+          hideFooter
+          columnHeaderHeight={100}
+          getRowHeight={() => 'auto'}
+          getRowId={(row) => row.id}
+          sx={{
+            border: '1px solid #e0e0e0',
+            borderRadius: '8px',
+            '& .MuiDataGrid-cell': {
+              borderBottom: '1px solid #e0e0e0',
+              padding: '8px',
+              display: 'flex',
+              alignItems: 'flex-start',
+              overflow: 'visible',
+              '&:focus': {
+                outline: 'none'
+              },
+              '&:focus-within': {
+                outline: 'none'
+              }
+            },
+            '& .MuiDataGrid-row': {
+              maxHeight: 'none !important'
+            },
+            '& .MuiDataGrid-columnHeaders': {
+              backgroundColor: '#f5f5f5',
+              borderBottom: '2px solid #e0e0e0'
+            },
+            '& .MuiDataGrid-columnHeader': {
+              padding: '8px',
+              '&:focus': {
+                outline: 'none'
+              },
+              '&:focus-within': {
+                outline: 'none'
+              }
+            },
+            '& .MuiDataGrid-columnSeparator': {
+              display: 'none'
+            },
+            '& .MuiDataGrid-virtualScroller': {
+              overflowY: 'auto !important'
+            }
+          }}
+        />
+      </Box>
+    )
+  }
 
   // Render filter section (reusable for both card and full screen modal)
   const renderFilterSection = () => (
