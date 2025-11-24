@@ -65,7 +65,11 @@ const TeachingInfo = styled(Box)(({ theme }) => ({
       color: '#1976d2',
       lineHeight: 1.2,
       flex: 1,
-      marginRight: theme.spacing(0.5)
+      marginRight: theme.spacing(0.5),
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+      minWidth: 0
     },
     '& .lesson-badge': {
       fontSize: '0.6rem',
@@ -104,7 +108,10 @@ const TeachingInfo = styled(Box)(({ theme }) => ({
         border: '1px solid #e9ecef',
         whiteSpace: 'nowrap',
         overflow: 'hidden',
-        textOverflow: 'ellipsis'
+        textOverflow: 'ellipsis',
+        width: '100%',
+        minWidth: 0,
+        maxWidth: '100%'
       }
     }
   }
@@ -114,7 +121,8 @@ const TeachingInfosContainer = styled(Box)(({ theme }) => ({
   display: 'flex',
   flexDirection: 'column',
   gap: theme.spacing(0.5),
-  width: '100%'
+  width: '100%',
+  minWidth: 0
 }))
 
 
@@ -694,8 +702,9 @@ const TeachersSchedule = () => {
       columns.push({
         field: `teacher_${teacher.id}`,
         headerName: teacher.name,
-        width: 200,
-        minWidth: 180,
+        width: 250,
+        minWidth: 220,
+        flex: 0,
         headerAlign: 'center',
         align: 'center',
         sortable: false,
@@ -788,11 +797,13 @@ const TeachersSchedule = () => {
                 padding: '4px',
                 display: 'flex',
                 alignItems: 'flex-start',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                overflow: 'visible',
+                minWidth: 0
               }}
             >
               {isTeaching && teachingInfos.length > 0 ? (
-                <TeachingInfosContainer>
+                <TeachingInfosContainer sx={{ width: '100%', minWidth: 0 }}>
                   {teachingInfos.map((teachingInfo, index) => (
                     <TeachingInfo
                       key={`${teachingInfo.class_id}-${teachingInfo.lesson}-${index}`}
@@ -806,7 +817,7 @@ const TeachersSchedule = () => {
                           teachingInfo.schedule_time
                         )
                       }}
-                      sx={{ cursor: 'pointer', width: '100%' }}
+                      sx={{ cursor: 'pointer', width: '100%', minWidth: 0, flexShrink: 0 }}
                     >
                       <Box className="lesson-header">
                         <Box className="class-name" title={teachingInfo.class_name}>
@@ -845,16 +856,28 @@ const TeachersSchedule = () => {
                                 : undefined
 
                               return (
-                                <Box
-                                  key={student.id}
-                                  className="student-item"
-                                  title={displayLabel}
-                                  sx={studentSx}
-                                >
-                                  <Typography component="span" variant="caption" sx={{ fontWeight: 500 }}>
-                                    {displayLabel}
-                                  </Typography>
-                                </Box>
+                                <Tooltip title={displayLabel} arrow placement="top">
+                                  <Box
+                                    key={student.id}
+                                    className="student-item"
+                                    sx={studentSx}
+                                  >
+                                    <Typography
+                                      component="span"
+                                      variant="caption"
+                                      sx={{
+                                        fontWeight: 500,
+                                        display: 'block',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                        width: '100%'
+                                      }}
+                                    >
+                                      {displayLabel}
+                                    </Typography>
+                                  </Box>
+                                </Tooltip>
                               )
                             })}
                             {teachingInfo.students.length > 7 && (
@@ -957,12 +980,17 @@ const TeachersSchedule = () => {
               display: 'flex',
               alignItems: 'flex-start',
               overflow: 'visible',
+              minWidth: 0,
               '&:focus': {
                 outline: 'none'
               },
               '&:focus-within': {
                 outline: 'none'
               }
+            },
+            '& .MuiDataGrid-cell[data-field^="teacher_"]': {
+              overflow: 'visible !important',
+              minWidth: '220px'
             },
             '& .MuiDataGrid-row': {
               maxHeight: 'none !important'
