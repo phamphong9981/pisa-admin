@@ -92,20 +92,26 @@ export const useExport = () => {
             }
 
             teachers.forEach(teacher => {
-                const teachingInfo = schedules?.find(schedule =>
-                    schedule.teacher_id === teacher.id && schedule.schedule_time === slotNumber
-                )
+                // Lấy tất cả các lịch dạy (có thể có nhiều lịch trong cùng một khung giờ)
+                const teachingInfos = schedules?.filter(schedule =>
+                    (schedule.teacher_id === teacher.id || schedule.students?.some(student => student.teacher_id === teacher.id)) && schedule.schedule_time === slotNumber
+                ) || []
 
-                if (teachingInfo) {
-                    const students = normalizeStudents(teachingInfo.students)
-                    const baseInfo = `ĐANG DẠY: ${teachingInfo.class_name} (Ghi chú ${teachingInfo.lesson}) ${teachingInfo.note ? ` - ${teachingInfo.note}` : ''} \nThời gian: ${teachingInfo.start_time} - ${teachingInfo.end_time}`
+                if (teachingInfos.length > 0) {
+                    // Format tất cả các lịch dạy thành nhiều dòng
+                    const teachingLines = teachingInfos.map(teachingInfo => {
+                        const students = normalizeStudents(teachingInfo.students)
+                        const baseInfo = `ĐANG DẠY: ${teachingInfo.class_name} (Buổi ${teachingInfo.lesson})${teachingInfo.note ? ` - ${teachingInfo.note}` : ''}\nThời gian: ${teachingInfo.start_time} - ${teachingInfo.end_time}`
 
-                    if (students.length === 0) {
-                        row[teacher.name] = baseInfo
-                    } else {
-                        const studentLines = students.map(student => `- ${formatStudentLabel(student)}`).join('\n')
-                        row[teacher.name] = `${baseInfo}\nHS:\n${studentLines}`
-                    }
+                        if (students.length === 0) {
+                            return baseInfo
+                        } else {
+                            const studentLines = students.map(student => `  - ${formatStudentLabel(student)}`).join('\n')
+                            return `${baseInfo}\nHS:\n${studentLines}`
+                        }
+                    })
+
+                    row[teacher.name] = teachingLines.join('\n\n---\n\n')
                 } else if (teacher.registeredBusySchedule.includes(slotNumber)) {
                     row[teacher.name] = 'BẬN'
                 } else {
@@ -131,13 +137,21 @@ export const useExport = () => {
 
             teachers.forEach(teacher => {
                 const busySlots = teacher.registeredBusySchedule.length
-                const teachingSlots = schedules?.filter(schedule => schedule.teacher_id === teacher.id).length || 0
-                const totalStudents = (schedules || [])
-                    .filter(schedule => schedule.teacher_id === teacher.id)
-                    .reduce((total, schedule) => {
-                        const students = normalizeStudents(schedule.students)
-                        return total + students.length
-                    }, 0)
+
+                // Lấy tất cả các schedule mà teacher liên quan (cả teacher chính và teacher của student)
+                const relatedSchedules = schedules?.filter(schedule =>
+                    schedule.teacher_id === teacher.id || schedule.students?.some(student => student.teacher_id === teacher.id)
+                ) || []
+
+                // Đếm số khung giờ đang dạy (unique schedule_time)
+                const teachingSlotNumbers = new Set(relatedSchedules.map(schedule => schedule.schedule_time))
+                const teachingSlots = teachingSlotNumbers.size
+
+                // Đếm tổng số học sinh từ tất cả các schedule liên quan
+                const totalStudents = relatedSchedules.reduce((total, schedule) => {
+                    const students = normalizeStudents(schedule.students)
+                    return total + students.length
+                }, 0)
 
                 const freeSlots = Math.max(SCHEDULE_TIME.length - busySlots - teachingSlots, 0)
 
