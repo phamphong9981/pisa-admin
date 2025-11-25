@@ -98,7 +98,7 @@ export const useExport = () => {
 
                 if (teachingInfo) {
                     const students = normalizeStudents(teachingInfo.students)
-                    const baseInfo = `ĐANG DẠY: ${teachingInfo.class_name} (Ghi chú ${teachingInfo.lesson}) ${teachingInfo.note ? ` - ${teachingInfo.note}` : ''}`
+                    const baseInfo = `ĐANG DẠY: ${teachingInfo.class_name} (Ghi chú ${teachingInfo.lesson}) ${teachingInfo.note ? ` - ${teachingInfo.note}` : ''} \nThời gian: ${teachingInfo.start_time} - ${teachingInfo.end_time}`
 
                     if (students.length === 0) {
                         row[teacher.name] = baseInfo
