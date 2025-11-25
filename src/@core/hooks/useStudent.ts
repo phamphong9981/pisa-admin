@@ -184,3 +184,20 @@ export const useUpdateUser = () => {
         }
     })
 }
+
+const deleteUser = async (userId: string) => {
+    const { data } = await apiClient.delete(`/user/${userId}`);
+
+    return data.data;
+}
+
+export const useDeleteUser = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (userId: string) => deleteUser(userId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['users'] })
+            queryClient.invalidateQueries({ queryKey: ['students'] })
+        }
+    })
+}

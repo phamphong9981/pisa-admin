@@ -39,16 +39,18 @@ import { Alert } from '@mui/material'
 import { Icon } from '@iconify/react'
 
 // Hooks
-import { useUserList, useUpdateUser, useCreateUser, UpdateUserDto, CreateUserDto, UserType } from '@/@core/hooks/useStudent'
+import { useUserList, useUpdateUser, useCreateUser, useDeleteUser, UpdateUserDto, CreateUserDto, UserType } from '@/@core/hooks/useStudent'
 
 const UserInfoPage = () => {
   const updateUserMutation = useUpdateUser()
   const createUserMutation = useCreateUser()
+  const deleteUserMutation = useDeleteUser()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedType, setSelectedType] = useState<UserType | 'all'>('all')
   const { data: usersData, isLoading: isLoadingUsers, error: usersError } = useUserList(searchTerm)
   const [openEditDialog, setOpenEditDialog] = useState(false)
   const [openCreateDialog, setOpenCreateDialog] = useState(false)
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false)
   const [userToEdit, setUserToEdit] = useState<{
     id: string
     username: string
@@ -57,6 +59,11 @@ const UserInfoPage = () => {
     phone?: string
     type: string
     ieltsPoint?: string
+  } | null>(null)
+  const [userToDelete, setUserToDelete] = useState<{
+    id: string
+    username: string
+    fullname: string
   } | null>(null)
   const [editUserForm, setEditUserForm] = useState<UpdateUserDto>({
     username: '',
@@ -306,6 +313,47 @@ const UserInfoPage = () => {
     })
   }
 
+  // Delete user handlers
+  const handleOpenDeleteDialog = (user: {
+    id: string
+    username: string
+    profile: {
+      fullname: string
+    }
+  }) => {
+    setUserToDelete({
+      id: user.id,
+      username: user.username,
+      fullname: user.profile.fullname
+    })
+    setOpenDeleteDialog(true)
+  }
+
+  const handleCloseDeleteDialog = () => {
+    setOpenDeleteDialog(false)
+    setUserToDelete(null)
+  }
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return
+
+    try {
+      await deleteUserMutation.mutateAsync(userToDelete.id)
+      setNotification({
+        open: true,
+        message: `Xóa người dùng "${userToDelete.fullname}" thành công!`,
+        severity: 'success'
+      })
+      handleCloseDeleteDialog()
+    } catch (error) {
+      setNotification({
+        open: true,
+        message: 'Có lỗi xảy ra khi xóa người dùng',
+        severity: 'error'
+      })
+    }
+  }
+
   return (
     <Box>
       {/* Header */}
@@ -494,6 +542,20 @@ const UserInfoPage = () => {
                                 }}
                               >
                                 <Icon icon='ri:edit-line' />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Xóa tài khoản">
+                              <IconButton
+                                color="error"
+                                size="small"
+                                onClick={() => handleOpenDeleteDialog(user)}
+                                sx={{
+                                  '&:hover': {
+                                    backgroundColor: '#ffebee'
+                                  }
+                                }}
+                              >
+                                <Icon icon='ri:delete-bin-line' />
                               </IconButton>
                             </Tooltip>
                           </Box>
@@ -822,6 +884,53 @@ const UserInfoPage = () => {
             disabled={createUserMutation.isPending || !createUserForm.username || !createUserForm.password || !createUserForm.fullname || !createUserForm.email}
           >
             {createUserMutation.isPending ? 'Đang tạo...' : 'Tạo mới'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={openDeleteDialog} onClose={handleCloseDeleteDialog} maxWidth='sm' fullWidth>
+        <DialogTitle>
+          <Box display="flex" alignItems="center">
+            <Icon icon='ri:delete-bin-line' style={{ marginRight: '8px', color: '#d32f2f' }} />
+            Xác nhận xóa tài khoản
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="body1" gutterBottom>
+              Bạn có chắc chắn muốn xóa tài khoản <strong>"{userToDelete?.fullname}"</strong> (@{userToDelete?.username}) không?
+            </Typography>
+            <Typography variant="body2" color="error" sx={{ mt: 2 }}>
+              <Icon icon='ri:error-warning-line' style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+              <strong>Cảnh báo:</strong> Hành động này không thể hoàn tác. Tất cả dữ liệu liên quan đến tài khoản này sẽ bị xóa vĩnh viễn.
+            </Typography>
+            <Box sx={{
+              mt: 2,
+              p: 2,
+              backgroundColor: '#fff3e0',
+              borderRadius: 1,
+              border: '1px solid #ffb74d'
+            }}>
+              <Typography variant="body2" color="text.secondary">
+                <Icon icon='ri:information-line' style={{ marginRight: '8px', verticalAlign: 'middle', color: '#ff9800' }} />
+                Bao gồm: Thông tin cá nhân, lịch học, lớp học và các dữ liệu liên quan khác.
+              </Typography>
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDeleteDialog} color='secondary'>
+            Hủy
+          </Button>
+          <Button
+            variant='contained'
+            color='error'
+            onClick={handleDeleteUser}
+            disabled={deleteUserMutation.isPending}
+            startIcon={<Icon icon='ri:delete-bin-line' />}
+          >
+            {deleteUserMutation.isPending ? 'Đang xóa...' : 'Xóa tài khoản'}
           </Button>
         </DialogActions>
       </Dialog>
