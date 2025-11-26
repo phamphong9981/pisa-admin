@@ -946,7 +946,7 @@ const CreateLessonSchedule = ({
                 <Grid item xs={12} md={6}>
                   <TextField
                     fullWidth
-                    label="Số buổi học"
+                    label="Buổi học thứ"
                     type="number"
                     value={lessonNumber}
                     onChange={(e) => setLessonNumber(parseInt(e.target.value) || 1)}
