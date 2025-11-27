@@ -118,6 +118,99 @@ const UserInfoPage = () => {
     setNotification(prev => ({ ...prev, open: false }))
   }
 
+  // Export CSV function
+  const handleExportCSV = () => {
+    if (!filteredUsers || filteredUsers.length === 0) {
+      setNotification({
+        open: true,
+        message: 'Không có dữ liệu để xuất báo cáo!',
+        severity: 'error'
+      })
+      return
+    }
+
+    try {
+      // Prepare CSV data
+      const csvData: string[][] = []
+
+      // Add header row
+      const headerRow = [
+        'Tên đăng nhập',
+        'Loại',
+        'Họ và tên',
+        'SĐT',
+        'Điểm IELTS',
+        'Link ảnh',
+        'Tên giáo viên hiển thị',
+        'Kỹ năng giáo viên',
+        'Lưu ý giáo viên',
+        'Tên lớp đang theo học'
+      ]
+      csvData.push(headerRow)
+
+      // Add data rows
+      filteredUsers.forEach(user => {
+        const row: string[] = [
+          user.username || '',
+          getUserTypeLabel(user.type) || '',
+          user.profile.fullname || '',
+          user.profile.phone || '',
+          user.profile.ieltsPoint || '',
+          user.profile.image || '',
+          user.teacher?.name || '',
+          user.teacher?.skills?.join(', ') || '',
+          user.teacher?.note || '',
+          user.course?.name || ''
+        ]
+        csvData.push(row)
+      })
+
+      // Convert to CSV string
+      const csvString = csvData.map(row =>
+        row.map(cell => {
+          // Escape quotes and wrap in quotes if contains comma, newline, or quote
+          const escapedCell = cell.replace(/"/g, '""')
+          if (cell.includes(',') || cell.includes('\n') || cell.includes('"')) {
+            return `"${escapedCell}"`
+          }
+          return escapedCell
+        }).join(',')
+      ).join('\n')
+
+      // Add BOM for UTF-8 support in Excel
+      const BOM = '\uFEFF'
+      const csvWithBOM = BOM + csvString
+
+      // Create and download file
+      const blob = new Blob([csvWithBOM], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      const url = URL.createObjectURL(blob)
+
+      link.setAttribute('href', url)
+      link.setAttribute('download', `Bao_Cao_Nguoi_Dung_${new Date().toISOString().split('T')[0]}.csv`)
+      link.style.visibility = 'hidden'
+
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+      URL.revokeObjectURL(url)
+
+      setNotification({
+        open: true,
+        message: `Đã xuất báo cáo ${filteredUsers.length} người dùng thành công!`,
+        severity: 'success'
+      })
+    } catch (error) {
+      console.error('Error exporting CSV:', error)
+      setNotification({
+        open: true,
+        message: 'Có lỗi xảy ra khi xuất báo cáo. Vui lòng thử lại.',
+        severity: 'error'
+      })
+    }
+  }
+
   // Edit user handlers
   const handleOpenEditDialog = (user: {
     id: string
@@ -383,6 +476,8 @@ const UserInfoPage = () => {
             <Button
               variant='outlined'
               startIcon={<Icon icon='ri:download-line' />}
+              onClick={handleExportCSV}
+              disabled={!filteredUsers || filteredUsers.length === 0}
             >
               Xuất báo cáo
             </Button>

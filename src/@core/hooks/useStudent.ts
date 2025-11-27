@@ -31,6 +31,11 @@ interface ListUsersResponseDto {
         createdAt: Date;
         updatedAt: Date;
         profile: Profile;
+        teacher?: {
+            name: string,
+            skills: string[],
+            note: string,
+        }
         course?: {
             name: string,
             id: string
