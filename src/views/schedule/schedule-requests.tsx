@@ -1,7 +1,7 @@
 'use client'
 
 // React Imports
-import { useState } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 
 // Styled Components
 import { styled } from '@mui/material/styles'
@@ -22,7 +22,11 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControl,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Snackbar,
   Tab,
   Table,
@@ -38,7 +42,7 @@ import {
 
 // Hooks
 import { ScheduleStatus, useGetScheduleByFields, useRequestSchedule } from '@/@core/hooks/useSchedule'
-import { useGetWeeks, ScheduleStatus as WeekStatus } from '@/@core/hooks/useWeek'
+import { useGetWeeks, ScheduleStatus as WeekStatus, WeekResponseDto } from '@/@core/hooks/useWeek'
 
 const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
   fontWeight: 700,
@@ -125,6 +129,7 @@ const ScheduleRequests = () => {
   const [successMessage, setSuccessMessage] = useState('')
   const [statusReason, setStatusReason] = useState('')
   const [courseNameFilter, setCourseNameFilter] = useState<string | null>(null)
+  const [selectedWeekId, setSelectedWeekId] = useState<string>('')
 
   // Fetch weeks to get the open week ID
   const {
@@ -134,42 +139,59 @@ const ScheduleRequests = () => {
   } = useGetWeeks()
 
   // Get the first open week ID
-  const openWeekId = weeks?.find(week => week.scheduleStatus === WeekStatus.OPEN)?.id
+  const openWeekId = useMemo(() => {
+    return weeks?.find(week => week.scheduleStatus === WeekStatus.OPEN)?.id
+  }, [weeks])
+
+  // Set default selected week (open week or most recent)
+  useEffect(() => {
+    if (weeks && weeks.length > 0 && !selectedWeekId) {
+      if (openWeekId) {
+        setSelectedWeekId(openWeekId)
+      } else {
+        // Sort by startDate descending and take the most recent
+        const sortedWeeks = [...weeks].sort((a: WeekResponseDto, b: WeekResponseDto) =>
+          new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+        )
+        setSelectedWeekId(sortedWeeks[0].id)
+      }
+    }
+  }, [weeks, openWeekId, selectedWeekId])
 
   // Fetch pending change requests
   const {
     data: pendingChangeRequests,
     isLoading: isPendingChangeLoading,
     error: pendingChangeError
-  } = useGetScheduleByFields(ScheduleStatus.ON_REQUEST_CHANGE, openWeekId || "")
+  } = useGetScheduleByFields(ScheduleStatus.ON_REQUEST_CHANGE, selectedWeekId || "")
 
   // Fetch pending active requests
   const {
     data: pendingActiveRequests,
     isLoading: isPendingActiveLoading,
     error: pendingActiveError
-  } = useGetScheduleByFields(ScheduleStatus.ON_REQUEST_ACTIVE, openWeekId || "")
+  } = useGetScheduleByFields(ScheduleStatus.ON_REQUEST_ACTIVE, selectedWeekId || "")
 
   // Fetch cancelled requests
   const {
     data: cancelledRequests,
     isLoading: isCancelledLoading,
     error: cancelledError
-  } = useGetScheduleByFields(ScheduleStatus.CANCELLED, openWeekId || "")
+  } = useGetScheduleByFields(ScheduleStatus.CANCELLED, selectedWeekId || "")
 
   // Fetch approved active requests
   const {
     data: approvedActiveRequests,
     isLoading: isApprovedActiveLoading,
     error: approvedActiveError
-  } = useGetScheduleByFields(ScheduleStatus.APPROVED_ACTIVE, openWeekId || "")
+  } = useGetScheduleByFields(ScheduleStatus.APPROVED_ACTIVE, selectedWeekId || "")
 
   // Fetch changed requests
   const {
     data: changedRequests,
     isLoading: isChangedLoading,
     error: changedError
-  } = useGetScheduleByFields(ScheduleStatus.CHANGED, openWeekId || "")
+  } = useGetScheduleByFields(ScheduleStatus.CHANGED, selectedWeekId || "")
 
   const requestScheduleMutation = useRequestSchedule()
 
@@ -287,6 +309,13 @@ const ScheduleRequests = () => {
     return `${startTime || '—'} - ${endTime || '—'}`
   }
 
+  // Calculate end date for a week (startDate + 6 days)
+  const calculateEndDate = (startDate: Date): Date => {
+    const endDate = new Date(startDate)
+    endDate.setDate(endDate.getDate() + 6) // Add 6 days to get the end of the week
+    return endDate
+  }
+
   // Get unique course names from all requests
   const getAllCourseNames = () => {
     const allRequests = [
@@ -318,7 +347,56 @@ const ScheduleRequests = () => {
         />
         <CardContent>
           {/* Filter Section */}
-          <Box sx={{ mb: 3 }}>
+          <Box sx={{ mb: 3, display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+            {/* Week Selection */}
+            <FormControl size="small" sx={{ minWidth: 250 }}>
+              <InputLabel>Tuần học</InputLabel>
+              <Select
+                value={selectedWeekId}
+                onChange={(e) => setSelectedWeekId(e.target.value)}
+                label="Tuần học"
+                disabled={isWeeksLoading}
+              >
+                {isWeeksLoading ? (
+                  <MenuItem disabled>Đang tải...</MenuItem>
+                ) : weeks && weeks.length === 0 ? (
+                  <MenuItem disabled>Không có dữ liệu</MenuItem>
+                ) : (
+                  weeks?.map((week: WeekResponseDto) => {
+                    const startDate = new Date(week.startDate)
+                    const endDate = calculateEndDate(startDate)
+
+                    return (
+                      <MenuItem key={week.id} value={week.id}>
+                        <Box display="flex" alignItems="center" gap={1}>
+                          <i className="ri-calendar-line" style={{ color: '#1976d2' }} />
+                          <Box>
+                            <Typography variant="body2">
+                              {startDate.toLocaleDateString('vi-VN', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric'
+                              })} - {endDate.toLocaleDateString('vi-VN', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric'
+                              })}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {week.scheduleStatus === WeekStatus.OPEN ? 'Mở' :
+                                week.scheduleStatus === WeekStatus.CLOSED ? 'Đóng' : 'Chờ duyệt'}
+                              {openWeekId === week.id && ' (Đang mở)'}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </MenuItem>
+                    )
+                  })
+                )}
+              </Select>
+            </FormControl>
+
+            {/* Course Name Filter */}
             <Autocomplete
               options={getAllCourseNames()}
               value={courseNameFilter}
@@ -384,8 +462,8 @@ const ScheduleRequests = () => {
                   </Box>
                 ) : weeksError ? (
                   <Alert severity="error">Lỗi tải danh sách tuần: {weeksError.message}</Alert>
-                ) : !openWeekId ? (
-                  <Alert severity="warning">Không có tuần nào đang mở để xem yêu cầu đổi lịch.</Alert>
+                ) : !selectedWeekId ? (
+                  <Alert severity="warning">Vui lòng chọn tuần học để xem yêu cầu đổi lịch.</Alert>
                 ) : pendingChangeError ? (
                   <Alert severity="error">Lỗi tải danh sách yêu cầu hủy lịch: {pendingChangeError.message}</Alert>
                 ) : filterRequests(pendingChangeRequests).length > 0 ? (
