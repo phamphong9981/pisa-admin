@@ -14,10 +14,11 @@ export interface TeacherListResponse {
 }
 
 // Function để gọi API lấy danh sách teacher
-const fetchTeacherList = async (search?: string): Promise<TeacherListResponse[]> => {
+const fetchTeacherList = async (search?: string, weekId?: string): Promise<TeacherListResponse[]> => {
     const { data } = await apiClient.get('/teachers', {
         params: {
-            search
+            search,
+            weekId
         }
     });
 
@@ -25,10 +26,10 @@ const fetchTeacherList = async (search?: string): Promise<TeacherListResponse[]>
     return data.data;
 }
 
-export const useTeacherList = (search?: string) => {
+export const useTeacherList = (search?: string, weekId?: string) => {
     return useQuery<TeacherListResponse[], Error>({
-        queryKey: ['teachers', search],
-        queryFn: () => fetchTeacherList(search),
+        queryKey: ['teachers', search, weekId],
+        queryFn: () => fetchTeacherList(search, weekId),
         staleTime: 5 * 60 * 1000,
         gcTime: 10 * 60 * 1000,
         retry: 1,

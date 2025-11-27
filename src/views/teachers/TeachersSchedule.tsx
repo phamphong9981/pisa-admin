@@ -175,11 +175,12 @@ const dayOffsetMap: Record<string, number> = {
 }
 
 const TeachersSchedule = () => {
-  const { data: teachers, isLoading, error } = useTeacherList()
-
   // Week selection
   const { data: weeksData, isLoading: isWeeksLoading } = useGetWeeks()
   const [selectedWeekId, setSelectedWeekId] = useState<string>('')
+
+  // Get teachers with weekId to fetch busy schedule for that week
+  const { data: teachers, isLoading, error } = useTeacherList(undefined, selectedWeekId || undefined)
 
   // Get weeks list and find open week
   const weeks = useMemo(() => {
