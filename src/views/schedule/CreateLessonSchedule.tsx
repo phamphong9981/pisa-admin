@@ -149,11 +149,11 @@ const CreateLessonSchedule = ({
   const [teacherSearch, setTeacherSearch] = useState('')
   const [showTeacherSearchResults, setShowTeacherSearchResults] = useState(false)
 
-  // Student search hook
-  const { data: searchResults, isLoading: isSearchLoading } = useStudentList(studentSearch)
+  // Student search hook - use weekId to fetch student's busy schedule for that week
+  const { data: searchResults, isLoading: isSearchLoading } = useStudentList(studentSearch, weekId || undefined)
 
-  // Teacher list hook
-  const { data: teacherList } = useTeacherList()
+  // Teacher list hook - use weekId to fetch teacher's busy schedule for that week
+  const { data: teacherList } = useTeacherList(undefined, weekId || undefined)
 
   // Messages
   const [successMessage, setSuccessMessage] = useState('')

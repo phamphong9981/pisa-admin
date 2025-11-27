@@ -183,8 +183,8 @@ const SchedulePlanner = () => {
   const { data: courseSchedules } = useGetAllSchedule(false, selectedCourseId, selectedWeekId)
   const autoScheduleCourseMutation = useAutoScheduleCourse()
 
-  // Teacher search
-  const { data: teachers, isLoading: isTeachersLoading } = useTeacherList(teacherSearchTerm)
+  // Teacher search - use weekId to fetch teacher's busy schedule for that week
+  const { data: teachers, isLoading: isTeachersLoading } = useTeacherList(teacherSearchTerm, selectedWeekId || undefined)
 
   // Get weeks list
   const weeks = useMemo(() => {

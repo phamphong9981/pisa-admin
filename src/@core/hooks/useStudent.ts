@@ -46,21 +46,22 @@ interface ListUsersResponseDto {
     };
 }
 
-const fetchStudentList = async (search: string): Promise<ListUsersResponseDto> => {
+const fetchStudentList = async (search: string, weekId?: string): Promise<ListUsersResponseDto> => {
     const { data } = await apiClient.get('/user/', {
         params: {
             type: 'user',
-            search
+            search,
+            weekId
         }
     });
 
     return data.data;
 }
 
-export const useStudentList = (search: string) => {
+export const useStudentList = (search: string, weekId?: string) => {
     return useQuery<ListUsersResponseDto, Error>({
-        queryKey: ['students', search],
-        queryFn: () => fetchStudentList(search),
+        queryKey: ['students', search, weekId],
+        queryFn: () => fetchStudentList(search, weekId),
         staleTime: 5 * 60 * 1000,
         gcTime: 10 * 60 * 1000,
         retry: 1,
