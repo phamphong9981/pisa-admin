@@ -69,10 +69,10 @@ export const useStudentList = (search: string, weekId?: string) => {
     })
 }
 
-export const useStudentListWithReload = (search: string) => {
+export const useStudentListWithReload = (search: string, weekId?: string) => {
     return useQuery<ListUsersResponseDto, Error>({
-        queryKey: ['students', search],
-        queryFn: () => fetchStudentList(search),
+        queryKey: ['students', search, weekId],
+        queryFn: () => fetchStudentList(search, weekId),
         refetchInterval: 3000,
         refetchIntervalInBackground: true,
         staleTime: 5 * 60 * 1000,

@@ -574,6 +574,7 @@ export interface BatchOrderScheduleItem {
 
 export interface BatchOrderScheduleRequest {
     data: BatchOrderScheduleItem[]
+    weekId?: string
 }
 
 const batchOrderSchedule = async (request: BatchOrderScheduleRequest) => {

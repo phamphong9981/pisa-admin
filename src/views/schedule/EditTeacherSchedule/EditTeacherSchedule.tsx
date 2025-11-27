@@ -1,7 +1,7 @@
 'use client'
 
 // React Imports
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
 
 // MUI Imports
 import {
@@ -41,6 +41,7 @@ import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid'
 // Hooks
 import { SCHEDULE_TIME, useBatchOrderSchedule } from '@/@core/hooks/useSchedule'
 import { useTeacherList } from '@/@core/hooks/useTeacher'
+import { useGetWeeks, ScheduleStatus as WeekStatus, WeekResponseDto } from '@/@core/hooks/useWeek'
 
 
 const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
@@ -158,7 +159,37 @@ const getDayInVietnamese = (englishDay: string) => {
 }
 
 const EditTeacherSchedule = () => {
-  const { data: teachers, isLoading, error } = useTeacherList()
+  // States for filtering
+  const [teacherSearch, setTeacherSearch] = useState('')
+  const [selectedDay, setSelectedDay] = useState<string>('all')
+  const [completionStatus, setCompletionStatus] = useState<string>('all') // 'all' | 'completed' | 'incomplete'
+  const [selectedWeekId, setSelectedWeekId] = useState<string>('')
+
+  // Fetch weeks to get the open week ID
+  const { data: weeks, isLoading: isWeeksLoading } = useGetWeeks()
+
+  // Get the first open week ID
+  const openWeekId = useMemo(() => {
+    return weeks?.find(week => week.scheduleStatus === WeekStatus.OPEN)?.id
+  }, [weeks])
+
+  // Set default selected week (open week or most recent)
+  useEffect(() => {
+    if (weeks && weeks.length > 0 && !selectedWeekId) {
+      if (openWeekId) {
+        setSelectedWeekId(openWeekId)
+      } else {
+        // Sort by startDate descending and take the most recent
+        const sortedWeeks = [...weeks].sort((a: WeekResponseDto, b: WeekResponseDto) =>
+          new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+        )
+        setSelectedWeekId(sortedWeeks[0].id)
+      }
+    }
+  }, [weeks, openWeekId, selectedWeekId])
+
+  // Hook for fetching teachers - use weekId to fetch teacher's busy schedule for that week
+  const { data: teachers, isLoading, error } = useTeacherList(undefined, selectedWeekId || undefined)
 
   // For now, we'll use empty array for schedules until we have proper courseId and weekId
   const schedules: any[] = []
@@ -189,11 +220,6 @@ const EditTeacherSchedule = () => {
       document.head.removeChild(style)
     }
   }, [])
-
-  // States for filtering
-  const [teacherSearch, setTeacherSearch] = useState('')
-  const [selectedDay, setSelectedDay] = useState<string>('all')
-  const [completionStatus, setCompletionStatus] = useState<string>('all') // 'all' | 'completed' | 'incomplete'
 
   // States for edit dialog
   const [editDialog, setEditDialog] = useState<{
@@ -316,6 +342,13 @@ const EditTeacherSchedule = () => {
 
     return ['all', ...Array.from(new Set(days))]
   }, [allTimeSlots])
+
+  // Calculate end date for a week (startDate + 6 days)
+  const calculateEndDate = (startDate: Date): Date => {
+    const endDate = new Date(startDate)
+    endDate.setDate(endDate.getDate() + 6) // Add 6 days to get the end of the week
+    return endDate
+  }
 
   // Prepare data for DataGrid rows
   const gridRows = useMemo(() => {
@@ -844,7 +877,7 @@ const EditTeacherSchedule = () => {
         return
       }
 
-      await batchOrderScheduleMutation.mutateAsync({ data })
+      await batchOrderScheduleMutation.mutateAsync({ data, weekId: selectedWeekId || undefined })
 
       setNotification({
         open: true,
@@ -968,7 +1001,7 @@ const EditTeacherSchedule = () => {
       }))
 
       if (batchData.length > 0) {
-        await batchOrderScheduleMutation.mutateAsync({ data: batchData })
+        await batchOrderScheduleMutation.mutateAsync({ data: batchData, weekId: selectedWeekId || undefined })
       }
 
       setNotification({
@@ -1051,7 +1084,8 @@ const EditTeacherSchedule = () => {
           email: teacher.username, // username is email
           busy_schedule_arr: newBusySchedule.sort((a, b) => a - b),
           type: 'teacher' as const
-        }]
+        }],
+        weekId: selectedWeekId || undefined
       })
 
       setNotification({
@@ -1199,7 +1233,56 @@ const EditTeacherSchedule = () => {
           {/* Filter Section */}
           <Box sx={{ mb: 3 }}>
             <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} md={4}>
+              {/* Week Selection */}
+              <Grid item xs={12} md={3}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Tuần học</InputLabel>
+                  <Select
+                    value={selectedWeekId}
+                    onChange={(e) => setSelectedWeekId(e.target.value)}
+                    label="Tuần học"
+                    disabled={isWeeksLoading}
+                  >
+                    {isWeeksLoading ? (
+                      <MenuItem disabled>Đang tải...</MenuItem>
+                    ) : weeks && weeks.length === 0 ? (
+                      <MenuItem disabled>Không có dữ liệu</MenuItem>
+                    ) : (
+                      weeks?.map((week: WeekResponseDto) => {
+                        const startDate = new Date(week.startDate)
+                        const endDate = calculateEndDate(startDate)
+
+                        return (
+                          <MenuItem key={week.id} value={week.id}>
+                            <Box display="flex" alignItems="center" gap={1}>
+                              <i className="ri-calendar-line" style={{ color: '#1976d2' }} />
+                              <Box>
+                                <Typography variant="body2">
+                                  {startDate.toLocaleDateString('vi-VN', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    year: 'numeric'
+                                  })} - {endDate.toLocaleDateString('vi-VN', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    year: 'numeric'
+                                  })}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {week.scheduleStatus === WeekStatus.OPEN ? 'Mở' :
+                                    week.scheduleStatus === WeekStatus.CLOSED ? 'Đóng' : 'Chờ duyệt'}
+                                  {openWeekId === week.id && ' (Đang mở)'}
+                                </Typography>
+                              </Box>
+                            </Box>
+                          </MenuItem>
+                        )
+                      })
+                    )}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} md={3}>
                 <TextField
                   fullWidth
                   placeholder="Tìm kiếm theo tên giáo viên hoặc kỹ năng..."
@@ -1238,7 +1321,7 @@ const EditTeacherSchedule = () => {
                   }}
                 />
               </Grid>
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} md={3}>
                 <FormControl fullWidth>
                   <InputLabel>Lọc theo ngày</InputLabel>
                   <Select
@@ -1254,7 +1337,7 @@ const EditTeacherSchedule = () => {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} md={3}>
                 <FormControl fullWidth>
                   <InputLabel>Trạng thái hoàn thành</InputLabel>
                   <Select
