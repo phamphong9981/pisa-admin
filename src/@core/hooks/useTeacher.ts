@@ -101,3 +101,73 @@ export const useUpdateTeacher = () => {
         }
     })
 }
+
+export interface CreateTeacherScheduleNoteDto {
+    teacherId: string
+    weekId: string
+    scheduleTime: number
+    note?: string
+}
+
+const upsertTeacherScheduleNote = async (dto: CreateTeacherScheduleNoteDto) => {
+    const { data } = await apiClient.post('/teacher-schedule-notes', dto);
+
+    return data.data;
+}
+
+export const useUpsertTeacherScheduleNote = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (dto: CreateTeacherScheduleNoteDto) => upsertTeacherScheduleNote(dto),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['teachers'] })
+            queryClient.invalidateQueries({ queryKey: ['schedules'] })
+            queryClient.invalidateQueries({ queryKey: ['teacher-schedule-notes'] })
+        }
+    })
+}
+
+export interface TeacherScheduleNoteResponseDto {
+    teacherId?: string
+    weekId?: string
+    scheduleTime?: number
+    note?: string
+}
+
+const fetchTeacherScheduleNotes = async (weekId: string, teacherId?: string, scheduleTime?: number): Promise<TeacherScheduleNoteResponseDto[]> => {
+    const { data } = await apiClient.get('/teacher-schedule-notes', {
+        params: {
+            teacherId,
+            weekId,
+            scheduleTime
+        }
+    });
+
+    return data.data;
+}
+
+// Hook to fetch all schedule notes for a week (for all teachers)
+export const useTeacherScheduleNotesByWeek = (weekId: string) => {
+    return useQuery<TeacherScheduleNoteResponseDto[], Error>({
+        queryKey: ['teacher-schedule-notes', weekId],
+        queryFn: () => fetchTeacherScheduleNotes(weekId),
+        enabled: !!weekId, // Only fetch when weekId is provided
+        staleTime: 5 * 60 * 1000,
+        gcTime: 10 * 60 * 1000,
+        retry: 1,
+        retryDelay: (attemptIndex) => Math.min(1000 * 1 ** attemptIndex, 30000),
+    })
+}
+
+// Hook to fetch schedule notes for a specific teacher (kept for backward compatibility)
+export const useTeacherScheduleNotes = (teacherId: string, weekId: string, scheduleTime?: number) => {
+    return useQuery<TeacherScheduleNoteResponseDto[], Error>({
+        queryKey: ['teacher-schedule-notes', teacherId, weekId, scheduleTime],
+        queryFn: () => fetchTeacherScheduleNotes(weekId, teacherId, scheduleTime),
+        enabled: !!teacherId && !!weekId, // Only fetch when both teacherId and weekId are provided
+        staleTime: 5 * 60 * 1000,
+        gcTime: 10 * 60 * 1000,
+        retry: 1,
+        retryDelay: (attemptIndex) => Math.min(1000 * 1 ** attemptIndex, 30000),
+    })
+}

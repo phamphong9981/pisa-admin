@@ -35,13 +35,14 @@ import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid'
 // Hooks
 import { useExport } from '@/@core/hooks/useExport'
 import { RollcallStatus, SCHEDULE_TIME, useGetAllSchedule } from '@/@core/hooks/useSchedule'
-import { useTeacherList, useUpdateTeacher } from '@/@core/hooks/useTeacher'
+import { useTeacherList, useUpdateTeacher, useTeacherScheduleNotesByWeek, TeacherScheduleNoteResponseDto } from '@/@core/hooks/useTeacher'
 import { useGetWeeks, WeekResponseDto, ScheduleStatus as WeekStatus } from '@/@core/hooks/useWeek'
 import { RegionId } from '@/@core/hooks/useCourse'
 
 // Components
 import ScheduleDetailPopup from './ScheduleDetailPopup'
 import EditTeacherNoteDialog from './EditTeacherNoteDialog'
+import EditTeacherScheduleNoteDialog from './EditTeacherScheduleNoteDialog'
 
 // Region color mapping
 const REGION_COLORS: Record<number, string> = {
@@ -149,6 +150,138 @@ const TeachingInfosContainer = styled(Box)(({ theme }) => ({
   minWidth: 0
 }))
 
+// Component to render schedule cell with note support
+const ScheduleCell = ({
+  teacherId,
+  teacherName,
+  isBusy,
+  dayLabel,
+  time,
+  scheduleTime,
+  scheduleNote,
+  onEditNote
+}: {
+  teacherId: string
+  teacherName: string
+  isBusy: boolean
+  dayLabel: string
+  time: string
+  scheduleTime: number
+  scheduleNote?: string
+  onEditNote: (teacherId: string, teacherName: string, scheduleTime: number, dayLabel: string, time: string, currentNote?: string) => void
+}) => {
+
+  return (
+    <Tooltip
+      title={
+        scheduleNote
+          ? `Ghi chú: ${scheduleNote} - Click để chỉnh sửa`
+          : isBusy
+            ? `${teacherName} bận vào ${dayLabel} ${time} - Click để thêm ghi chú`
+            : `${teacherName} rảnh vào ${dayLabel} ${time} - Click để thêm ghi chú`
+      }
+    >
+      <Box
+        onClick={(e) => {
+          e.stopPropagation()
+          onEditNote(teacherId, teacherName, scheduleTime, dayLabel, time, scheduleNote)
+        }}
+        sx={{
+          width: '100%',
+          height: '100%',
+          minHeight: '80px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'stretch',
+          backgroundColor: isBusy ? '#ffebee' : '#f1f8e9',
+          borderRadius: 1,
+          cursor: 'pointer',
+          position: 'relative',
+          overflow: 'hidden',
+          '&:hover': {
+            backgroundColor: isBusy ? '#ffcdd2' : '#dcedc8'
+          }
+        }}
+      >
+        {/* Note header - nổi bật ở đầu cell */}
+        {scheduleNote && (
+          <Box
+            sx={{
+              width: '100%',
+              backgroundColor: '#fff3cd',
+              borderBottom: '2px solid #ffc107',
+              padding: '4px 6px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.5,
+              minHeight: '24px',
+              flexShrink: 0
+            }}
+            title={scheduleNote}
+            onClick={(e) => {
+              e.stopPropagation()
+              onEditNote(teacherId, teacherName, scheduleTime, dayLabel, time, scheduleNote)
+            }}
+          >
+            <i className="ri-file-text-line" style={{ fontSize: '12px', color: '#856404', flexShrink: 0 }} />
+            <Typography
+              variant="caption"
+              sx={{
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                color: '#856404',
+                fontWeight: 600,
+                fontSize: '0.7rem',
+                flex: 1,
+                minWidth: 0
+              }}
+            >
+              {scheduleNote}
+            </Typography>
+          </Box>
+        )}
+
+        {/* Main cell content */}
+        <Box
+          sx={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: scheduleNote ? '4px' : '8px'
+          }}
+        >
+          <IconButton size="small" sx={{ pointerEvents: 'none' }}>
+            {isBusy ? (
+              <i className="ri-close-line" style={{ color: '#c62828', fontSize: '18px' }} />
+            ) : (
+              <i className="ri-check-line" style={{ color: '#2e7d32', fontSize: '18px' }} />
+            )}
+          </IconButton>
+        </Box>
+
+        {/* Edit hint when no note */}
+        {!scheduleNote && (
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 4,
+              right: 4,
+              opacity: 0.3,
+              '&:hover': {
+                opacity: 0.6
+              }
+            }}
+          >
+            <i className="ri-edit-line" style={{ fontSize: '12px', color: '#666' }} />
+          </Box>
+        )}
+      </Box>
+    </Tooltip>
+  )
+}
+
 
 const getDayInVietnamese = (englishDay: string) => {
   const dayMap: { [key: string]: string } = {
@@ -214,6 +347,33 @@ const TeachersSchedule = () => {
 
   const { data: schedules, isLoading: isSchedulesLoading } = useGetAllSchedule(true, undefined, selectedWeekId || undefined)
   const { exportToExcel, exportToCSV, exportSummary } = useExport()
+
+  // Fetch all schedule notes for the selected week
+  const { data: allScheduleNotes } = useTeacherScheduleNotesByWeek(selectedWeekId || '')
+
+  // Create a map for quick lookup: key = `${teacherId}_${scheduleTime}`, value = note
+  const scheduleNotesMap = useMemo(() => {
+    const map = new Map<string, string>()
+
+    if (!allScheduleNotes || allScheduleNotes.length === 0) return map
+
+    allScheduleNotes.forEach(note => {
+      if (note.teacherId && note.scheduleTime !== undefined) {
+        const key = `${note.teacherId}_${note.scheduleTime}`
+        if (note.note) {
+          map.set(key, note.note)
+        }
+      }
+    })
+
+    return map
+  }, [allScheduleNotes])
+
+  // Helper function to get note for a teacher at a specific schedule time
+  const getScheduleNote = (teacherId: string, scheduleTime: number): string | undefined => {
+    const key = `${teacherId}_${scheduleTime}`
+    return scheduleNotesMap.get(key)
+  }
 
   // States for export menu
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
@@ -293,6 +453,27 @@ const TeachersSchedule = () => {
 
   // State for full screen modal
   const [fullScreenOpen, setFullScreenOpen] = useState(false)
+
+  // State for schedule note dialog
+  const [scheduleNoteDialog, setScheduleNoteDialog] = useState<{
+    open: boolean
+    teacherId: string
+    teacherName: string
+    weekId: string
+    scheduleTime: number
+    dayLabel: string
+    time: string
+    currentNote?: string
+  }>({
+    open: false,
+    teacherId: '',
+    teacherName: '',
+    weekId: '',
+    scheduleTime: 0,
+    dayLabel: '',
+    time: '',
+    currentNote: undefined
+  })
 
   // State for pinned teachers (loaded from localStorage)
   const [pinnedTeacherIds, setPinnedTeacherIds] = useState<string[]>(() => {
@@ -377,6 +558,56 @@ const TeachersSchedule = () => {
 
     return result
   }, [teachers, selectedTeachers, pinnedTeacherIds])
+
+  // Handle open schedule note dialog
+  const handleOpenScheduleNoteDialog = (teacherId: string, teacherName: string, scheduleTime: number, dayLabel: string, time: string, currentNote?: string) => {
+    if (!selectedWeekId) return
+
+    setScheduleNoteDialog({
+      open: true,
+      teacherId,
+      teacherName,
+      weekId: selectedWeekId,
+      scheduleTime,
+      dayLabel,
+      time,
+      currentNote
+    })
+  }
+
+  // Handle close schedule note dialog
+  const handleCloseScheduleNoteDialog = () => {
+    setScheduleNoteDialog(prev => ({
+      ...prev,
+      open: false,
+      teacherId: '',
+      teacherName: '',
+      weekId: '',
+      scheduleTime: 0,
+      dayLabel: '',
+      time: '',
+      currentNote: undefined
+    }))
+  }
+
+  // Handle save schedule note success
+  const handleSaveScheduleNoteSuccess = () => {
+    setNotification({
+      open: true,
+      message: 'Cập nhật ghi chú lịch thành công!',
+      severity: 'success'
+    })
+    handleCloseScheduleNoteDialog()
+  }
+
+  // Handle save schedule note error
+  const handleSaveScheduleNoteError = () => {
+    setNotification({
+      open: true,
+      message: 'Cập nhật ghi chú lịch thất bại!',
+      severity: 'error'
+    })
+  }
 
   // Filter time slots based on selected day
   const filteredTimeSlots = useMemo(() => {
@@ -826,6 +1057,11 @@ const TeachersSchedule = () => {
     // Add dynamic columns for each teacher
     filteredTeachers.forEach(teacher => {
       const isPinned = isTeacherPinned(teacher.id)
+
+      // Get all schedule notes for this teacher
+      const teacherScheduleNotes = allScheduleNotes?.filter(note => note.teacherId === teacher.id) || []
+      const hasScheduleNotes = teacherScheduleNotes.length > 0
+
       columns.push({
         field: `teacher_${teacher.id}`,
         headerName: teacher.name,
@@ -877,9 +1113,11 @@ const TeachersSchedule = () => {
                 </IconButton>
               </Tooltip>
             </Box>
-            <Typography variant="caption" color="text.secondary" display="block">
-              {teacher.skills?.length || 0} kỹ năng
-            </Typography>
+            <Box display="flex" alignItems="center" gap={1} width="100%" flexWrap="wrap">
+              <Typography variant="caption" color="text.secondary">
+                {teacher.skills?.length || 0} kỹ năng
+              </Typography>
+            </Box>
             {teacher.note && (
               <Typography
                 variant="caption"
@@ -1031,36 +1269,16 @@ const TeachersSchedule = () => {
                   ))}
                 </TeachingInfosContainer>
               ) : (
-                <Tooltip
-                  title={
-                    isBusy
-                      ? `${teacherName} bận vào ${dayLabel} ${time}`
-                      : `${teacherName} rảnh vào ${dayLabel} ${time}`
-                  }
-                >
-                  <Box
-                    sx={{
-                      width: '100%',
-                      height: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: isBusy ? '#ffebee' : '#f1f8e9',
-                      borderRadius: 1,
-                      '&:hover': {
-                        backgroundColor: isBusy ? '#ffcdd2' : '#dcedc8'
-                      }
-                    }}
-                  >
-                    <IconButton size="small">
-                      {isBusy ? (
-                        <i className="ri-close-line" style={{ color: '#c62828', fontSize: '18px' }} />
-                      ) : (
-                        <i className="ri-check-line" style={{ color: '#2e7d32', fontSize: '18px' }} />
-                      )}
-                    </IconButton>
-                  </Box>
-                </Tooltip>
+                <ScheduleCell
+                  teacherId={cellData.teacherId}
+                  teacherName={teacherName}
+                  isBusy={isBusy}
+                  dayLabel={dayLabel}
+                  time={time}
+                  scheduleTime={cellData.slot + 1}
+                  scheduleNote={getScheduleNote(cellData.teacherId, cellData.slot + 1)}
+                  onEditNote={handleOpenScheduleNoteDialog}
+                />
               )}
             </Box>
           )
@@ -1069,7 +1287,7 @@ const TeachersSchedule = () => {
     })
 
     return columns
-  }, [filteredTeachers, pinnedTeacherIds, schedules])
+  }, [filteredTeachers, pinnedTeacherIds, schedules, selectedWeekId, allScheduleNotes, handleOpenScheduleNoteDialog, handleOpenEditNoteDialog, handleTogglePinTeacher, isTeacherPinned, getRollcallStatusConfig, getScheduleNote])
 
   // Render schedule table (reusable for both card and full screen modal)
   const renderScheduleTable = (isFullScreen: boolean = false) => {
@@ -1684,6 +1902,21 @@ const TeachersSchedule = () => {
         currentNote={editNoteDialog.currentNote}
         onSuccess={handleSaveNoteSuccess}
         onError={handleSaveNoteError}
+      />
+
+      {/* Edit Schedule Note Dialog */}
+      <EditTeacherScheduleNoteDialog
+        open={scheduleNoteDialog.open}
+        onClose={handleCloseScheduleNoteDialog}
+        teacherId={scheduleNoteDialog.teacherId}
+        teacherName={scheduleNoteDialog.teacherName}
+        weekId={scheduleNoteDialog.weekId}
+        scheduleTime={scheduleNoteDialog.scheduleTime}
+        dayLabel={scheduleNoteDialog.dayLabel}
+        time={scheduleNoteDialog.time}
+        currentNote={scheduleNoteDialog.currentNote}
+        onSuccess={handleSaveScheduleNoteSuccess}
+        onError={handleSaveScheduleNoteError}
       />
 
       {/* Save Filter Group Dialog */}
