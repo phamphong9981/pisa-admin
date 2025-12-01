@@ -483,8 +483,7 @@ const SchedulePlanner = () => {
   // Handle click on class box to open edit lesson schedule modal
   const handleClassBoxClick = (schedule: any) => {
     const slotIndex = schedule.schedule_time
-    const slot = parsedSlots[slotIndex]
-
+    const slot = parsedSlots[slotIndex - 1]
     if (slot) {
       setCreateLessonModal({
         open: true,
