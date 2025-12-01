@@ -1428,7 +1428,7 @@ const CreateLessonSchedule = ({
                             </Typography>
                             {searchResults.users.map((user) => {
                               // Check if student is busy at selected time slot
-                              const isBusy = user.profile.busyScheduleArr?.includes(selectedSlot!.slotIndex + 1)
+                              const isBusy = user.profile.busyScheduleArr?.includes(selectedSlot!.slotIndex)
 
                               return (
                                 <Box

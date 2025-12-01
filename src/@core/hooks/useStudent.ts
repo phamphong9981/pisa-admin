@@ -87,26 +87,6 @@ export const useStudentListWithReload = (search: string, weekId?: string) => {
     })
 }
 
-const updateStudentBusySchedule = async (studentId: string, busySchedule: number[]) => {
-    const { data } = await apiClient.put(`/${studentId}/order-schedule`, {
-        busy_schedule_arr: busySchedule
-    });
-
-    return data.data;
-}
-
-export const useUpdateStudentBusySchedule = () => {
-    const queryClient = useQueryClient();
-
-
-    return useMutation({
-        mutationFn: ({ studentId, busySchedule }: { studentId: string, busySchedule: number[] }) => updateStudentBusySchedule(studentId, busySchedule),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['students'] })
-        }
-    })
-}
-
 export interface CreateUserDto {
     username: string
     password: string
