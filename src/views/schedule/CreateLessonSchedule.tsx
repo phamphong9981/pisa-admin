@@ -90,7 +90,7 @@ const CreateLessonSchedule = ({
     editData?.classId || '',
     editData?.lesson || 0,
     weekId,
-    (selectedSlot?.slotIndex || 0) + 1
+    (selectedSlot?.slotIndex || 0)
   )
 
   // Define student type
@@ -306,7 +306,7 @@ const CreateLessonSchedule = ({
         classId: selectedClassId,
         lesson: lessonNumber,
         action: 'delete',
-        scheduleTime: selectedSlot!.slotIndex + 1
+        scheduleTime: selectedSlot!.slotIndex
       })
 
       setSuccessMessage('Xóa lịch học thành công!')
@@ -376,7 +376,7 @@ const CreateLessonSchedule = ({
         // Update mode using UpdateLessonScheduleDto
         await updateLessonScheduleMutation.mutateAsync({
           weekId,
-          scheduleTime: selectedSlot!.slotIndex + 1, // Convert to 1-based index
+          scheduleTime: selectedSlot!.slotIndex,
           classId: selectedClassId,
           lesson: lessonNumber,
           action: 'update',
@@ -560,7 +560,7 @@ const CreateLessonSchedule = ({
           email: fullStudentData.profile.email,
           course: fullStudentData?.course,
           ieltsPoint: fullStudentData.profile.ieltsPoint,
-          isBusy: fullStudentData.profile.busyScheduleArr?.includes((selectedSlot?.slotIndex || 0) + 1) || false,
+          isBusy: fullStudentData.profile.busyScheduleArr?.includes((selectedSlot?.slotIndex || 0)) || false,
           source: 'search',
           profile_id: fullStudentData.profile.id
         }
