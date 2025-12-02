@@ -747,14 +747,7 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                           })()}
                         </Box>
                       </StudentTableCell>
-                      <StudentTableCell
-                        onClick={() => handleOpenTimeDialog(student)}
-                        sx={{
-                          cursor: student.scheduleId ? 'pointer' : 'default',
-                          '&:hover': student.scheduleId ? { backgroundColor: 'rgba(25, 118, 210, 0.04)' } : undefined,
-                          transition: 'background-color 0.2s ease'
-                        }}
-                      >
+                      <StudentTableCell>
                         <Typography variant="body2" color={student.startTime || student.endTime ? 'text.primary' : 'text.secondary'}>
                           {formatTimeRange(student.startTime, student.endTime)}
                         </Typography>
@@ -846,14 +839,7 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                           </Typography>
                         )}
                       </StudentTableCell>
-                      <StudentTableCell
-                        onClick={() => handleOpenTimeDialog(student)}
-                        sx={{
-                          cursor: student.scheduleId ? 'pointer' : 'default',
-                          '&:hover': student.scheduleId ? { backgroundColor: 'rgba(25, 118, 210, 0.04)' } : undefined,
-                          transition: 'background-color 0.2s ease'
-                        }}
-                      >
+                      <StudentTableCell>
                         <Typography variant="body2" color={student.startTime || student.endTime ? 'text.primary' : 'text.secondary'}>
                           {formatTimeRange(student.startTime, student.endTime)}
                         </Typography>
@@ -957,14 +943,7 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                           )
                         })()}
                       </StudentTableCell>
-                      <StudentTableCell
-                        onClick={() => handleOpenTimeDialog(student)}
-                        sx={{
-                          cursor: student.scheduleId ? 'pointer' : 'default',
-                          '&:hover': student.scheduleId ? { backgroundColor: 'rgba(25, 118, 210, 0.04)' } : undefined,
-                          transition: 'background-color 0.2s ease'
-                        }}
-                      >
+                      <StudentTableCell>
                         <Typography variant="body2" color={student.startTime || student.endTime ? 'text.primary' : 'text.secondary'}>
                           {formatTimeRange(student.startTime, student.endTime)}
                         </Typography>
@@ -1222,8 +1201,8 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
         </DialogActions>
       </Dialog>
 
-      {/* Time Edit Dialog */}
-      <Dialog
+      {/* Time Edit Dialog - Disabled */}
+      {/* <Dialog
         open={showTimeDialog}
         onClose={handleCloseTimeDialog}
         maxWidth="xs"
@@ -1268,7 +1247,7 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
             {updateUserScheduleMutation.isPending ? 'Đang lưu...' : 'Lưu'}
           </Button>
         </DialogActions>
-      </Dialog>
+      </Dialog> */}
 
       {/* Success Message */}
       <Snackbar
