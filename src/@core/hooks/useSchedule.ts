@@ -306,6 +306,7 @@ export interface ScheduleDetailResponseDto {
         note?: string
         startTime?: string
         endTime?: string
+        rollcallNote?: string
     }
 }
 
@@ -440,6 +441,8 @@ export interface UpdateLessonScheduleDto {
     profileIds?: string[]
 
     note?: string
+
+    rollcallNote?: string
 }
 
 const updateLessonSchedule = async (lessonSchedule: UpdateLessonScheduleDto) => {

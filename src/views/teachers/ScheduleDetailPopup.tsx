@@ -30,7 +30,7 @@ import {
 import { styled } from '@mui/material/styles'
 
 import type { StudentScheduleDetailDto } from '@/@core/hooks/useSchedule';
-import { RollcallStatus, SCHEDULE_TIME, useGetScheduleDetail, useUpdateRollcallStatus, useUpdateUserSchedule } from '@/@core/hooks/useSchedule'
+import { RollcallStatus, SCHEDULE_TIME, useGetScheduleDetail, useUpdateRollcallStatus, useUpdateUserSchedule, useUpdateLessonSchedule } from '@/@core/hooks/useSchedule'
 
 const StyledDialog = styled(Dialog)(() => ({
   '& .MuiDialog-paper': {
@@ -240,6 +240,9 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
   const [selectedScheduleId, setSelectedScheduleId] = React.useState<string>('')
   const [selectedStudentName, setSelectedStudentName] = React.useState<string>('')
   const [showTimeSuccess, setShowTimeSuccess] = React.useState(false)
+  const [showRollcallNoteDialog, setShowRollcallNoteDialog] = React.useState(false)
+  const [rollcallNoteText, setRollcallNoteText] = React.useState('')
+  const [showRollcallNoteSuccess, setShowRollcallNoteSuccess] = React.useState(false)
 
   const scheduleDetailQuery = useGetScheduleDetail(classId, lesson, weekId, scheduleTime)
   const { data: scheduleDetail, isLoading, error } = scheduleDetailQuery
@@ -252,6 +255,7 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
   }, [open, classId, lesson, weekId, scheduleTime])
   const updateRollcallMutation = useUpdateRollcallStatus()
   const updateUserScheduleMutation = useUpdateUserSchedule()
+  const updateLessonScheduleMutation = useUpdateLessonSchedule()
 
   const formatScheduleTime = (scheduleTimeIndex: number) => {
     return SCHEDULE_TIME[scheduleTimeIndex - 1] || 'Chưa có lịch'
@@ -449,6 +453,36 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
     }
   }
 
+  const handleOpenRollcallNoteDialog = () => {
+    setRollcallNoteText(scheduleDetail?.scheduleInfo?.rollcallNote || '')
+    setShowRollcallNoteDialog(true)
+  }
+
+  const handleCloseRollcallNoteDialog = () => {
+    setShowRollcallNoteDialog(false)
+    setRollcallNoteText('')
+  }
+
+  const handleSaveRollcallNote = async () => {
+    if (!scheduleDetail) return
+
+    try {
+      await updateLessonScheduleMutation.mutateAsync({
+        weekId: scheduleDetail.classInfo.weekId,
+        classId: classId,
+        lesson: lesson,
+        scheduleTime: scheduleTime,
+        action: 'update',
+        rollcallNote: rollcallNoteText.trim()
+      })
+      setShowRollcallNoteSuccess(true)
+      handleCloseRollcallNoteDialog()
+      scheduleDetailQuery.refetch()
+    } catch (e) {
+      // swallow, error UI can be added later
+    }
+  }
+
   if (isLoading) {
     return (
       <StyledDialog open={open} onClose={onClose}>
@@ -567,8 +601,28 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                   })()}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Ghi chú buổi học: {scheduleDetail?.scheduleInfo?.note}
+                  Ghi chú buổi học: {scheduleDetail?.scheduleInfo?.note || '—'}
                 </Typography>
+                <Box display="flex" alignItems="center" gap={1} mt={0.5}>
+                  <Typography variant="body2" color="text.secondary">
+                    Ghi chú điểm danh: {scheduleDetail?.scheduleInfo?.rollcallNote || '—'}
+                  </Typography>
+                  <Button
+                    size="small"
+                    variant="text"
+                    onClick={handleOpenRollcallNoteDialog}
+                    sx={{
+                      minWidth: 'auto',
+                      padding: '4px',
+                      color: 'primary.main',
+                      '&:hover': {
+                        backgroundColor: 'rgba(25, 118, 210, 0.08)'
+                      }
+                    }}
+                  >
+                    <i className="ri-edit-line" style={{ fontSize: '16px' }} />
+                  </Button>
+                </Box>
               </Box>
               <Box textAlign="right">
                 <Typography variant="h6" color="primary" fontWeight={600}>
@@ -1244,6 +1298,65 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
         </Alert>
       </Snackbar>
 
+      {/* Rollcall Note Edit Dialog */}
+      <Dialog
+        open={showRollcallNoteDialog}
+        onClose={handleCloseRollcallNoteDialog}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.15)'
+          }
+        }}
+      >
+        <DialogTitle>
+          <Box display="flex" alignItems="center" gap={2}>
+            <i className="ri-file-edit-line" style={{ fontSize: '24px', color: '#1976d2' }} />
+            <Typography variant="h6" fontWeight={600}>
+              Ghi chú điểm danh
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            fullWidth
+            multiline
+            minRows={4}
+            label="Ghi chú điểm danh"
+            placeholder="Nhập ghi chú cho bộ phận điểm danh..."
+            value={rollcallNoteText}
+            onChange={(e) => setRollcallNoteText(e.target.value)}
+            sx={{ mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseRollcallNoteDialog} variant="outlined">Hủy</Button>
+          <Button
+            onClick={handleSaveRollcallNote}
+            variant="contained"
+            color="primary"
+            disabled={updateLessonScheduleMutation.isPending}
+            startIcon={updateLessonScheduleMutation.isPending ? <CircularProgress size={16} color="inherit" /> : undefined}
+          >
+            {updateLessonScheduleMutation.isPending ? 'Đang lưu...' : 'Lưu'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Rollcall Note Update Success */}
+      <Snackbar
+        open={showRollcallNoteSuccess}
+        autoHideDuration={2500}
+        onClose={() => setShowRollcallNoteSuccess(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert onClose={() => setShowRollcallNoteSuccess(false)} severity="success" sx={{ width: '100%' }}>
+          Đã cập nhật ghi chú điểm danh thành công!
+        </Alert>
+      </Snackbar>
 
     </StyledDialog>
   )
