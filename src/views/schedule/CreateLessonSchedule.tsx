@@ -217,8 +217,7 @@ const CreateLessonSchedule = ({
         : ''
 
       // Get the actual note
-      const actualNote = scheduleDetail.scheduleInfo?.note ||
-        (scheduleDetail.students.attending.length > 0 ? scheduleDetail.students.attending[0].note || '' : '')
+      const actualNote = scheduleDetail.scheduleInfo?.note || ''
 
       // Get the actual teacher ID
       const actualTeacherId = scheduleDetail.students.attending.length > 0
