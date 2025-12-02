@@ -9,12 +9,18 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   Chip,
   CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControl,
+  IconButton,
+  InputLabel,
+  MenuItem,
+  Select,
   Snackbar,
   Tab,
   Table,
@@ -243,6 +249,8 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
   const [showRollcallNoteDialog, setShowRollcallNoteDialog] = React.useState(false)
   const [rollcallNoteText, setRollcallNoteText] = React.useState('')
   const [showRollcallNoteSuccess, setShowRollcallNoteSuccess] = React.useState(false)
+  const [editingReasonStudentId, setEditingReasonStudentId] = React.useState<string | null>(null)
+  const [editingReasonText, setEditingReasonText] = React.useState('')
 
   const scheduleDetailQuery = useGetScheduleDetail(classId, lesson, weekId, scheduleTime)
   const { data: scheduleDetail, isLoading, error } = scheduleDetailQuery
@@ -360,7 +368,7 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
       setPendingChanges(prev => {
         const newMap = new Map(prev)
 
-        newMap.set(currentStudentId, { status: selectedStatusForReason, reason: reasonText.trim() || undefined })
+        newMap.set(currentStudentId, { status: selectedStatusForReason, reason: reasonText.trim() })
 
         return newMap
       })
@@ -369,7 +377,7 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
     setShowReasonDialog(false)
     setSelectedStatusForReason(null)
     setReasonText('')
-    handleStatusDialogClose()
+    setCurrentStudentId(null)
   }
 
   const handleCancelReason = () => {
@@ -387,9 +395,7 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
       return {
         scheduleId: student?.scheduleId || '',
         rollcallStatus: change.status,
-        reason: (change.status === RollcallStatus.ABSENT_WITH_REASON || change.status === RollcallStatus.ABSENT_WITH_LATE_REASON)
-          ? (change.reason ?? student?.reason)
-          : undefined
+        reason: change.reason !== undefined ? change.reason : student?.reason // Reason có thể có trong bất kỳ trạng thái nào, bao gồm chuỗi rỗng
       }
     }).filter(update => update.scheduleId)
 
@@ -403,10 +409,6 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
     } catch (error) {
       console.error('Error updating rollcall status:', error)
     }
-  }
-
-  const handleCancelChanges = () => {
-    setPendingChanges(new Map())
   }
 
   const toInputTime = (value?: string) => {
@@ -481,6 +483,88 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
     } catch (e) {
       // swallow, error UI can be added later
     }
+  }
+
+  const handleAttendingCheckboxChange = (studentId: string, checked: boolean) => {
+    const student = scheduleDetail?.students.attending.find(s => s.profileId === studentId)
+    if (!student) return
+
+    if (checked) {
+      // Nếu tick ATTENDING, set status là ATTENDING và xóa reason
+      setPendingChanges(prev => {
+        const newMap = new Map(prev)
+        newMap.set(studentId, { status: RollcallStatus.ATTENDING })
+        return newMap
+      })
+    } else {
+      // Nếu bỏ tick, set về NOT_ROLLCALL nếu đang là ATTENDING
+      const currentStatus = getEffectiveStatus(studentId, student.rollcallStatus)
+      if (currentStatus === RollcallStatus.ATTENDING) {
+        setPendingChanges(prev => {
+          const newMap = new Map(prev)
+          newMap.set(studentId, { status: RollcallStatus.NOT_ROLLCALL })
+          return newMap
+        })
+      } else {
+        // Nếu đang là trạng thái khác, chỉ cần đảm bảo không phải ATTENDING
+        setPendingChanges(prev => {
+          const newMap = new Map(prev)
+          const existing = newMap.get(studentId)
+          if (existing && existing.status === RollcallStatus.ATTENDING) {
+            newMap.set(studentId, { status: RollcallStatus.NOT_ROLLCALL })
+          }
+          return newMap
+        })
+      }
+    }
+  }
+
+  const handleStatusSelectChange = (studentId: string, newStatus: RollcallStatus) => {
+    const student = scheduleDetail?.students.attending.find(s => s.profileId === studentId)
+    if (!student) return
+
+    // Cập nhật trạng thái, giữ reason cũ nếu có
+    setPendingChanges(prev => {
+      const newMap = new Map(prev)
+      const existing = newMap.get(studentId)
+      newMap.set(studentId, {
+        status: newStatus,
+        reason: existing?.reason // Giữ reason cũ nếu có
+      })
+      return newMap
+    })
+  }
+
+  const handleStartEditReason = (studentId: string) => {
+    const student = scheduleDetail?.students.attending.find(s => s.profileId === studentId)
+    if (!student) return
+
+    const effectiveReason = getEffectiveReason(studentId, student.reason)
+    setEditingReasonStudentId(studentId)
+    setEditingReasonText(effectiveReason || '')
+  }
+
+  const handleSaveReason = (studentId: string) => {
+    const pending = pendingChanges.get(studentId)
+    const currentStatus = scheduleDetail?.students.attending.find(s => s.profileId === studentId)?.rollcallStatus || RollcallStatus.NOT_ROLLCALL
+    const effectiveStatus = pending?.status || currentStatus
+
+    setPendingChanges(prev => {
+      const newMap = new Map(prev)
+      newMap.set(studentId, {
+        status: effectiveStatus,
+        reason: editingReasonText.trim()
+      })
+      return newMap
+    })
+
+    setEditingReasonStudentId(null)
+    setEditingReasonText('')
+  }
+
+  const handleCancelEditReason = () => {
+    setEditingReasonStudentId(null)
+    setEditingReasonText('')
   }
 
   if (isLoading) {
@@ -683,104 +767,168 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                 <TableHead>
                   <TableRow>
                     <StyledTableCell>Học sinh</StyledTableCell>
-                    <StyledTableCell>Email</StyledTableCell>
-                    <StyledTableCell>SĐT</StyledTableCell>
+                    <StyledTableCell align="center">Có mặt</StyledTableCell>
                     <StyledTableCell>Trạng thái</StyledTableCell>
+                    <StyledTableCell>Lý do</StyledTableCell>
                     <StyledTableCell>Thời gian</StyledTableCell>
                     <StyledTableCell>Giáo viên dạy</StyledTableCell>
                     <StyledTableCell>Ghi chú</StyledTableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {students.attending.map((student) => (
-                    <TableRow key={student.profileId}>
-                      <StudentTableCell>
-                        <Box display="flex" alignItems="center" gap={2}>
-                          <StyledAvatar sx={{ width: 32, height: 32, fontSize: '0.75rem' }}>
-                            {getInitials(student.fullname)}
-                          </StyledAvatar>
-                          <Typography variant="body2" fontWeight={500}>
-                            {student.fullname}
-                          </Typography>
-                        </Box>
-                      </StudentTableCell>
-                      <StudentTableCell>
-                        <Typography variant="body2">
-                          {student.email}
-                        </Typography>
-                      </StudentTableCell>
-                      <StudentTableCell>
-                        <Typography variant="body2">
-                          {student.phone}
-                        </Typography>
-                      </StudentTableCell>
-                      <StudentTableCell
-                        onClick={() => handleStatusClick(student.profileId)}
-                        sx={{
-                          cursor: 'pointer',
-                          '&:hover': {
-                            backgroundColor: 'rgba(25, 118, 210, 0.04)'
-                          },
-                          transition: 'background-color 0.2s ease'
-                        }}
-                      >
-                        <Box>
-                          {(() => {
-                            const effectiveStatus = getEffectiveStatus(student.profileId, student.rollcallStatus)
-                            const effectiveReason = getEffectiveReason(student.profileId, student.reason)
+                  {students.attending.map((student) => {
+                    const effectiveStatus = getEffectiveStatus(student.profileId, student.rollcallStatus)
+                    const effectiveReason = getEffectiveReason(student.profileId, student.reason)
+                    const isAttending = effectiveStatus === RollcallStatus.ATTENDING
+                    const isEditingReason = editingReasonStudentId === student.profileId
 
-
-                            return (
-                              <>
-                                <StatusChip
-                                  label={getRollcallStatusText(effectiveStatus)}
-                                  status={effectiveStatus}
-                                  size="small"
-                                />
-                                {(effectiveStatus === RollcallStatus.ABSENT_WITH_REASON || effectiveStatus === RollcallStatus.ABSENT_WITH_LATE_REASON) && effectiveReason && (
-                                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
-                                    Lý do: {effectiveReason}
-                                  </Typography>
-                                )}
-                              </>
-                            )
-                          })()}
-                        </Box>
-                      </StudentTableCell>
-                      <StudentTableCell>
-                        <Typography variant="body2" color={student.startTime || student.endTime ? 'text.primary' : 'text.secondary'}>
-                          {formatTimeRange(student.startTime, student.endTime)}
-                        </Typography>
-                      </StudentTableCell>
-                      <StudentTableCell>
-                        {student.teacherName ? (
-                          <Box display="flex" alignItems="center" gap={1}>
-                            <StyledAvatar sx={{ width: 24, height: 24, fontSize: '0.7rem' }}>
-                              {getInitials(student.teacherName)}
+                    return (
+                      <TableRow key={student.profileId}>
+                        <StudentTableCell>
+                          <Box display="flex" alignItems="center" gap={2}>
+                            <StyledAvatar sx={{ width: 32, height: 32, fontSize: '0.75rem' }}>
+                              {getInitials(student.fullname)}
                             </StyledAvatar>
-                            <Typography variant="body2">
-                              {student.teacherName}
+                            <Typography variant="body2" fontWeight={500}>
+                              {student.fullname}
                             </Typography>
                           </Box>
-                        ) : (
-                          <Typography variant="body2" color="text.secondary">
-                            Chưa phân công
+                        </StudentTableCell>
+                        <StudentTableCell align="center">
+                          <Checkbox
+                            checked={isAttending}
+                            onChange={(e) => handleAttendingCheckboxChange(student.profileId, e.target.checked)}
+                            color="success"
+                            sx={{
+                              '&.Mui-checked': {
+                                color: '#2e7d32'
+                              }
+                            }}
+                          />
+                        </StudentTableCell>
+                        <StudentTableCell>
+                          {!isAttending ? (
+                            <FormControl fullWidth size="small">
+                              <Select
+                                value={(() => {
+                                  // Chuyển đổi các trạng thái cũ sang trạng thái mới
+                                  // Nếu là ABSENT_WITH_REASON hoặc ABSENT_WITH_LATE_REASON, chuyển thành ABSENT_WITHOUT_REASON
+                                  if (effectiveStatus === RollcallStatus.ABSENT_WITH_REASON ||
+                                    effectiveStatus === RollcallStatus.ABSENT_WITH_LATE_REASON) {
+                                    return RollcallStatus.ABSENT_WITHOUT_REASON
+                                  }
+                                  // Các trạng thái khác giữ nguyên
+                                  return effectiveStatus as RollcallStatus.NOT_ROLLCALL | RollcallStatus.ABSENT_WITHOUT_REASON
+                                })()}
+                                onChange={(e) => handleStatusSelectChange(student.profileId, e.target.value as RollcallStatus)}
+                                displayEmpty
+                                sx={{ fontSize: '0.875rem' }}
+                              >
+                                <MenuItem value={RollcallStatus.NOT_ROLLCALL}>
+                                  {getRollcallStatusText(RollcallStatus.NOT_ROLLCALL)}
+                                </MenuItem>
+                                <MenuItem value={RollcallStatus.ABSENT_WITHOUT_REASON}>
+                                  {getRollcallStatusText(RollcallStatus.ABSENT_WITHOUT_REASON)}
+                                </MenuItem>
+                              </Select>
+                            </FormControl>
+                          ) : (
+                            <StatusChip
+                              label={getRollcallStatusText(RollcallStatus.ATTENDING)}
+                              status={RollcallStatus.ATTENDING}
+                              size="small"
+                            />
+                          )}
+                        </StudentTableCell>
+                        <StudentTableCell>
+                          {isEditingReason ? (
+                            <Box display="flex" alignItems="center" gap={1}>
+                              <TextField
+                                size="small"
+                                fullWidth
+                                value={editingReasonText}
+                                onChange={(e) => setEditingReasonText(e.target.value)}
+                                onBlur={() => handleSaveReason(student.profileId)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault()
+                                    handleSaveReason(student.profileId)
+                                  } else if (e.key === 'Escape') {
+                                    e.preventDefault()
+                                    handleCancelEditReason()
+                                  }
+                                }}
+                                placeholder="Nhập lý do..."
+                                sx={{ fontSize: '0.875rem' }}
+                                autoFocus
+                              />
+                              <IconButton
+                                size="small"
+                                color="inherit"
+                                onClick={handleCancelEditReason}
+                                sx={{ padding: '4px' }}
+                                title="Hủy (Esc)"
+                              >
+                                <i className="ri-close-line" style={{ fontSize: '18px' }} />
+                              </IconButton>
+                            </Box>
+                          ) : (
+                            <Box display="flex" alignItems="center" gap={1}>
+                              <Typography
+                                variant="body2"
+                                color={effectiveReason ? 'text.primary' : 'text.secondary'}
+                                sx={{
+                                  flex: 1,
+                                  fontStyle: effectiveReason ? 'normal' : 'italic'
+                                }}
+                              >
+                                {effectiveReason || '—'}
+                              </Typography>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleStartEditReason(student.profileId)}
+                                sx={{ padding: '4px' }}
+                              >
+                                <i className="ri-edit-line" style={{ fontSize: '16px', color: '#1976d2' }} />
+                              </IconButton>
+                            </Box>
+                          )}
+                        </StudentTableCell>
+                        <StudentTableCell>
+                          <Typography variant="body2" color={student.startTime || student.endTime ? 'text.primary' : 'text.secondary'}>
+                            {formatTimeRange(student.startTime, student.endTime)}
                           </Typography>
-                        )}
-                      </StudentTableCell>
-                      <StudentTableCell>
-                        {student.note ? (
-                          <Typography variant="body2" color="text.primary" sx={{ fontStyle: 'italic' }}>
-                            {student.note}
-                          </Typography>
-                        ) : (
-                          <Typography variant="body2" color="text.secondary">
-                            —
-                          </Typography>
-                        )}
-                      </StudentTableCell>
-                    </TableRow>
-                  ))}
+                        </StudentTableCell>
+                        <StudentTableCell>
+                          {student.teacherName ? (
+                            <Box display="flex" alignItems="center" gap={1}>
+                              <StyledAvatar sx={{ width: 24, height: 24, fontSize: '0.7rem' }}>
+                                {getInitials(student.teacherName)}
+                              </StyledAvatar>
+                              <Typography variant="body2">
+                                {student.teacherName}
+                              </Typography>
+                            </Box>
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">
+                              Chưa phân công
+                            </Typography>
+                          )}
+                        </StudentTableCell>
+                        <StudentTableCell>
+                          {student.note ? (
+                            <Typography variant="body2" color="text.primary" sx={{ fontStyle: 'italic' }}>
+                              {student.note}
+                            </Typography>
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">
+                              —
+                            </Typography>
+                          )}
+                        </StudentTableCell>
+                      </TableRow>
+                    )
+                  })}
                 </TableBody>
               </Table>
             </StyledTableContainer>
@@ -983,40 +1131,36 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
 
       <DialogActions>
         {pendingChanges.size > 0 && (
-          <>
-            <Button
-              onClick={handleCancelChanges}
-              variant="outlined"
-              color="inherit"
-              startIcon={<i className="ri-close-line" />}
-            >
-              Hủy thay đổi ({pendingChanges.size})
-            </Button>
-            <Button
-              onClick={handleBatchUpdate}
-              variant="contained"
-              color="error"
-              disabled={updateRollcallMutation.isPending}
-              startIcon={
-                updateRollcallMutation.isPending ? (
-                  <CircularProgress size={16} color="inherit" />
-                ) : (
-                  <i className="ri-save-line" />
-                )
+          <Button
+            onClick={handleBatchUpdate}
+            variant="contained"
+            color="error"
+            disabled={updateRollcallMutation.isPending}
+            startIcon={
+              updateRollcallMutation.isPending ? (
+                <CircularProgress size={16} color="inherit" />
+              ) : (
+                <i className="ri-save-line" />
+              )
+            }
+            sx={{
+              fontWeight: 600,
+              boxShadow: '0 4px 12px rgba(244, 67, 54, 0.3)',
+              '&:hover': {
+                boxShadow: '0 6px 16px rgba(244, 67, 54, 0.4)'
               }
-              sx={{
-                fontWeight: 600,
-                boxShadow: '0 4px 12px rgba(244, 67, 54, 0.3)',
-                '&:hover': {
-                  boxShadow: '0 6px 16px rgba(244, 67, 54, 0.4)'
-                }
-              }}
-            >
-              {updateRollcallMutation.isPending ? 'Đang lưu...' : `Điểm danh (${pendingChanges.size})`}
-            </Button>
-          </>
+            }}
+          >
+            {updateRollcallMutation.isPending ? 'Đang lưu...' : `Điểm danh (${pendingChanges.size})`}
+          </Button>
         )}
-        <Button onClick={onClose} variant="outlined">
+        <Button
+          onClick={() => {
+            setPendingChanges(new Map())
+            onClose()
+          }}
+          variant="outlined"
+        >
           Đóng
         </Button>
       </DialogActions>
