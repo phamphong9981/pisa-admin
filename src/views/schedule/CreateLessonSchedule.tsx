@@ -1526,7 +1526,7 @@ const CreateLessonSchedule = ({
                   </Box>
                 )}
 
-                {/* Available Students from Slot - only in create mode */}
+                {/* Available Students from Slot - in create mode */}
                 {!editMode && availableStudents.length > 0 && (
                   <Box sx={{ mb: 2 }}>
                     <Typography variant="subtitle2" color="text.secondary" mb={1}>
@@ -1559,6 +1559,58 @@ const CreateLessonSchedule = ({
                     </Box>
                   </Box>
                 )}
+
+                {/* Available Students from Slot - in edit mode (other free students) */}
+                {editMode && availableStudents.length > 0 && (() => {
+                  // Filter out students that are already selected or in absent list
+                  const selectedStudentIds = new Set(selectedStudents.map(s => s.profile_id || s.id))
+                  const absentStudentIds = new Set(scheduleDetail?.students.absent.map(s => s.profileId) || [])
+                  
+                  const otherFreeStudents = availableStudents.filter(student => 
+                    !selectedStudentIds.has(student.id) && !absentStudentIds.has(student.id)
+                  )
+
+                  if (otherFreeStudents.length === 0) return null
+
+                  return (
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="subtitle2" color="success.main" mb={1} fontWeight={600}>
+                        <i className="ri-user-add-line" style={{ marginRight: 4 }} />
+                        Học sinh rảnh khác có thể thêm ({otherFreeStudents.length} học sinh):
+                      </Typography>
+                      <Box sx={{
+                        maxHeight: '200px',
+                        overflowY: 'auto',
+                        border: '1px solid #c8e6c9',
+                        borderRadius: 1,
+                        p: 2,
+                        backgroundColor: '#f1f8e9'
+                      }}>
+                        <Grid container spacing={1}>
+                          {otherFreeStudents.map((student) => (
+                            <Grid item xs={12} sm={6} md={4} key={student.id}>
+                              <Chip
+                                label={student.fullname}
+                                onClick={() => handleAddAvailableStudent(student)}
+                                color={isStudentSelected(student.id) ? 'primary' : 'success'}
+                                variant={isStudentSelected(student.id) ? 'filled' : 'outlined'}
+                                sx={{
+                                  cursor: 'pointer',
+                                  width: '100%',
+                                  justifyContent: 'center',
+                                  '&:hover': {
+                                    backgroundColor: isStudentSelected(student.id) ? undefined : '#c8e6c9'
+                                  }
+                                }}
+                                icon={isStudentSelected(student.id) ? undefined : <i className="ri-add-line" style={{ fontSize: '14px' }} />}
+                              />
+                            </Grid>
+                          ))}
+                        </Grid>
+                      </Box>
+                    </Box>
+                  )
+                })()}
 
                 {/* Absent Students - only in edit mode */}
                 {editMode && scheduleDetail && scheduleDetail.students.absent.length > 0 && (
