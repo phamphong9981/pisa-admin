@@ -160,7 +160,8 @@ const getDayInVietnamese = (englishDay: string) => {
 
 const EditTeacherSchedule = () => {
   // States for filtering
-  const [teacherSearch, setTeacherSearch] = useState('')
+  const [teacherSearch, setTeacherSearch] = useState('') // Input value
+  const [activeTeacherSearch, setActiveTeacherSearch] = useState('') // Active search term for filtering
   const [selectedDay, setSelectedDay] = useState<string>('all')
   const [completionStatus, setCompletionStatus] = useState<string>('all') // 'all' | 'completed' | 'incomplete'
   const [selectedWeekId, setSelectedWeekId] = useState<string>('')
@@ -301,11 +302,11 @@ const EditTeacherSchedule = () => {
     let result = teachers
 
     // Filter by search term
-    if (teacherSearch.trim()) {
+    if (activeTeacherSearch.trim()) {
       result = result.filter(teacher =>
-        teacher.name.toLowerCase().includes(teacherSearch.toLowerCase()) ||
+        teacher.name.toLowerCase().includes(activeTeacherSearch.toLowerCase()) ||
         teacher.skills.some(skill =>
-          skill.toLowerCase().includes(teacherSearch.toLowerCase())
+          skill.toLowerCase().includes(activeTeacherSearch.toLowerCase())
         )
       )
     }
@@ -326,7 +327,7 @@ const EditTeacherSchedule = () => {
     }
 
     return result
-  }, [teachers, teacherSearch, completionStatus])
+  }, [teachers, activeTeacherSearch, completionStatus])
 
   // Filter time slots based on selected day
   const filteredTimeSlots = useMemo(() => {
@@ -1283,43 +1284,61 @@ const EditTeacherSchedule = () => {
                 </FormControl>
               </Grid>
               <Grid item xs={12} md={3}>
-                <TextField
-                  fullWidth
-                  placeholder="Tìm kiếm theo tên giáo viên hoặc kỹ năng..."
-                  value={teacherSearch}
-                  onChange={(e) => setTeacherSearch(e.target.value)}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <i className="ri-search-line" style={{ color: '#666' }} />
-                      </InputAdornment>
-                    ),
-                    endAdornment: teacherSearch && (
-                      <InputAdornment position="end">
-                        <i
-                          className="ri-close-line"
-                          style={{
-                            color: '#666',
-                            cursor: 'pointer',
-                            fontSize: '18px'
-                          }}
-                          onClick={() => setTeacherSearch('')}
-                        />
-                      </InputAdornment>
-                    )
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      backgroundColor: 'white',
-                      '&:hover fieldset': {
-                        borderColor: '#1976d2',
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: '#1976d2',
-                      },
-                    }
-                  }}
-                />
+                <Box display="flex" gap={1}>
+                  <TextField
+                    fullWidth
+                    placeholder="Tìm kiếm theo tên giáo viên hoặc kỹ năng..."
+                    value={teacherSearch}
+                    onChange={(e) => setTeacherSearch(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        setActiveTeacherSearch(teacherSearch)
+                      }
+                    }}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <i className="ri-search-line" style={{ color: '#666' }} />
+                        </InputAdornment>
+                      ),
+                      endAdornment: teacherSearch && (
+                        <InputAdornment position="end">
+                          <i
+                            className="ri-close-line"
+                            style={{
+                              color: '#666',
+                              cursor: 'pointer',
+                              fontSize: '18px'
+                            }}
+                            onClick={() => {
+                              setTeacherSearch('')
+                              setActiveTeacherSearch('')
+                            }}
+                          />
+                        </InputAdornment>
+                      )
+                    }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: 'white',
+                        '&:hover fieldset': {
+                          borderColor: '#1976d2',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#1976d2',
+                        },
+                      }
+                    }}
+                  />
+                  <Button
+                    variant="contained"
+                    onClick={() => setActiveTeacherSearch(teacherSearch)}
+                    startIcon={<i className="ri-search-line" />}
+                    sx={{ minWidth: 'auto', px: 2 }}
+                  >
+                    Tìm
+                  </Button>
+                </Box>
               </Grid>
               <Grid item xs={12} md={3}>
                 <FormControl fullWidth>
@@ -1354,17 +1373,20 @@ const EditTeacherSchedule = () => {
             </Grid>
 
             {/* Filter Summary */}
-            {(teacherSearch || selectedDay !== 'all' || completionStatus !== 'all') && (
+            {(activeTeacherSearch || selectedDay !== 'all' || completionStatus !== 'all') && (
               <Box sx={{ mt: 2, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
                 <Typography variant="body2" color="text.secondary">
                   <i className="ri-filter-line" style={{ marginRight: 8 }} />
                   Đang lọc:
-                  {teacherSearch && (
+                  {activeTeacherSearch && (
                     <Chip
-                      label={`Giáo viên: "${teacherSearch}"`}
+                      label={`Giáo viên: "${activeTeacherSearch}"`}
                       size="small"
                       sx={{ ml: 1, mr: 1 }}
-                      onDelete={() => setTeacherSearch('')}
+                      onDelete={() => {
+                        setTeacherSearch('')
+                        setActiveTeacherSearch('')
+                      }}
                     />
                   )}
                   {selectedDay !== 'all' && (

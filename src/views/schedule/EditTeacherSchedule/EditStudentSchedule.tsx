@@ -131,10 +131,10 @@ const getDayInVietnamese = (englishDay: string) => {
 
 const EditStudentSchedule = () => {
   // States for search and filtering
-  const [studentSearch, setStudentSearch] = useState('')
+  const [studentSearch, setStudentSearch] = useState('') // Input value
+  const [activeStudentSearch, setActiveStudentSearch] = useState('') // Active search term for API and filtering
   const [selectedDay, setSelectedDay] = useState<string>('all')
   const [completionStatus, setCompletionStatus] = useState<string>('all') // 'all' | 'completed' | 'incomplete'
-  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [selectedWeekId, setSelectedWeekId] = useState<string>('')
 
   // Fetch weeks to get the open week ID
@@ -161,7 +161,7 @@ const EditStudentSchedule = () => {
   }, [weeks, openWeekId, selectedWeekId])
 
   // Hook for fetching students - use weekId to fetch student's busy schedule for that week
-  const { data: studentData, isLoading, error } = useStudentListWithReload(debouncedSearch, selectedWeekId || undefined)
+  const { data: studentData, isLoading, error } = useStudentListWithReload(activeStudentSearch, selectedWeekId || undefined)
 
   // Hook for batch order schedule
   const batchOrderScheduleMutation = useBatchOrderSchedule()
@@ -184,14 +184,6 @@ const EditStudentSchedule = () => {
     }
   }, [])
 
-  // Debounce search input
-  React.useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(studentSearch)
-    }, 500)
-
-    return () => clearTimeout(timer)
-  }, [studentSearch])
 
   // States for edit dialog
   const [editDialog, setEditDialog] = useState<{
@@ -273,12 +265,13 @@ const EditStudentSchedule = () => {
 
     let result = studentData.users
 
-    // Filter by search term
-    if (studentSearch.trim()) {
+    // Filter by search term (additional client-side filtering if needed)
+    // Note: API already filters by activeStudentSearch, but we keep this for consistency
+    if (activeStudentSearch.trim()) {
       result = result.filter(student =>
-        student.profile.fullname.toLowerCase().includes(studentSearch.toLowerCase()) ||
-        student.profile.email.toLowerCase().includes(studentSearch.toLowerCase()) ||
-        student.course?.name.toLowerCase().includes(studentSearch.toLowerCase())
+        student.profile.fullname.toLowerCase().includes(activeStudentSearch.toLowerCase()) ||
+        student.profile.email.toLowerCase().includes(activeStudentSearch.toLowerCase()) ||
+        student.course?.name.toLowerCase().includes(activeStudentSearch.toLowerCase())
       )
     }
 
@@ -298,7 +291,7 @@ const EditStudentSchedule = () => {
     }
 
     return result
-  }, [studentData?.users, studentSearch, completionStatus])
+  }, [studentData?.users, activeStudentSearch, completionStatus])
 
   // Filter time slots based on selected day
   const filteredTimeSlots = useMemo(() => {
@@ -998,43 +991,61 @@ const EditStudentSchedule = () => {
                 </FormControl>
               </Grid>
               <Grid item xs={12} md={3}>
-                <TextField
-                  fullWidth
-                  placeholder="Tìm kiếm theo tên học sinh, email hoặc khóa học..."
-                  value={studentSearch}
-                  onChange={(e) => setStudentSearch(e.target.value)}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <i className="ri-search-line" style={{ color: '#666' }} />
-                      </InputAdornment>
-                    ),
-                    endAdornment: studentSearch && (
-                      <InputAdornment position="end">
-                        <i
-                          className="ri-close-line"
-                          style={{
-                            color: '#666',
-                            cursor: 'pointer',
-                            fontSize: '18px'
-                          }}
-                          onClick={() => setStudentSearch('')}
-                        />
-                      </InputAdornment>
-                    )
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      backgroundColor: 'white',
-                      '&:hover fieldset': {
-                        borderColor: '#1976d2',
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: '#1976d2',
-                      },
-                    }
-                  }}
-                />
+                <Box display="flex" gap={1}>
+                  <TextField
+                    fullWidth
+                    placeholder="Tìm kiếm theo tên học sinh, email hoặc khóa học..."
+                    value={studentSearch}
+                    onChange={(e) => setStudentSearch(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        setActiveStudentSearch(studentSearch)
+                      }
+                    }}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <i className="ri-search-line" style={{ color: '#666' }} />
+                        </InputAdornment>
+                      ),
+                      endAdornment: studentSearch && (
+                        <InputAdornment position="end">
+                          <i
+                            className="ri-close-line"
+                            style={{
+                              color: '#666',
+                              cursor: 'pointer',
+                              fontSize: '18px'
+                            }}
+                            onClick={() => {
+                              setStudentSearch('')
+                              setActiveStudentSearch('')
+                            }}
+                          />
+                        </InputAdornment>
+                      )
+                    }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: 'white',
+                        '&:hover fieldset': {
+                          borderColor: '#1976d2',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#1976d2',
+                        },
+                      }
+                    }}
+                  />
+                  <Button
+                    variant="contained"
+                    onClick={() => setActiveStudentSearch(studentSearch)}
+                    startIcon={<i className="ri-search-line" />}
+                    sx={{ minWidth: 'auto', px: 2 }}
+                  >
+                    Tìm
+                  </Button>
+                </Box>
               </Grid>
               <Grid item xs={12} md={3}>
                 <FormControl fullWidth>
@@ -1069,17 +1080,20 @@ const EditStudentSchedule = () => {
             </Grid>
 
             {/* Filter Summary */}
-            {(studentSearch || selectedDay !== 'all' || completionStatus !== 'all') && (
+            {(activeStudentSearch || selectedDay !== 'all' || completionStatus !== 'all') && (
               <Box sx={{ mt: 2, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
                 <Typography variant="body2" color="text.secondary">
                   <i className="ri-filter-line" style={{ marginRight: 8 }} />
                   Đang lọc:
-                  {studentSearch && (
+                  {activeStudentSearch && (
                     <Chip
-                      label={`Học sinh: "${studentSearch}"`}
+                      label={`Học sinh: "${activeStudentSearch}"`}
                       size="small"
                       sx={{ ml: 1, mr: 1 }}
-                      onDelete={() => setStudentSearch('')}
+                      onDelete={() => {
+                        setStudentSearch('')
+                        setActiveStudentSearch('')
+                      }}
                     />
                   )}
                   {selectedDay !== 'all' && (
