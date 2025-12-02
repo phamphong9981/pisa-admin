@@ -772,6 +772,7 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                     <StyledTableCell>Lý do</StyledTableCell>
                     <StyledTableCell>Thời gian</StyledTableCell>
                     <StyledTableCell>Giáo viên dạy</StyledTableCell>
+                    <StyledTableCell>Người điểm danh</StyledTableCell>
                     <StyledTableCell>Ghi chú</StyledTableCell>
                   </TableRow>
                 </TableHead>
@@ -916,6 +917,17 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                           )}
                         </StudentTableCell>
                         <StudentTableCell>
+                          {student.rollcallUsername ? (
+                            <Typography variant="body2" color="primary.main" fontWeight={500}>
+                              {student.rollcallUsername}
+                            </Typography>
+                          ) : (
+                            <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                              Chưa điểm danh
+                            </Typography>
+                          )}
+                        </StudentTableCell>
+                        <StudentTableCell>
                           {student.note ? (
                             <Typography variant="body2" color="text.primary" sx={{ fontStyle: 'italic' }}>
                               {student.note}
@@ -946,6 +958,7 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                     <StyledTableCell>Lịch bù</StyledTableCell>
                     <StyledTableCell>Thời gian</StyledTableCell>
                     <StyledTableCell>Giáo viên dạy</StyledTableCell>
+                    <StyledTableCell>Người điểm danh</StyledTableCell>
                     <StyledTableCell>Lý do</StyledTableCell>
                     <StyledTableCell>Ghi chú</StyledTableCell>
                   </TableRow>
@@ -1009,6 +1022,17 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                         )}
                       </StudentTableCell>
                       <StudentTableCell>
+                        {student.rollcallUsername ? (
+                          <Typography variant="body2" color="primary.main" fontWeight={500}>
+                            {student.rollcallUsername}
+                          </Typography>
+                        ) : (
+                          <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                            Chưa điểm danh
+                          </Typography>
+                        )}
+                      </StudentTableCell>
+                      <StudentTableCell>
                         <Typography variant="body2" color="text.secondary">
                           {student.reason || 'Không có lý do'}
                         </Typography>
@@ -1043,6 +1067,7 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                     <StyledTableCell>Trạng thái</StyledTableCell>
                     <StyledTableCell>Thời gian</StyledTableCell>
                     <StyledTableCell>Lịch bận</StyledTableCell>
+                    <StyledTableCell>Người điểm danh</StyledTableCell>
                     <StyledTableCell>Ghi chú</StyledTableCell>
                   </TableRow>
                 </TableHead>
@@ -1108,6 +1133,17 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                             />
                           ))}
                         </Box>
+                      </StudentTableCell>
+                      <StudentTableCell>
+                        {student.rollcallUsername ? (
+                          <Typography variant="body2" color="primary.main" fontWeight={500}>
+                            {student.rollcallUsername}
+                          </Typography>
+                        ) : (
+                          <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                            Chưa điểm danh
+                          </Typography>
+                        )}
                       </StudentTableCell>
                       <StudentTableCell>
                         {student.note ? (

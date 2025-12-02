@@ -280,6 +280,7 @@ export interface StudentScheduleDetailDto {
     endTime?: string,
     note?: string,
     courseName: string
+    rollcallUsername?: string
 }
 
 export interface ClassScheduleDetailDto {
