@@ -225,9 +225,6 @@ const SchedulePlanner = () => {
     setSelectedCourseId('')
   }, [selectedRegion, selectedWeekId])
 
-  // State for highlighting teacher's free schedule
-  const [selectedTeacherId, setSelectedTeacherId] = useState<string>('')
-
   // State for auto schedule messages
   const [autoScheduleMessage, setAutoScheduleMessage] = useState<{
     type: 'success' | 'error' | null
@@ -528,15 +525,6 @@ const SchedulePlanner = () => {
       editData: null,
       teacherId: undefined
     })
-  }
-
-  // Handle class click to highlight teacher's free schedule
-  const handleClassClick = (teacherId: string) => {
-    if (selectedTeacherId === teacherId) {
-      setSelectedTeacherId('') // Deselect if same teacher
-    } else {
-      setSelectedTeacherId(teacherId) // Select new teacher
-    }
   }
 
   // Handle auto schedule course
@@ -908,169 +896,6 @@ const SchedulePlanner = () => {
             </Box>
           </Box>
 
-          {/* Teacher Search */}
-          {selectedCourseId && (
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" gutterBottom>
-                Tìm kiếm giáo viên để xem lịch khớp trên lưới:
-              </Typography>
-              <Box sx={{ maxWidth: 400 }}>
-                {/* Teacher Search */}
-                <TextField
-                  fullWidth
-                  placeholder="Tìm kiếm giáo viên..."
-                  value={teacherSearchTerm}
-                  onChange={(e) => setTeacherSearchTerm(e.target.value)}
-                  InputProps={{
-                    startAdornment: (
-                      <i className="ri-search-line" style={{ color: '#666', marginRight: 8 }} />
-                    ),
-                    endAdornment: teacherSearchTerm && (
-                      <i
-                        className="ri-close-line"
-                        style={{
-                          color: '#666',
-                          cursor: 'pointer',
-                          fontSize: '18px'
-                        }}
-                        onClick={() => setTeacherSearchTerm('')}
-                      />
-                    )
-                  }}
-                  sx={{ mb: 1 }}
-                />
-
-                {/* Teacher Search Results */}
-                {teacherSearchTerm && (
-                  <Box sx={{
-                    maxHeight: '200px',
-                    overflowY: 'auto',
-                    border: '1px solid #eee',
-                    borderRadius: 1,
-                    p: 1,
-                    backgroundColor: '#f8f9fa',
-                    mb: 1
-                  }}>
-                    {isTeachersLoading ? (
-                      <Box display="flex" justifyContent="center" p={2}>
-                        <CircularProgress size={20} />
-                      </Box>
-                    ) : teachers && teachers.length > 0 ? (
-                      <Box>
-                        <Typography variant="caption" color="text.secondary" display="block" mb={1}>
-                          Kết quả tìm kiếm ({teachers.length} giáo viên):
-                        </Typography>
-                        {teachers.map((teacher) => {
-                          const isTeacherBusy = teacher.registeredBusySchedule?.includes(0) // Check if teacher is busy at any slot
-                          const isSelected = selectedTeacher?.id === teacher.id
-
-                          return (
-                            <Box
-                              key={teacher.id}
-                              sx={{
-                                p: 1,
-                                borderBottom: '1px solid #eee',
-                                '&:last-child': { borderBottom: 'none' },
-                                cursor: 'pointer',
-                                '&:hover': { backgroundColor: '#e3f2fd' },
-                                borderRadius: 1,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                backgroundColor: isSelected ? '#e3f2fd' : 'transparent'
-                              }}
-                              onClick={() => setSelectedTeacher(teacher)}
-                            >
-                              <Box sx={{ flex: 1 }}>
-                                <Typography variant="body2" fontWeight={500}>
-                                  {teacher.name}
-                                </Typography>
-                                {teacher.skills && teacher.skills.length > 0 && (
-                                  <Typography variant="caption" color="text.secondary" display="block">
-                                    <i className="ri-award-line" style={{ marginRight: 4, fontSize: '12px' }} />
-                                    {teacher.skills.join(', ')}
-                                  </Typography>
-                                )}
-                              </Box>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Chip
-                                  size="small"
-                                  label="Rảnh"
-                                  color="success"
-                                  variant="outlined"
-                                  sx={{ fontSize: '0.7rem' }}
-                                />
-                                {isSelected && (
-                                  <Chip
-                                    size="small"
-                                    label="Đã chọn"
-                                    color="primary"
-                                    variant="filled"
-                                    sx={{ fontSize: '0.7rem' }}
-                                  />
-                                )}
-                              </Box>
-                            </Box>
-                          )
-                        })}
-                      </Box>
-                    ) : (
-                      <Typography variant="body2" color="text.secondary" textAlign="center" p={2}>
-                        Không tìm thấy giáo viên nào
-                      </Typography>
-                    )}
-                  </Box>
-                )}
-
-                {/* Selected Teacher Display */}
-                {selectedTeacher && !teacherSearchTerm && (
-                  <Box sx={{
-                    p: 1.5,
-                    backgroundColor: '#e8f5e8',
-                    borderRadius: 1,
-                    border: '1px solid #c8e6c9',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between'
-                  }}>
-                    <Box sx={{ flex: 1 }}>
-                      <Typography variant="body2" fontWeight={600}>
-                        {selectedTeacher.name}
-                      </Typography>
-                      {selectedTeacher.skills && selectedTeacher.skills.length > 0 && (
-                        <Typography variant="caption" color="text.secondary" display="block">
-                          <i className="ri-award-line" style={{ marginRight: 4, fontSize: '12px' }} />
-                          {selectedTeacher.skills.join(', ')}
-                        </Typography>
-                      )}
-                    </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Chip
-                        size="small"
-                        label="Rảnh"
-                        color="success"
-                        variant="outlined"
-                        sx={{ fontSize: '0.7rem' }}
-                      />
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        color="inherit"
-                        onClick={() => {
-                          setTeacherSearchTerm('')
-                          setSelectedTeacher(null)
-                        }}
-                        sx={{ fontSize: '0.7rem', py: 0.25, px: 1 }}
-                      >
-                        Bỏ chọn
-                      </Button>
-                    </Box>
-                  </Box>
-                )}
-              </Box>
-            </Box>
-          )}
-
           {/* Auto schedule info */}
           {selectedCourseId && isWeekOpen && (
             <Box sx={{ mt: 2, p: 1.5, backgroundColor: '#e8f5e8', borderRadius: 1, border: '1px solid #c8e6c9' }}>
@@ -1122,13 +947,169 @@ const SchedulePlanner = () => {
         <Card>
           <CardHeader title="Lưới học sinh rảnh theo khung giờ" />
           <CardContent>
+            {/* Teacher Search */}
+            {selectedCourseId && (
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Tìm kiếm giáo viên để xem lịch khớp trên lưới:
+                </Typography>
+                <Box sx={{ maxWidth: 400 }}>
+                  {/* Teacher Search */}
+                  <TextField
+                    fullWidth
+                    placeholder="Tìm kiếm giáo viên..."
+                    value={teacherSearchTerm}
+                    onChange={(e) => setTeacherSearchTerm(e.target.value)}
+                    InputProps={{
+                      startAdornment: (
+                        <i className="ri-search-line" style={{ color: '#666', marginRight: 8 }} />
+                      ),
+                      endAdornment: teacherSearchTerm && (
+                        <i
+                          className="ri-close-line"
+                          style={{
+                            color: '#666',
+                            cursor: 'pointer',
+                            fontSize: '18px'
+                          }}
+                          onClick={() => setTeacherSearchTerm('')}
+                        />
+                      )
+                    }}
+                    sx={{ mb: 1 }}
+                  />
+
+                  {/* Teacher Search Results */}
+                  {teacherSearchTerm && (
+                    <Box sx={{
+                      maxHeight: '200px',
+                      overflowY: 'auto',
+                      border: '1px solid #eee',
+                      borderRadius: 1,
+                      p: 1,
+                      backgroundColor: '#f8f9fa',
+                      mb: 1
+                    }}>
+                      {isTeachersLoading ? (
+                        <Box display="flex" justifyContent="center" p={2}>
+                          <CircularProgress size={20} />
+                        </Box>
+                      ) : teachers && teachers.length > 0 ? (
+                        <Box>
+                          <Typography variant="caption" color="text.secondary" display="block" mb={1}>
+                            Kết quả tìm kiếm ({teachers.length} giáo viên):
+                          </Typography>
+                          {teachers.map((teacher) => {
+                            const isTeacherBusy = teacher.registeredBusySchedule?.includes(0) // Check if teacher is busy at any slot
+                            const isSelected = selectedTeacher?.id === teacher.id
+
+                            return (
+                              <Box
+                                key={teacher.id}
+                                sx={{
+                                  p: 1,
+                                  borderBottom: '1px solid #eee',
+                                  '&:last-child': { borderBottom: 'none' },
+                                  cursor: 'pointer',
+                                  '&:hover': { backgroundColor: '#e3f2fd' },
+                                  borderRadius: 1,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  backgroundColor: isSelected ? '#e3f2fd' : 'transparent'
+                                }}
+                                onClick={() => setSelectedTeacher(teacher)}
+                              >
+                                <Box sx={{ flex: 1 }}>
+                                  <Typography variant="body2" fontWeight={500}>
+                                    {teacher.name}
+                                  </Typography>
+                                  {teacher.skills && teacher.skills.length > 0 && (
+                                    <Typography variant="caption" color="text.secondary" display="block">
+                                      <i className="ri-award-line" style={{ marginRight: 4, fontSize: '12px' }} />
+                                      {teacher.skills.join(', ')}
+                                    </Typography>
+                                  )}
+                                </Box>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <Chip
+                                    size="small"
+                                    label="Rảnh"
+                                    color="success"
+                                    variant="outlined"
+                                    sx={{ fontSize: '0.7rem' }}
+                                  />
+                                  {isSelected && (
+                                    <Chip
+                                      size="small"
+                                      label="Đã chọn"
+                                      color="primary"
+                                      variant="filled"
+                                      sx={{ fontSize: '0.7rem' }}
+                                    />
+                                  )}
+                                </Box>
+                              </Box>
+                            )
+                          })}
+                        </Box>
+                      ) : (
+                        <Typography variant="body2" color="text.secondary" textAlign="center" p={2}>
+                          Không tìm thấy giáo viên nào
+                        </Typography>
+                      )}
+                    </Box>
+                  )}
+
+                  {/* Selected Teacher Display */}
+                  {selectedTeacher && !teacherSearchTerm && (
+                    <Box sx={{
+                      p: 1.5,
+                      backgroundColor: '#e8f5e8',
+                      borderRadius: 1,
+                      border: '1px solid #c8e6c9',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between'
+                    }}>
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="body2" fontWeight={600}>
+                          {selectedTeacher.name}
+                        </Typography>
+                        {selectedTeacher.skills && selectedTeacher.skills.length > 0 && (
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            <i className="ri-award-line" style={{ marginRight: 4, fontSize: '12px' }} />
+                            {selectedTeacher.skills.join(', ')}
+                          </Typography>
+                        )}
+                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Chip
+                          size="small"
+                          label="Rảnh"
+                          color="success"
+                          variant="outlined"
+                          sx={{ fontSize: '0.7rem' }}
+                        />
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="inherit"
+                          onClick={() => {
+                            setTeacherSearchTerm('')
+                            setSelectedTeacher(null)
+                          }}
+                          sx={{ fontSize: '0.7rem', py: 0.25, px: 1 }}
+                        >
+                          Bỏ chọn
+                        </Button>
+                      </Box>
+                    </Box>
+                  )}
+                </Box>
+              </Box>
+            )}
             <Box display="flex" gap={1} alignItems="center" mb={2} flexWrap="wrap">
-              <TextField
-                label="Tìm lớp"
-                size="small"
-                value={classSearch}
-                onChange={(e) => setClassSearch(e.target.value)}
-              />
               <Box display="flex" gap={0.5} flexWrap="wrap">
                 {filteredClasses.map(cls => {
                   // Check if class has schedule
@@ -1152,22 +1133,12 @@ const SchedulePlanner = () => {
                       }
                       color={hasSchedule ? 'success' : 'default'}
                       variant={hasSchedule ? 'filled' : 'outlined'}
-                      onClick={() => handleClassClick(teacherId)}
                       sx={{
-                        cursor: 'pointer',
                         ...(hasSchedule && {
                           backgroundColor: '#e8f5e8',
                           color: '#2e7d32',
                           borderColor: '#4caf50',
                           fontWeight: 600
-                        }),
-                        ...(selectedTeacherId === teacherId && {
-                          backgroundColor: '#1976d2',
-                          color: '#fff',
-                          borderColor: '#1976d2',
-                          fontWeight: 700,
-                          transform: 'scale(1.05)',
-                          boxShadow: '0 4px 12px rgba(25, 118, 210, 0.3)'
                         })
                       }}
                     />
@@ -1218,11 +1189,6 @@ const SchedulePlanner = () => {
                             free = free.filter(s => !set.has(s.id))
                           }
 
-                          // Check if this time slot should be highlighted for selected teacher
-                          const shouldHighlight = selectedTeacherId && index > 0 &&
-                            !isTeacherBusy(selectedTeacherId, index - 1) &&
-                            !isTeacherTeaching(selectedTeacherId, index - 1)
-
                           // Check if this time slot is available for the searched teacher
                           const isTeacherAvailable = selectedTeacher && index > 0 &&
                             teacherAvailableSlots.has(index)
@@ -1232,22 +1198,7 @@ const SchedulePlanner = () => {
                             <GridCell
                               key={`${day}|${time}`}
                               sx={{
-                                ...(shouldHighlight && {
-                                  backgroundColor: '#e3f2fd',
-                                  border: '2px solid #1976d2',
-                                  position: 'relative',
-                                  '&::before': {
-                                    content: '""',
-                                    position: 'absolute',
-                                    top: 0,
-                                    left: 0,
-                                    right: 0,
-                                    height: 4,
-                                    background: '#1976d2',
-                                    zIndex: 2
-                                  }
-                                }),
-                                ...(isTeacherAvailable && !shouldHighlight && {
+                                ...(isTeacherAvailable && {
                                   backgroundColor: '#e8f5e8',
                                   border: '2px solid #4caf50',
                                   position: 'relative',
@@ -1264,23 +1215,7 @@ const SchedulePlanner = () => {
                                 })
                               }}
                             >
-                              {shouldHighlight && (
-                                <Box sx={{
-                                  textAlign: 'center',
-                                  mb: 1,
-                                  p: 0.5,
-                                  backgroundColor: 'rgba(25, 118, 210, 0.1)',
-                                  borderRadius: 1,
-                                  border: '1px solid rgba(25, 118, 210, 0.3)'
-                                }}>
-                                  <Typography variant="caption" color="primary" fontWeight={600}>
-                                    <i className="ri-time-line" style={{ marginRight: 4 }} />
-                                    GV rảnh
-                                  </Typography>
-                                </Box>
-                              )}
-
-                              {isTeacherAvailable && !shouldHighlight && (
+                              {isTeacherAvailable && (
                                 <Box sx={{
                                   textAlign: 'center',
                                   mb: 1,
