@@ -1115,7 +1115,7 @@ const TeachersSchedule = () => {
             </Box>
             <Box display="flex" alignItems="center" gap={1} width="100%" flexWrap="wrap">
               <Typography variant="caption" color="text.secondary">
-                {teacher.skills?.length || 0} kỹ năng
+                {teacher.skills?.join(', ') || 'Không có kỹ năng'}
               </Typography>
             </Box>
             {teacher.note && (
