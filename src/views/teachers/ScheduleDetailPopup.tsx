@@ -406,6 +406,7 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
       setUpdatedCount(updates.length)
       setPendingChanges(new Map())
       setShowSuccessMessage(true)
+      onClose()
     } catch (error) {
       console.error('Error updating rollcall status:', error)
     }
