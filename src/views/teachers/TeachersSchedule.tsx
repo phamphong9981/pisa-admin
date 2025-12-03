@@ -1153,6 +1153,7 @@ const TeachersSchedule = () => {
           if (!cellData) return null
 
           const { isBusy, isTeaching, teachingInfos, teacherName, dayLabel, time } = cellData
+          const scheduleNote = getScheduleNote(cellData.teacherId, cellData.slot + 1)
 
           return (
             <Box
@@ -1161,12 +1162,61 @@ const TeachersSchedule = () => {
                 minHeight: '80px',
                 padding: '4px',
                 display: 'flex',
-                alignItems: 'flex-start',
-                justifyContent: 'center',
+                flexDirection: 'column',
+                alignItems: 'stretch',
+                justifyContent: 'flex-start',
                 overflow: 'visible',
-                minWidth: 0
+                minWidth: 0,
+                gap: 0.5
               }}
             >
+              {/* Schedule Note for Teacher - Always visible when teaching, or when there's a note */}
+              {isTeaching && (
+                <Box
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleOpenScheduleNoteDialog(cellData.teacherId, teacherName, cellData.slot + 1, dayLabel, time, scheduleNote)
+                  }}
+                  sx={{
+                    width: '100%',
+                    backgroundColor: scheduleNote ? '#fff3cd' : 'transparent',
+                    borderBottom: scheduleNote ? '2px solid #ffc107' : '1px dashed #ccc',
+                    padding: scheduleNote ? '4px 6px' : '2px 6px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 0.5,
+                    minHeight: scheduleNote ? '24px' : '20px',
+                    flexShrink: 0,
+                    cursor: 'pointer',
+                    borderRadius: '4px 4px 0 0',
+                    '&:hover': {
+                      backgroundColor: scheduleNote ? '#ffe69c' : '#f5f5f5'
+                    }
+                  }}
+                  title={scheduleNote ? `Ghi chú: ${scheduleNote} - Click để chỉnh sửa` : 'Click để thêm ghi chú'}
+                >
+                  <i className="ri-file-text-line" style={{ fontSize: '12px', color: scheduleNote ? '#856404' : '#999', flexShrink: 0 }} />
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      color: scheduleNote ? '#856404' : '#999',
+                      fontWeight: scheduleNote ? 600 : 400,
+                      fontSize: '0.7rem',
+                      flex: 1,
+                      minWidth: 0,
+                      fontStyle: scheduleNote ? 'normal' : 'italic'
+                    }}
+                  >
+                    {scheduleNote || 'Click để thêm ghi chú...'}
+                  </Typography>
+                  <i className="ri-edit-line" style={{ fontSize: '12px', color: scheduleNote ? '#856404' : '#999', flexShrink: 0, opacity: 0.6 }} />
+                </Box>
+              )}
+
+              {/* Teaching Info or Schedule Cell */}
               {isTeaching && teachingInfos.length > 0 ? (
                 <TeachingInfosContainer sx={{ width: '100%', minWidth: 0 }}>
                   {teachingInfos.map((teachingInfo, index) => (
@@ -1276,7 +1326,7 @@ const TeachersSchedule = () => {
                   dayLabel={dayLabel}
                   time={time}
                   scheduleTime={cellData.slot + 1}
-                  scheduleNote={getScheduleNote(cellData.teacherId, cellData.slot + 1)}
+                  scheduleNote={scheduleNote}
                   onEditNote={handleOpenScheduleNoteDialog}
                 />
               )}
