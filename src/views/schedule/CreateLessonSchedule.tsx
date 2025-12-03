@@ -1381,7 +1381,7 @@ const CreateLessonSchedule = ({
                   <Box sx={{ mb: 2 }}>
                     <TextField
                       fullWidth
-                      placeholder="Tìm kiếm học sinh để thêm vào lịch học..."
+                      placeholder="Tìm kiếm học sinh lớp khác để ghép vào lịch"
                       value={studentSearch}
                       onChange={(e) => handleSearchStudent(e.target.value)}
                       InputProps={{
@@ -1565,8 +1565,8 @@ const CreateLessonSchedule = ({
                   // Filter out students that are already selected or in absent list
                   const selectedStudentIds = new Set(selectedStudents.map(s => s.profile_id || s.id))
                   const absentStudentIds = new Set(scheduleDetail?.students.absent.map(s => s.profileId) || [])
-                  
-                  const otherFreeStudents = availableStudents.filter(student => 
+
+                  const otherFreeStudents = availableStudents.filter(student =>
                     !selectedStudentIds.has(student.id) && !absentStudentIds.has(student.id)
                   )
 
