@@ -1824,11 +1824,11 @@ const TeachersSchedule = () => {
 
   return (
     <>
-      {/* Lịch rảnh giáo viên */}
+      {/* PISA TEACHER */}
       <Card>
         <CardHeader
-          title="Lịch rảnh giáo viên"
-          subheader="Quản lý lịch rảnh của tất cả giáo viên theo từng khung giờ trong tuần"
+          title="PISA TEACHER"
+          subheader="Quản lý lịch giảng dạy của giáo viên PISA trong tuần"
           action={
             <Box display="flex" gap={1} alignItems="center">
               <Chip
@@ -2058,10 +2058,10 @@ const TeachersSchedule = () => {
               <i className="ri-calendar-schedule-line" style={{ fontSize: 28, color: '#1976d2' }} />
               <Box>
                 <Typography variant="h5" fontWeight={600}>
-                  Lịch rảnh giáo viên - Toàn màn hình
+                  PISA TEACHER - Toàn màn hình
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Quản lý lịch rảnh của tất cả giáo viên theo từng khung giờ trong tuần
+                  Quản lý lịch giảng dạy của giáo viên PISA trong tuần
                 </Typography>
               </Box>
             </Box>

@@ -78,7 +78,7 @@ const VerticalMenu = ({ scrollMenu }: { scrollMenu: (container: any, isPerfectSc
         )}
         {canAccessSchedule && (
           <SubMenu label='Quản lý lịch học' icon={<i className='ri-calendar-schedule-line' />}>
-            <MenuItem href='/edit-schedule' icon={<i className='ri-calendar-edit-line' />}>Chỉnh sửa lịch</MenuItem>
+            <MenuItem href='/edit-schedule' icon={<i className='ri-calendar-edit-line' />}>Lịch rảnh/bận</MenuItem>
             <MenuItem href='/schedule-planner' icon={<i className='ri-calendar-event-line' />}>Xếp lịch học</MenuItem>
             <MenuItem href='/schedule-requests' icon={<i className='ri-user-forbid-line' />}>Yêu cầu đổi lịch</MenuItem>
             <MenuItem href='/unscheduled-students' icon={<i className='ri-user-forbid-line' />}>Danh sách học sinh đang thiếu</MenuItem>
@@ -87,7 +87,7 @@ const VerticalMenu = ({ scrollMenu }: { scrollMenu: (container: any, isPerfectSc
         {canAccessTeacher && (
           <SubMenu label='Quản lý giáo viên' icon={<i className='ri-user-star-line' />}>
             <MenuItem href='/teachers-info' icon={<i className='ri-user-settings-line' />}>Thông tin giáo viên</MenuItem>
-            <MenuItem href='/teachers-schedule' icon={<i className='ri-calendar-time-line' />}>Lịch giáo viên</MenuItem>
+            <MenuItem href='/teachers-schedule' icon={<i className='ri-calendar-time-line' />}>PISA TEACHER</MenuItem>
           </SubMenu>
         )}
         {canAccessUser && (

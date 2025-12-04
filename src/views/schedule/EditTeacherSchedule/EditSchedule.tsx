@@ -60,7 +60,7 @@ const EditSchedule = () => {
   return (
     <Card>
       <CardHeader
-        title="Chỉnh sửa lịch"
+        title="Lịch rảnh/bận"
         subheader="Quản lý và chỉnh sửa lịch của học sinh và giáo viên"
         action={
           <Box display="flex" alignItems="center" gap={1}>
