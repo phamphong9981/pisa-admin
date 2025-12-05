@@ -207,11 +207,7 @@ const getRollcallStatusText = (status: RollcallStatus) => {
     case RollcallStatus.ATTENDING:
       return 'Có mặt'
     case RollcallStatus.ABSENT_WITHOUT_REASON:
-      return 'Vắng không lý do'
-    case RollcallStatus.ABSENT_WITH_REASON:
-      return 'Vắng có lý do'
-    case RollcallStatus.ABSENT_WITH_LATE_REASON:
-      return 'Vắng báo muộn'
+      return 'Vắng mặt'
     case RollcallStatus.NOT_ROLLCALL:
       return 'Chưa điểm danh'
     default:
@@ -686,6 +682,11 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                   })()}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
+                  Giáo viên dạy: {students.attending.length > 0 && students.attending[0].teacherName
+                    ? students.attending[0].teacherName
+                    : teacherName || '—'}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
                   Ghi chú buổi học: {scheduleDetail?.scheduleInfo?.note || '—'}
                 </Typography>
                 <Box display="flex" alignItems="center" gap={1} mt={0.5}>
@@ -770,9 +771,8 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                     <StyledTableCell>Học sinh</StyledTableCell>
                     <StyledTableCell align="center">Có mặt</StyledTableCell>
                     <StyledTableCell>Trạng thái</StyledTableCell>
-                    <StyledTableCell>Lý do</StyledTableCell>
+                    <StyledTableCell>Note điểm danh</StyledTableCell>
                     <StyledTableCell>Thời gian</StyledTableCell>
-                    <StyledTableCell>Giáo viên dạy</StyledTableCell>
                     <StyledTableCell>Người điểm danh</StyledTableCell>
                     <StyledTableCell>Ghi chú</StyledTableCell>
                   </TableRow>
@@ -902,22 +902,6 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                           </Typography>
                         </StudentTableCell>
                         <StudentTableCell>
-                          {student.teacherName ? (
-                            <Box display="flex" alignItems="center" gap={1}>
-                              <StyledAvatar sx={{ width: 24, height: 24, fontSize: '0.7rem' }}>
-                                {getInitials(student.teacherName)}
-                              </StyledAvatar>
-                              <Typography variant="body2">
-                                {student.teacherName}
-                              </Typography>
-                            </Box>
-                          ) : (
-                            <Typography variant="body2" color="text.secondary">
-                              Chưa phân công
-                            </Typography>
-                          )}
-                        </StudentTableCell>
-                        <StudentTableCell>
                           {student.rollcallUsername ? (
                             <Typography variant="body2" color="primary.main" fontWeight={500}>
                               {student.rollcallUsername}
@@ -958,7 +942,6 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                     <StyledTableCell>SĐT</StyledTableCell>
                     <StyledTableCell>Lịch bù</StyledTableCell>
                     <StyledTableCell>Thời gian</StyledTableCell>
-                    <StyledTableCell>Giáo viên dạy</StyledTableCell>
                     <StyledTableCell>Người điểm danh</StyledTableCell>
                     <StyledTableCell>Lý do</StyledTableCell>
                     <StyledTableCell>Ghi chú</StyledTableCell>
@@ -1005,22 +988,6 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                         <Typography variant="body2" color={student.startTime || student.endTime ? 'text.primary' : 'text.secondary'}>
                           {formatTimeRange(student.startTime, student.endTime)}
                         </Typography>
-                      </StudentTableCell>
-                      <StudentTableCell>
-                        {student.teacherName ? (
-                          <Box display="flex" alignItems="center" gap={1}>
-                            <StyledAvatar sx={{ width: 24, height: 24, fontSize: '0.7rem' }}>
-                              {getInitials(student.teacherName)}
-                            </StyledAvatar>
-                            <Typography variant="body2">
-                              {student.teacherName}
-                            </Typography>
-                          </Box>
-                        ) : (
-                          <Typography variant="body2" color="text.secondary">
-                            Chưa phân công
-                          </Typography>
-                        )}
                       </StudentTableCell>
                       <StudentTableCell>
                         {student.rollcallUsername ? (
@@ -1264,52 +1231,8 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
               }}
             >
               <Box textAlign="left">
-                <Typography variant="body1" fontWeight={600}>Vắng không lý do</Typography>
-                <Typography variant="body2" color="text.secondary">Học sinh vắng mặt không có lý do</Typography>
-              </Box>
-            </Button>
-
-            <Button
-              variant="outlined"
-              onClick={() => handleStatusChange(RollcallStatus.ABSENT_WITH_REASON)}
-              startIcon={<i className="ri-time-line" style={{ color: '#ef6c00' }} />}
-              sx={{
-                justifyContent: 'flex-start',
-                padding: '12px 16px',
-                borderRadius: '12px',
-                borderColor: '#ff9800',
-                color: '#ef6c00',
-                '&:hover': {
-                  backgroundColor: '#fff3e0',
-                  borderColor: '#ef6c00'
-                }
-              }}
-            >
-              <Box textAlign="left">
-                <Typography variant="body1" fontWeight={600}>Vắng có lý do</Typography>
-                <Typography variant="body2" color="text.secondary">Học sinh vắng mặt có lý do chính đáng</Typography>
-              </Box>
-            </Button>
-
-            <Button
-              variant="outlined"
-              onClick={() => handleStatusChange(RollcallStatus.ABSENT_WITH_LATE_REASON)}
-              startIcon={<i className="ri-time-line" style={{ color: '#7b1fa2' }} />}
-              sx={{
-                justifyContent: 'flex-start',
-                padding: '12px 16px',
-                borderRadius: '12px',
-                borderColor: '#9c27b0',
-                color: '#7b1fa2',
-                '&:hover': {
-                  backgroundColor: '#f3e5f5',
-                  borderColor: '#7b1fa2'
-                }
-              }}
-            >
-              <Box textAlign="left">
-                <Typography variant="body1" fontWeight={600}>Vắng báo muộn</Typography>
-                <Typography variant="body2" color="text.secondary">Học sinh vắng mặt và báo muộn</Typography>
+                <Typography variant="body1" fontWeight={600}>Vắng mặt</Typography>
+                <Typography variant="body2" color="text.secondary">Học sinh vắng mặt</Typography>
               </Box>
             </Button>
 

@@ -130,12 +130,12 @@ const TeachingInfo = styled(Box, {
           backgroundColor: '#f8f9fa',
           borderRadius: '4px',
           border: '1px solid #e9ecef',
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
           width: '100%',
           minWidth: 0,
-          maxWidth: '100%'
+          maxWidth: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '2px'
         }
       }
     }
@@ -177,8 +177,8 @@ const ScheduleCell = ({
         scheduleNote
           ? `Ghi chú: ${scheduleNote} - Click để chỉnh sửa`
           : isBusy
-            ? `${teacherName} bận vào ${dayLabel} ${time} - Click để thêm ghi chú`
-            : `${teacherName} rảnh vào ${dayLabel} ${time} - Click để thêm ghi chú`
+            ? `${teacherName} bận vào ${dayLabel} ${time} - Ghi chú của BPXL`
+            : `${teacherName} rảnh vào ${dayLabel} ${time} - Ghi chú của BPXL`
       }
     >
       <Box
@@ -700,7 +700,7 @@ const TeachersSchedule = () => {
         }
       case RollcallStatus.ABSENT_WITHOUT_REASON:
         return {
-          label: 'Vắng không lý do',
+          label: 'Vắng mặt',
           backgroundColor: '#ffcdd2',
           borderColor: '#ef9a9a',
           textColor: '#b71c1c',
@@ -1193,7 +1193,7 @@ const TeachersSchedule = () => {
                       backgroundColor: scheduleNote ? '#ffe69c' : '#f5f5f5'
                     }
                   }}
-                  title={scheduleNote ? `Ghi chú: ${scheduleNote} - Click để chỉnh sửa` : 'Click để thêm ghi chú'}
+                  title={scheduleNote ? `Ghi chú: ${scheduleNote} - Click để chỉnh sửa` : 'Ghi chú của BPXL'}
                 >
                   <i className="ri-file-text-line" style={{ fontSize: '12px', color: scheduleNote ? '#856404' : '#999', flexShrink: 0 }} />
                   <Typography
@@ -1210,7 +1210,7 @@ const TeachersSchedule = () => {
                       fontStyle: scheduleNote ? 'normal' : 'italic'
                     }}
                   >
-                    {scheduleNote || 'Click để thêm ghi chú...'}
+                    {scheduleNote || 'Ghi chú của BPXL...'}
                   </Typography>
                   <i className="ri-edit-line" style={{ fontSize: '12px', color: scheduleNote ? '#856404' : '#999', flexShrink: 0, opacity: 0.6 }} />
                 </Box>
@@ -1314,6 +1314,28 @@ const TeachersSchedule = () => {
                                     >
                                       {displayLabel}
                                     </Typography>
+                                    {student.rollcall_reason && (
+                                      <Typography
+                                        component="span"
+                                        variant="caption"
+                                        sx={{
+                                          fontSize: '0.6rem',
+                                          color: rollcallStatusConfig && !isNotRollcall
+                                            ? rollcallStatusConfig.textColor
+                                            : 'rgba(0, 0, 0, 0.6)',
+                                          fontStyle: 'italic',
+                                          display: 'block',
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis',
+                                          whiteSpace: 'nowrap',
+                                          width: '100%',
+                                          lineHeight: 1.2,
+                                          opacity: 0.8
+                                        }}
+                                      >
+                                        {student.rollcall_reason}
+                                      </Typography>
+                                    )}
                                   </Box>
                                 </Tooltip>
                               )
