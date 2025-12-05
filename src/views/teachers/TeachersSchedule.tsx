@@ -1236,8 +1236,30 @@ const TeachersSchedule = () => {
                       sx={{ cursor: 'pointer', width: '100%', minWidth: 0, flexShrink: 0 }}
                     >
                       <Box className="lesson-header">
-                        <Box className="class-name" title={teachingInfo.class_name}>
-                          {teachingInfo.class_name}
+                        <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+                          <Box className="class-name" title={teachingInfo.class_name}>
+                            {teachingInfo.class_name}
+                          </Box>
+                          {(teachingInfo.start_time || teachingInfo.end_time) && (
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                fontSize: '0.6rem',
+                                color: teachingInfo.region && REGION_COLORS[teachingInfo.region]
+                                  ? 'rgba(255, 255, 255, 0.8)'
+                                  : 'rgba(25, 118, 210, 0.7)',
+                                fontWeight: 400,
+                                lineHeight: 1.2,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              {teachingInfo.start_time && teachingInfo.end_time
+                                ? `${teachingInfo.start_time} - ${teachingInfo.end_time}`
+                                : teachingInfo.start_time || teachingInfo.end_time}
+                            </Typography>
+                          )}
                         </Box>
                         {teachingInfo.lesson && (
                           <Box className="lesson-badge">
