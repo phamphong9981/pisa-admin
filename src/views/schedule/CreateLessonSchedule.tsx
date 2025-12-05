@@ -345,7 +345,7 @@ const CreateLessonSchedule = ({
     }
 
     if (!selectedTeacherId) {
-      setErrorMessage('Vui lòng chọn giáo viên')
+      setErrorMessage('Vui lòng chọn giáo viên (bắt buộc)')
 
       return
     }
@@ -981,12 +981,10 @@ const CreateLessonSchedule = ({
                       onChange={(_, value) => {
                         setSelectedClassId(value?.id || '')
 
-                        if (!editMode) {
-                          if (value) {
-                            setSelectedTeacherId(value.teacherId)
-                          } else {
-                            setSelectedTeacherId('')
-                          }
+                        // Không tự động chọn giáo viên mặc định
+                        // Người dùng phải tự chọn giáo viên
+                        if (!value) {
+                          setSelectedTeacherId('')
                         }
                       }}
                       disabled={editMode}
@@ -1151,6 +1149,12 @@ const CreateLessonSchedule = ({
                             <Typography variant="body2" fontWeight={600}>
                               {selectedTeacher.name}
                             </Typography>
+                            {isDefaultTeacher && (
+                              <Typography variant="caption" color="primary" display="block">
+                                <i className="ri-user-star-line" style={{ marginRight: 4, fontSize: '12px' }} />
+                                Giáo viên mặc định của lớp
+                              </Typography>
+                            )}
                           </Box>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             {isDefaultTeacher && (
@@ -1162,15 +1166,13 @@ const CreateLessonSchedule = ({
                                 sx={{ fontSize: '0.7rem' }}
                               />
                             )}
-                            {isDefaultTeacher && (
-                              <Chip
-                                size="small"
-                                label={isTeacherBusy ? "Bận" : "Rảnh"}
-                                color={isTeacherBusy ? "error" : "success"}
-                                variant="outlined"
-                                sx={{ fontSize: '0.7rem' }}
-                              />
-                            )}
+                            <Chip
+                              size="small"
+                              label={isTeacherBusy ? "Bận" : "Rảnh"}
+                              color={isTeacherBusy ? "error" : "success"}
+                              variant="outlined"
+                              sx={{ fontSize: '0.7rem' }}
+                            />
                             <Button
                               size="small"
                               variant="outlined"
@@ -1188,7 +1190,7 @@ const CreateLessonSchedule = ({
                       )
                     })()}
 
-                    {/* Default Teacher Quick Select - Only show if class has a teacher */}
+                    {/* Default Teacher Quick Select - Always show if class has a teacher and no teacher is selected */}
                     {selectedClass && selectedClass.teacherId && selectedClass.teacher && !selectedTeacherId && !showTeacherSearchResults && (() => {
                       const isDefaultTeacherBusy = teacherList?.find(t => t.id === selectedClass.teacherId)?.registeredBusySchedule?.includes(selectedSlot!.slotIndex)
 
@@ -1236,6 +1238,32 @@ const CreateLessonSchedule = ({
                               Chọn
                             </Button>
                           </Box>
+                        </Box>
+                      )
+                    })()}
+
+                    {/* Default Teacher Info - Show when class has default teacher and a teacher is selected */}
+                    {selectedClass && selectedClass.teacherId && selectedClass.teacher && selectedTeacherId && !showTeacherSearchResults && (() => {
+                      const selectedTeacher = teacherList?.find(t => t.id === selectedTeacherId)
+                      const isDefaultTeacher = selectedClass.teacherId === selectedTeacherId
+
+                      if (!isDefaultTeacher) return null
+
+                      return (
+                        <Box sx={{
+                          mt: 1,
+                          p: 1,
+                          backgroundColor: '#e3f2fd',
+                          borderRadius: 1,
+                          border: '1px solid #90caf9',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1
+                        }}>
+                          <i className="ri-information-line" style={{ fontSize: '16px', color: '#1976d2' }} />
+                          <Typography variant="caption" color="primary" sx={{ fontSize: '0.75rem' }}>
+                            Đang sử dụng giáo viên mặc định của lớp: <strong>{selectedClass.teacher.name}</strong>
+                          </Typography>
                         </Box>
                       )
                     })()}
@@ -1728,7 +1756,7 @@ const CreateLessonSchedule = ({
           disabled={
             (editMode ? updateLessonScheduleMutation.isPending : createLessonScheduleMutation.isPending) ||
             (!editMode && selectedStudents.length === 0) ||
-            (!editMode && !selectedTeacherId) ||
+            !selectedTeacherId ||
             (!editMode && (!startTime || !endTime)) ||
             (editMode && isLoadingScheduleDetail) ||
             (editMode && !hasChanges)
