@@ -97,6 +97,9 @@ const VerticalMenu = ({ scrollMenu }: { scrollMenu: (container: any, isPerfectSc
         {isTeacherUser && (
           <MenuItem href='/my-schedule' icon={<i className='ri-calendar-time-line' />}>Lịch dạy của tôi</MenuItem>
         )}
+        {isTeacherUser && (
+          <MenuItem href='/schedule-planner' icon={<i className='ri-calendar-time-line' />}>Xem lịch lớp</MenuItem>
+        )}
         {/* <MenuSection label='Apps & Pages'>
           <MenuItem href='/account-settings' icon={<i className='ri-user-settings-line' />}>
             Account Settings

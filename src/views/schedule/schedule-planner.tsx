@@ -38,6 +38,7 @@ import { useCourseInfo, useCourseInfoWithReload, useCourseList, RegionId, Region
 import { SCHEDULE_TIME, useAutoScheduleCourse, useGetAllSchedule } from '@/@core/hooks/useSchedule'
 import { useGetWeeks, WeekResponseDto } from '@/@core/hooks/useWeek'
 import { useTeacherList, TeacherListResponse } from '@/@core/hooks/useTeacher'
+import useAuth from '@/@core/hooks/useAuth'
 import CreateLessonSchedule from './CreateLessonSchedule'
 import MissingScheduleTable from './MissingScheduleTable'
 
@@ -161,6 +162,9 @@ const dayOffsetMap: Record<string, number> = {
 }
 
 const SchedulePlanner = () => {
+  const { isTeacher } = useAuth()
+  const isReadOnly = isTeacher() // Teacher chỉ xem, không được chỉnh sửa
+
   const [selectedRegion, setSelectedRegion] = useState<number>(RegionId.HALONG) // Default to HALONG
   const [selectedWeekId, setSelectedWeekId] = useState<string>('')
   const { data: courses, isLoading: isCoursesLoading, error: coursesError } = useCourseList(selectedRegion, selectedWeekId)
@@ -479,6 +483,9 @@ const SchedulePlanner = () => {
 
   // Handle click on class box to open edit lesson schedule modal
   const handleClassBoxClick = (schedule: any) => {
+    // Disable for teachers (read-only mode)
+    if (isReadOnly) return
+
     const slotIndex = schedule.schedule_time
     const slot = parsedSlots[slotIndex - 1]
     if (slot) {
@@ -505,6 +512,9 @@ const SchedulePlanner = () => {
 
   // Handle open create lesson schedule modal
   const handleOpenCreateLessonModal = (day: string, time: string, slotIndex: number, teacherId?: string) => {
+    // Disable for teachers (read-only mode)
+    if (isReadOnly) return
+
     const slotInfo = parsedSlots[slotIndex - 1]
 
     setCreateLessonModal({
@@ -746,7 +756,7 @@ const SchedulePlanner = () => {
                 >
                   {isExporting ? 'Đang export...' : 'Export CSV'}
                 </Button>
-                {isWeekOpen && (
+                {isWeekOpen && !isReadOnly && (
                   <Button
                     variant="contained"
                     color="success"
@@ -897,7 +907,7 @@ const SchedulePlanner = () => {
           </Box>
 
           {/* Auto schedule info */}
-          {selectedCourseId && isWeekOpen && (
+          {selectedCourseId && isWeekOpen && !isReadOnly && (
             <Box sx={{ mt: 2, p: 1.5, backgroundColor: '#e8f5e8', borderRadius: 1, border: '1px solid #c8e6c9' }}>
               <Typography variant="caption" color="success.main" display="block" mb={0.5}>
                 <i className="ri-information-line" style={{ marginRight: 4 }} />
@@ -905,6 +915,19 @@ const SchedulePlanner = () => {
               </Typography>
               <Typography variant="caption" color="text.secondary" display="block">
                 Nhấn nút &quot;Xếp lịch tự động&quot; ở góc trên bên phải để hệ thống tự động sắp xếp lịch học cho khóa học này dựa trên thời gian rảnh của học sinh và giáo viên.
+              </Typography>
+            </Box>
+          )}
+
+          {/* Read-only mode info for teachers */}
+          {isReadOnly && (
+            <Box sx={{ mt: 2, p: 1.5, backgroundColor: '#e3f2fd', borderRadius: 1, border: '1px solid #90caf9' }}>
+              <Typography variant="caption" color="info.main" display="block" mb={0.5}>
+                <i className="ri-eye-line" style={{ marginRight: 4 }} />
+                <strong>Chế độ xem:</strong>
+              </Typography>
+              <Typography variant="caption" color="text.secondary" display="block">
+                Bạn đang ở chế độ xem. Các chức năng tạo, sửa, xóa lịch học đã bị vô hiệu hóa.
               </Typography>
             </Box>
           )}
@@ -1237,7 +1260,14 @@ const SchedulePlanner = () => {
                                   <ClassBox
                                     key={`${s.class_id}-${s.lesson}-${i}`}
                                     onClick={() => handleClassBoxClick(s)}
-                                    sx={{ cursor: 'pointer' }}
+                                    sx={{
+                                      cursor: isReadOnly ? 'default' : 'pointer',
+                                      opacity: isReadOnly ? 1 : 1,
+                                      '&:hover': isReadOnly ? {} : {
+                                        boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                                        transform: 'translateY(-2px)'
+                                      }
+                                    }}
                                   >
                                     <ClassBoxHeader>
                                       <Box display="flex" gap={1} alignItems="center">
@@ -1380,7 +1410,7 @@ const SchedulePlanner = () => {
                                 </Box>
 
                                 {/* Create Lesson Button */}
-                                {free.length > 0 && (
+                                {free.length > 0 && !isReadOnly && (
                                   <Box sx={{ mt: 1, textAlign: 'center' }}>
                                     <Button
                                       size="small"
@@ -1445,6 +1475,7 @@ const SchedulePlanner = () => {
         editMode={createLessonModal.editMode}
         editData={createLessonModal.editData}
         teacherId={createLessonModal.teacherId}
+        readOnly={isReadOnly}
         onClassCreated={(newClassId) => {
           // The useCreateClass hook will automatically invalidate the courseInfo query
           // so the parent component will refresh the class list automatically
