@@ -21,7 +21,7 @@ const Layout = async ({ children }: ChildrenType) => {
 
   return (
     <Providers direction={direction} mode={mode} settingsCookie={settingsCookie}>
-      <ProtectedRoute requireAdmin={true}>
+      <ProtectedRoute requireAdmin={false} allowTeacher={true}>
         <LayoutWrapper
           verticalLayout={
             <VerticalLayout navigation={<Navigation />} navbar={<Navbar />} footer={<VerticalFooter />}>

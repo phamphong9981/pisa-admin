@@ -37,7 +37,7 @@ const VerticalMenu = ({ scrollMenu }: { scrollMenu: (container: any, isPerfectSc
   // Hooks
   const theme = useTheme()
   const { isBreakpointReached, transitionDuration } = useVerticalNav()
-  const { hasPermission } = useAuth()
+  const { hasPermission, isTeacher } = useAuth()
 
   const ScrollWrapper = isBreakpointReached ? 'div' : PerfectScrollbar
 
@@ -46,6 +46,7 @@ const VerticalMenu = ({ scrollMenu }: { scrollMenu: (container: any, isPerfectSc
   const canAccessSchedule = hasPermission('schedule')
   const canAccessTeacher = hasPermission('teacher')
   const canAccessUser = hasPermission('user')
+  const isTeacherUser = isTeacher()
 
   return (
     // eslint-disable-next-line lines-around-comment
@@ -92,6 +93,9 @@ const VerticalMenu = ({ scrollMenu }: { scrollMenu: (container: any, isPerfectSc
         )}
         {canAccessUser && (
           <MenuItem href='/users' icon={<i className='ri-user-line' />}>Quản lý người dùng</MenuItem>
+        )}
+        {isTeacherUser && (
+          <MenuItem href='/my-schedule' icon={<i className='ri-calendar-time-line' />}>Lịch dạy của tôi</MenuItem>
         )}
         {/* <MenuSection label='Apps & Pages'>
           <MenuItem href='/account-settings' icon={<i className='ri-user-settings-line' />}>

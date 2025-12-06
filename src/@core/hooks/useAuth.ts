@@ -122,9 +122,12 @@ const useAuth = () => {
 
             const userRole = data.data.role
 
-            // Only allow admin roles
-            if (!userRole || !userRole.startsWith(ADMIN_PREFIX)) {
-                return { success: false, message: 'Access denied. Admin privileges required.' }
+            // Allow admin roles or teacher role
+            const isAdminRole = userRole && userRole.startsWith(ADMIN_PREFIX)
+            const isTeacherRole = userRole === 'teacher'
+
+            if (!isAdminRole && !isTeacherRole) {
+                return { success: false, message: 'Access denied. Admin or Teacher privileges required.' }
             }
 
             // Store token and role in cookies and localStorage
@@ -184,6 +187,11 @@ const useAuth = () => {
         return authState.role?.startsWith(ADMIN_PREFIX) ?? false
     }, [authState.role])
 
+    // Check if user is teacher
+    const isTeacher = useCallback(() => {
+        return authState.role === 'teacher'
+    }, [authState.role])
+
     const hasPermission = useCallback(
         (permissionKey: string) => {
             if (!authState.isAuthenticated) return false
@@ -200,6 +208,7 @@ const useAuth = () => {
         logout,
         getAuthHeader,
         isAdmin,
+        isTeacher,
         hasPermission
     }
 }
