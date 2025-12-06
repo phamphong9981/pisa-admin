@@ -64,7 +64,6 @@ interface CreateLessonScheduleProps {
   } | null
   teacherId?: string // Thêm teacherId để hiển thị giáo viên mặc định
   onClassCreated?: (newClassId: string) => void // Callback khi tạo lớp thành công
-  readOnly?: boolean // Chế độ chỉ xem (cho giáo viên)
 }
 
 const CreateLessonSchedule = ({
@@ -78,8 +77,7 @@ const CreateLessonSchedule = ({
   editMode = false,
   editData = null,
   teacherId: propTeacherId,
-  onClassCreated,
-  readOnly = false
+  onClassCreated
 }: CreateLessonScheduleProps) => {
   console.log('selectedSlot', selectedSlot)
 
@@ -691,7 +689,7 @@ const CreateLessonSchedule = ({
                   sx={{ fontSize: '0.65rem' }}
                 />
               )}
-              {(!editMode || editMode) && !readOnly && (
+              {(!editMode || editMode) && (
                 <Chip
                   size="small"
                   label="Xóa"
@@ -723,15 +721,7 @@ const CreateLessonSchedule = ({
                       size="small"
                       variant="outlined"
                       startIcon={<i className="ri-edit-line" />}
-                      onClick={() => {
-                        if (!readOnly) handleStartEditStudent(student)
-                      }}
-                      sx={{
-                        ...(readOnly && {
-                          cursor: 'default',
-                          opacity: 0.6
-                        })
-                      }}
+                      onClick={() => handleStartEditStudent(student)}
                       sx={{ fontSize: '0.7rem', py: 0.25, px: 1 }}
                     >
                       Chỉnh sửa
@@ -771,7 +761,6 @@ const CreateLessonSchedule = ({
                         label="Thời gian bắt đầu"
                         value={editingStudentStartTime}
                         onChange={(e) => {
-                          if (readOnly) return
                           const value = e.target.value
                           const sanitized = value.replace(/[^0-9:]/g, '')
 
@@ -782,7 +771,6 @@ const CreateLessonSchedule = ({
                           }
                         }}
                         placeholder="HH:MM"
-                        disabled={readOnly}
                         InputLabelProps={{ shrink: true }}
                         helperText="HH:MM"
                         inputProps={{
@@ -800,7 +788,6 @@ const CreateLessonSchedule = ({
                         label="Thời gian kết thúc"
                         value={editingStudentEndTime}
                         onChange={(e) => {
-                          if (readOnly) return
                           const value = e.target.value
                           const sanitized = value.replace(/[^0-9:]/g, '')
 
@@ -811,7 +798,6 @@ const CreateLessonSchedule = ({
                           }
                         }}
                         placeholder="HH:MM"
-                        disabled={readOnly}
                         InputLabelProps={{ shrink: true }}
                         helperText="HH:MM"
                         inputProps={{
@@ -830,10 +816,7 @@ const CreateLessonSchedule = ({
                         multiline
                         rows={2}
                         value={editingStudentNote}
-                        onChange={(e) => {
-                          if (!readOnly) setEditingStudentNote(e.target.value)
-                        }}
-                        disabled={readOnly}
+                        onChange={(e) => setEditingStudentNote(e.target.value)}
                         placeholder="Nhập ghi chú riêng cho học sinh này..."
                         sx={{ '& .MuiInputBase-root': { fontSize: '0.75rem' } }}
                       />
@@ -847,7 +830,7 @@ const CreateLessonSchedule = ({
                       variant="contained"
                       color="primary"
                       onClick={() => handleSaveStudentChanges(student)}
-                      disabled={readOnly || updateUserScheduleMutation.isPending}
+                      disabled={updateUserScheduleMutation.isPending}
                       sx={{ fontSize: '0.7rem', py: 0.25, px: 1 }}
                     >
                       {updateUserScheduleMutation.isPending ? 'Đang lưu...' : 'Lưu thay đổi'}
@@ -925,16 +908,6 @@ const CreateLessonSchedule = ({
 
       <DialogContent>
         <Box sx={{ mt: 2 }}>
-          {/* Read-only mode notice */}
-          {readOnly && (
-            <Alert severity="info" sx={{ mb: 2 }}>
-              <Typography variant="body2">
-                <i className="ri-eye-line" style={{ marginRight: 4 }} />
-                Bạn đang ở chế độ xem. Các chức năng tạo, sửa, xóa lịch học đã bị vô hiệu hóa.
-              </Typography>
-            </Alert>
-          )}
-
           {/* Loading indicator for edit mode */}
           {editMode && isLoadingScheduleDetail && (
             <Box display="flex" justifyContent="center" alignItems="center" minHeight={200}>
@@ -978,7 +951,7 @@ const CreateLessonSchedule = ({
                     onChange={(e) => setLessonNumber(parseInt(e.target.value) || 1)}
                     inputProps={{ min: 1, max: 50 }}
                     required
-                    disabled={editMode || readOnly}
+                    disabled={editMode}
                   />
                 </Grid>
 
@@ -989,7 +962,7 @@ const CreateLessonSchedule = ({
                       <Typography variant="subtitle2" gutterBottom>
                         Lớp học <span style={{ color: 'red' }}>*</span>
                       </Typography>
-                      {!editMode && courseId && !readOnly && (
+                      {!editMode && courseId && (
                         <Button
                           size="small"
                           variant="outlined"
@@ -1014,7 +987,7 @@ const CreateLessonSchedule = ({
                           setSelectedTeacherId('')
                         }
                       }}
-                      disabled={editMode || readOnly}
+                      disabled={editMode}
                       getOptionLabel={(option) => option?.name ?? ''}
                       isOptionEqualToValue={(option, value) => option.id === value.id}
                       noOptionsText="Không tìm thấy lớp học"
@@ -1031,7 +1004,6 @@ const CreateLessonSchedule = ({
                           label="Lớp học"
                           placeholder="Chọn hoặc tìm kiếm lớp học"
                           required
-                          disabled={readOnly}
                         />
                       )}
                     />
@@ -1051,7 +1023,6 @@ const CreateLessonSchedule = ({
                       placeholder="Tìm kiếm giáo viên..."
                       value={teacherSearch}
                       onChange={(e) => handleSearchTeacher(e.target.value)}
-                      disabled={readOnly}
                       InputProps={{
                         startAdornment: (
                           <i className="ri-search-line" style={{ color: '#666', marginRight: 8 }} />
@@ -1061,14 +1032,12 @@ const CreateLessonSchedule = ({
                             className="ri-close-line"
                             style={{
                               color: '#666',
-                              cursor: readOnly ? 'default' : 'pointer',
+                              cursor: 'pointer',
                               fontSize: '18px'
                             }}
                             onClick={() => {
-                              if (!readOnly) {
-                                setTeacherSearch('')
-                                setShowTeacherSearchResults(false)
-                              }
+                              setTeacherSearch('')
+                              setShowTeacherSearchResults(false)
                             }}
                           />
                         )
@@ -1102,17 +1071,15 @@ const CreateLessonSchedule = ({
                                 p: 1,
                                 borderBottom: '1px solid #eee',
                                 '&:last-child': { borderBottom: 'none' },
-                                cursor: readOnly ? 'default' : 'pointer',
-                                '&:hover': readOnly ? {} : { backgroundColor: '#e3f2fd' },
+                                cursor: 'pointer',
+                                '&:hover': { backgroundColor: '#e3f2fd' },
                                 borderRadius: 1,
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'space-between',
                                 backgroundColor: isSelected ? '#e3f2fd' : 'transparent'
                               }}
-                              onClick={() => {
-                                if (!readOnly) handleSelectTeacher(teacher.id)
-                              }}
+                              onClick={() => handleSelectTeacher(teacher.id)}
                             >
                               <Box sx={{ flex: 1 }}>
                                 <Typography variant="body2" fontWeight={500}>
@@ -1266,7 +1233,6 @@ const CreateLessonSchedule = ({
                               variant="contained"
                               color="primary"
                               onClick={() => handleSelectTeacher(selectedClass.teacherId)}
-                              disabled={readOnly}
                               sx={{ fontSize: '0.7rem', py: 0.25, px: 1 }}
                             >
                               Chọn
@@ -1334,7 +1300,6 @@ const CreateLessonSchedule = ({
                             setTeacherSearch('')
                             setShowTeacherSearchResults(true)
                           }}
-                          disabled={readOnly}
                           sx={{ fontSize: '0.75rem', py: 0.5, px: 1.5, whiteSpace: 'nowrap' }}
                         >
                           Tìm kiếm giáo viên
@@ -1351,7 +1316,6 @@ const CreateLessonSchedule = ({
                     label="Thời gian bắt đầu"
                     value={startTime}
                     onChange={(e) => {
-                      if (readOnly) return
                       const value = e.target.value
 
                       // Chỉ cho phép nhập số và dấu :
@@ -1367,7 +1331,6 @@ const CreateLessonSchedule = ({
                     }}
                     placeholder="HH:MM"
                     required
-                    disabled={readOnly}
                     InputLabelProps={{ shrink: true }}
                     helperText="Định dạng: HH:MM (ví dụ: 08:00)"
                     inputProps={{
@@ -1385,7 +1348,6 @@ const CreateLessonSchedule = ({
                     label="Thời gian kết thúc"
                     value={endTime}
                     onChange={(e) => {
-                      if (readOnly) return
                       const value = e.target.value
 
                       // Chỉ cho phép nhập số và dấu :
@@ -1401,7 +1363,6 @@ const CreateLessonSchedule = ({
                     }}
                     placeholder="HH:MM"
                     required
-                    disabled={readOnly}
                     InputLabelProps={{ shrink: true }}
                     helperText="Định dạng: HH:MM (ví dụ: 17:00)"
                     inputProps={{
@@ -1420,10 +1381,7 @@ const CreateLessonSchedule = ({
                     multiline
                     rows={3}
                     value={note}
-                    onChange={(e) => {
-                      if (!readOnly) setNote(e.target.value)
-                    }}
-                    disabled={readOnly}
+                    onChange={(e) => setNote(e.target.value)}
                     placeholder={
                       editMode
                         ? "Nhập ghi chú chung về nội dung, bài tập hoặc thông tin khác cho buổi học này..."
@@ -1453,10 +1411,7 @@ const CreateLessonSchedule = ({
                       fullWidth
                       placeholder="Tìm kiếm học sinh lớp khác để ghép vào lịch"
                       value={studentSearch}
-                      onChange={(e) => {
-                        if (!readOnly) handleSearchStudent(e.target.value)
-                      }}
-                      disabled={readOnly}
+                      onChange={(e) => handleSearchStudent(e.target.value)}
                       InputProps={{
                         startAdornment: (
                           <i className="ri-search-line" style={{ color: '#666', marginRight: 8 }} />
@@ -1466,14 +1421,12 @@ const CreateLessonSchedule = ({
                             className="ri-close-line"
                             style={{
                               color: '#666',
-                              cursor: readOnly ? 'default' : 'pointer',
+                              cursor: 'pointer',
                               fontSize: '18px'
                             }}
                             onClick={() => {
-                              if (!readOnly) {
-                                setStudentSearch('')
-                                setShowSearchResults(false)
-                              }
+                              setStudentSearch('')
+                              setShowSearchResults(false)
                             }}
                           />
                         )
@@ -1523,7 +1476,7 @@ const CreateLessonSchedule = ({
                                     backgroundColor: isBusy ? '#fff5f5' : 'transparent'
                                   }}
                                   onClick={() => {
-                                    if (!readOnly && !isBusy) {
+                                    if (!isBusy) {
                                       handleAddStudentFromSearch({
                                         id: user.id,
                                         fullname: user.profile.fullname,
@@ -1531,12 +1484,6 @@ const CreateLessonSchedule = ({
                                         profile_id: user.profile.id
                                       })
                                     }
-                                  }}
-                                  sx={{
-                                    ...(readOnly && {
-                                      cursor: 'default',
-                                      '&:hover': {}
-                                    })
                                   }}
                                 >
                                   <Box sx={{ flex: 1 }}>
@@ -1625,13 +1572,11 @@ const CreateLessonSchedule = ({
                           <Grid item xs={12} sm={12} md={12} key={student.id}>
                             <Chip
                               label={student.fullname}
-                              onClick={() => {
-                                if (!readOnly) handleAddAvailableStudent(student)
-                              }}
+                              onClick={() => handleAddAvailableStudent(student)}
                               color={isStudentSelected(student.id) ? 'primary' : 'default'}
                               variant={isStudentSelected(student.id) ? 'filled' : 'outlined'}
                               sx={{
-                                cursor: readOnly ? 'default' : 'pointer',
+                                cursor: 'pointer',
                                 width: '100%',
                                 justifyContent: 'center'
                               }}
@@ -1674,16 +1619,14 @@ const CreateLessonSchedule = ({
                             <Grid item xs={12} sm={6} md={4} key={student.id}>
                               <Chip
                                 label={student.fullname}
-                                onClick={() => {
-                                  if (!readOnly) handleAddAvailableStudent(student)
-                                }}
+                                onClick={() => handleAddAvailableStudent(student)}
                                 color={isStudentSelected(student.id) ? 'primary' : 'success'}
                                 variant={isStudentSelected(student.id) ? 'filled' : 'outlined'}
                                 sx={{
-                                  cursor: readOnly ? 'default' : 'pointer',
+                                  cursor: 'pointer',
                                   width: '100%',
                                   justifyContent: 'center',
-                                  '&:hover': readOnly ? {} : {
+                                  '&:hover': {
                                     backgroundColor: isStudentSelected(student.id) ? undefined : '#c8e6c9'
                                   }
                                 }}
@@ -1790,7 +1733,7 @@ const CreateLessonSchedule = ({
         </Button>
 
         {/* Delete button for edit mode */}
-        {editMode && !readOnly && (
+        {editMode && (
           <Button
             variant="outlined"
             color="error"
@@ -1811,7 +1754,6 @@ const CreateLessonSchedule = ({
           variant="contained"
           onClick={handleSubmit}
           disabled={
-            readOnly ||
             (editMode ? updateLessonScheduleMutation.isPending : createLessonScheduleMutation.isPending) ||
             (!editMode && selectedStudents.length === 0) ||
             !selectedTeacherId ||

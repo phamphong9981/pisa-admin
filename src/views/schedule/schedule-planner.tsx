@@ -1475,7 +1475,6 @@ const SchedulePlanner = () => {
         editMode={createLessonModal.editMode}
         editData={createLessonModal.editData}
         teacherId={createLessonModal.teacherId}
-        readOnly={isReadOnly}
         onClassCreated={(newClassId) => {
           // The useCreateClass hook will automatically invalidate the courseInfo query
           // so the parent component will refresh the class list automatically
