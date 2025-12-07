@@ -695,8 +695,16 @@ const CreateLessonSchedule = ({
                   label="Xóa"
                   color="error"
                   variant="outlined"
-                  onDelete={() => handleRemoveStudent(student.profile_id)}
-                  sx={{ fontSize: '0.65rem' }}
+                  onClick={() => handleRemoveStudent(student.profile_id)}
+                  icon={<i className="ri-delete-bin-line" style={{ fontSize: '14px' }} />}
+                  sx={{
+                    fontSize: '0.65rem',
+                    cursor: 'pointer',
+                    '&:hover': {
+                      backgroundColor: 'error.light',
+                      color: 'error.contrastText'
+                    }
+                  }}
                 />
               )}
             </Box>
