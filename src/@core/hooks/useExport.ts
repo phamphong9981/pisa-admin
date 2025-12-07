@@ -101,7 +101,7 @@ export const useExport = () => {
                     // Format tất cả các lịch dạy thành nhiều dòng
                     const teachingLines = teachingInfos.map(teachingInfo => {
                         const students = normalizeStudents(teachingInfo.students)
-                        const baseInfo = `ĐANG DẠY: ${teachingInfo.class_name} (Buổi ${teachingInfo.lesson})${teachingInfo.note ? ` - ${teachingInfo.note}` : ''}\nThời gian: ${teachingInfo.start_time} - ${teachingInfo.end_time}`
+                        const baseInfo = `ĐANG DẠY: ${teachingInfo.class_name} (Buổi ${teachingInfo.lesson})${teachingInfo.note ? ` - ${teachingInfo.note}` : ''}\n Ghi chú điểm danh: ${teachingInfo.rollcall_note ? ` - ${teachingInfo.rollcall_note}` : ''}\nThời gian: ${teachingInfo.start_time} - ${teachingInfo.end_time}`
 
                         if (students.length === 0) {
                             return baseInfo

@@ -168,6 +168,7 @@ export interface AllScheduleResponse {
     start_time?: string
     end_time?: string
     region?: number
+    rollcall_note?: string
 }
 
 const getAllSchedule = async (courseId?: string, weekId?: string): Promise<AllScheduleResponse[]> => {
