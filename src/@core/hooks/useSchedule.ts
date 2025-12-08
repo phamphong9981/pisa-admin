@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { apiClient } from './apiClient'
+import { GetScheduleInfoByFieldDto, ScheduleInfoByFieldResponseDto } from './interface/schedule-info.interface'
 
 export enum ScheduleStatus {
     ACTIVE = 'active',
@@ -700,4 +701,25 @@ export const exportScheduleInfo = async (weekId: string, download: boolean = tru
     const payload = (data && data.data) ? data.data : data
 
     return payload as ExportScheduleInfoResponse
+}
+
+// Get schedule info by field
+const getScheduleInfoByField = async (query: GetScheduleInfoByFieldDto): Promise<ScheduleInfoByFieldResponseDto[]> => {
+    const { data } = await apiClient.get('/schedule-info', {
+        params: query
+    })
+
+    return data.data || []
+}
+
+export const useGetScheduleInfoByField = (query: GetScheduleInfoByFieldDto) => {
+    return useQuery({
+        queryKey: ['schedule-info-by-field', query],
+        queryFn: () => getScheduleInfoByField(query),
+        enabled: !!query.teacherNote || !!query.weekId || !!query.classId,
+        staleTime: 5 * 60 * 1000, // 5 phút
+        gcTime: 10 * 60 * 1000, // 10 phút
+        retry: 1,
+        retryDelay: (attemptIndex) => Math.min(1000 * 1 ** attemptIndex, 30000),
+    })
 }
