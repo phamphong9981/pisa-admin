@@ -58,6 +58,84 @@ export const SCHEDULE_TIME = [
     "17:00-19:00 Sunday",
     "19:30-21:30 Sunday",
 ]
+
+// Map day names to Vietnamese
+const dayMap: { [key: string]: string } = {
+    Monday: 'Thứ 2',
+    Tuesday: 'Thứ 3',
+    Wednesday: 'Thứ 4',
+    Thursday: 'Thứ 5',
+    Friday: 'Thứ 6',
+    Saturday: 'Thứ 7',
+    Sunday: 'Chủ nhật'
+}
+
+// Map day names to offset from week start (Monday = 0)
+const dayOffsetMap: Record<string, number> = {
+    Monday: 0,
+    Tuesday: 1,
+    Wednesday: 2,
+    Thursday: 3,
+    Friday: 4,
+    Saturday: 5,
+    Sunday: 6
+}
+
+/**
+ * Format schedule time with day and date
+ * @param scheduleTime - Index in SCHEDULE_TIME array
+ * @param weekStartDate - Start date of the week (Date or string)
+ * @returns Formatted string like "Thứ 2, 01/01/2024 - 8:00-10:00"
+ */
+export const formatScheduleTimeWithDate = (scheduleTime: number | undefined, weekStartDate: Date | string | undefined): string => {
+    if (scheduleTime === undefined || scheduleTime < 0 || scheduleTime >= SCHEDULE_TIME.length) {
+        return '—'
+    }
+
+    if (!weekStartDate) {
+        // If no week start date, just return the time and day name
+        const scheduleStr = SCHEDULE_TIME[scheduleTime]
+        const [timeRange, dayName] = scheduleStr.split(' ')
+        const vietnameseDay = dayMap[dayName] || dayName
+        return `${vietnameseDay}\n${timeRange}`
+    }
+
+    const scheduleStr = SCHEDULE_TIME[scheduleTime]
+    const [timeRange, dayName] = scheduleStr.split(' ')
+
+    if (!dayName || !dayOffsetMap[dayName]) {
+        return timeRange || '—'
+    }
+
+    // Calculate the specific date
+    const startDate = typeof weekStartDate === 'string' ? new Date(weekStartDate) : weekStartDate
+    const startDateCopy = new Date(startDate)
+
+    // Find the Monday of the week containing startDate
+    // getDay() returns 0 (Sunday) to 6 (Saturday)
+    const startDayOfWeek = startDateCopy.getDay()
+    // Calculate days to subtract to get to Monday (Monday = 1 in getDay())
+    // If Sunday (0), subtract 6 days. If Monday (1), subtract 0 days, etc.
+    const daysToMonday = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1
+    startDateCopy.setDate(startDateCopy.getDate() - daysToMonday)
+
+    // Now startDateCopy is Monday of that week
+    // Calculate offset to target day
+    const dayOffset = dayOffsetMap[dayName]
+    const targetDate = new Date(startDateCopy)
+    targetDate.setDate(startDateCopy.getDate() + dayOffset)
+
+    // Format date in Vietnamese format
+    const formattedDate = targetDate.toLocaleDateString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    })
+
+    const vietnameseDay = dayMap[dayName] || dayName
+
+    return `${vietnameseDay}, ${formattedDate}\n${timeRange}`
+}
 export interface ClassScheduleDto {
     classId: string
     className: string
@@ -474,6 +552,7 @@ export interface ScheduleByFieldResponseDto {
     startTime?: string
     endTime?: string
     note?: string
+    scheduleTime?: number
 
     // Joined fields
     fullname: string

@@ -41,7 +41,7 @@ import {
 } from '@mui/material'
 
 // Hooks
-import { ScheduleStatus, useGetScheduleByFields, useRequestSchedule } from '@/@core/hooks/useSchedule'
+import { ScheduleStatus, useGetScheduleByFields, useRequestSchedule, formatScheduleTimeWithDate } from '@/@core/hooks/useSchedule'
 import { useGetWeeks, ScheduleStatus as WeekStatus, WeekResponseDto } from '@/@core/hooks/useWeek'
 
 const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
@@ -142,6 +142,12 @@ const ScheduleRequests = () => {
   const openWeekId = useMemo(() => {
     return weeks?.find(week => week.scheduleStatus === WeekStatus.OPEN)?.id
   }, [weeks])
+
+  // Get selected week info
+  const selectedWeekInfo = useMemo(() => {
+    if (!selectedWeekId || !weeks) return null
+    return weeks.find(week => week.id === selectedWeekId) || null
+  }, [weeks, selectedWeekId])
 
   // Set default selected week (open week or most recent)
   useEffect(() => {
@@ -303,10 +309,18 @@ const ScheduleRequests = () => {
     setStatusReason('')
   }
 
-  const formatTimeRange = (startTime?: string, endTime?: string) => {
-    if (!startTime && !endTime) return '—'
+  const formatTimeRange = (startTime?: string, endTime?: string, scheduleTime?: number) => {
+    // If scheduleTime is provided, use it to format with date
+    if (scheduleTime !== undefined && selectedWeekInfo?.startDate) {
+      return formatScheduleTimeWithDate(scheduleTime, selectedWeekInfo.startDate)
+    }
 
-    return `${startTime || '—'} - ${endTime || '—'}`
+    // Fallback to startTime/endTime if available
+    if (startTime || endTime) {
+      return `${startTime || '—'} - ${endTime || '—'}`
+    }
+
+    return '—'
   }
 
   // Calculate end date for a week (startDate + 6 days)
@@ -504,8 +518,8 @@ const ScheduleRequests = () => {
                               </Typography>
                             </StyledTableCell>
                             <StyledTableCell>
-                              <Typography variant="body2">
-                                {formatTimeRange(request.startTime, request.endTime)}
+                              <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+                                {formatTimeRange(request.startTime, request.endTime, request.scheduleTime)}
                               </Typography>
                             </StyledTableCell>
                             <StyledTableCell>
@@ -606,8 +620,8 @@ const ScheduleRequests = () => {
                               </Typography>
                             </StyledTableCell>
                             <StyledTableCell>
-                              <Typography variant="body2">
-                                {formatTimeRange(request.startTime, request.endTime)}
+                              <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+                                {formatTimeRange(request.startTime, request.endTime, request.scheduleTime)}
                               </Typography>
                             </StyledTableCell>
                             <StyledTableCell>
@@ -707,8 +721,8 @@ const ScheduleRequests = () => {
                               </Typography>
                             </StyledTableCell>
                             <StyledTableCell>
-                              <Typography variant="body2">
-                                {formatTimeRange(request.startTime, request.endTime)}
+                              <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+                                {formatTimeRange(request.startTime, request.endTime, request.scheduleTime)}
                               </Typography>
                             </StyledTableCell>
                             <StyledTableCell>
@@ -784,8 +798,8 @@ const ScheduleRequests = () => {
                               </Typography>
                             </StyledTableCell>
                             <StyledTableCell>
-                              <Typography variant="body2">
-                                {formatTimeRange(request.startTime, request.endTime)}
+                              <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+                                {formatTimeRange(request.startTime, request.endTime, request.scheduleTime)}
                               </Typography>
                             </StyledTableCell>
                             <StyledTableCell>
@@ -861,8 +875,8 @@ const ScheduleRequests = () => {
                               </Typography>
                             </StyledTableCell>
                             <StyledTableCell>
-                              <Typography variant="body2">
-                                {formatTimeRange(request.startTime, request.endTime)}
+                              <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+                                {formatTimeRange(request.startTime, request.endTime, request.scheduleTime)}
                               </Typography>
                             </StyledTableCell>
                             <StyledTableCell>
@@ -923,8 +937,8 @@ const ScheduleRequests = () => {
                 <Typography variant="body2">
                   Lớp: {selectedRequest.classname} - Buổi {selectedRequest.lesson}
                 </Typography>
-                <Typography variant="body2">
-                  Thời gian: {formatTimeRange(selectedRequest.startTime, selectedRequest.endTime)}
+                <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+                  Thời gian: {formatTimeRange(selectedRequest.startTime, selectedRequest.endTime, selectedRequest.scheduleTime)}
                 </Typography>
                 {selectedRequest.note && (
                   <Typography variant="body2" color="text.secondary">
