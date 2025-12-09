@@ -89,19 +89,19 @@ const dayOffsetMap: Record<string, number> = {
  * @returns Formatted string like "Thứ 2, 01/01/2024 - 8:00-10:00"
  */
 export const formatScheduleTimeWithDate = (scheduleTime: number | undefined, weekStartDate: Date | string | undefined): string => {
-    if (scheduleTime === undefined || scheduleTime < 0 || scheduleTime >= SCHEDULE_TIME.length) {
+    if (scheduleTime === undefined || scheduleTime <= 0 || scheduleTime > SCHEDULE_TIME.length) {
         return '—'
     }
 
     if (!weekStartDate) {
         // If no week start date, just return the time and day name
-        const scheduleStr = SCHEDULE_TIME[scheduleTime]
+        const scheduleStr = SCHEDULE_TIME[scheduleTime - 1]
         const [timeRange, dayName] = scheduleStr.split(' ')
         const vietnameseDay = dayMap[dayName] || dayName
         return `${vietnameseDay}\n${timeRange}`
     }
 
-    const scheduleStr = SCHEDULE_TIME[scheduleTime]
+    const scheduleStr = SCHEDULE_TIME[scheduleTime - 1]
     const [timeRange, dayName] = scheduleStr.split(' ')
 
     if (!dayName || !dayOffsetMap[dayName]) {
