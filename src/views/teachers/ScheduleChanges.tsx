@@ -33,6 +33,7 @@ import {
 // Hooks
 import { useGetScheduleInfoByField, formatScheduleTimeWithDate, SCHEDULE_TIME } from '@/@core/hooks/useSchedule'
 import { useGetWeeks, ScheduleStatus as WeekStatus, WeekResponseDto } from '@/@core/hooks/useWeek'
+import { RegionId, RegionLabel } from '@/@core/hooks/useCourse'
 
 const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
     fontWeight: 700,
@@ -57,6 +58,7 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
 
 const ScheduleChanges = () => {
     const [selectedWeekId, setSelectedWeekId] = useState<string>('')
+    const [selectedRegion, setSelectedRegion] = useState<number>(RegionId.HALONG)
     const [dateFilter, setDateFilter] = useState<string | null>(null)
     const [isExporting, setIsExporting] = useState<boolean>(false)
 
@@ -100,7 +102,8 @@ const ScheduleChanges = () => {
         error: scheduleChangesError
     } = useGetScheduleInfoByField({
         teacherNote: true,
-        weekId: selectedWeekId || undefined
+        weekId: selectedWeekId || undefined,
+        region: selectedRegion
     })
 
     const getInitials = (name: string) => {
@@ -281,6 +284,25 @@ const ScheduleChanges = () => {
                 <CardContent>
                     {/* Filter Section */}
                     <Box sx={{ mb: 3, display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+                        {/* Region Selection */}
+                        <FormControl size="small" sx={{ minWidth: 200 }}>
+                            <InputLabel>Khu vực</InputLabel>
+                            <Select
+                                value={selectedRegion}
+                                onChange={(e) => setSelectedRegion(Number(e.target.value))}
+                                label="Khu vực"
+                            >
+                                {(Object.values(RegionId).filter((v): v is RegionId => typeof v === 'number')).map((id) => (
+                                    <MenuItem key={id} value={id}>
+                                        <Box display="flex" alignItems="center" gap={1}>
+                                            <i className="ri-map-pin-line" />
+                                            <span>{RegionLabel[id]}</span>
+                                        </Box>
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+
                         {/* Week Selection */}
                         <FormControl size="small" sx={{ minWidth: 250 }}>
                             <InputLabel>Tuần học</InputLabel>

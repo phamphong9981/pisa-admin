@@ -2,6 +2,7 @@ export class GetScheduleInfoByFieldDto {
     weekId?: string
     classId?: string
     teacherNote?: boolean
+    region?: number
 }
 
 export interface ScheduleInfoByFieldResponseDto {
