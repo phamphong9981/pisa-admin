@@ -9,8 +9,8 @@ import { styled } from '@mui/material/styles'
 // MUI Imports
 import {
     Alert,
-    Autocomplete,
     Avatar,
+    Button,
     Box,
     Card,
     CardContent,
@@ -27,12 +27,11 @@ import {
     TableContainer,
     TableHead,
     TableRow,
-    TextField,
     Typography
 } from '@mui/material'
 
 // Hooks
-import { useGetScheduleInfoByField, formatScheduleTimeWithDate } from '@/@core/hooks/useSchedule'
+import { useGetScheduleInfoByField, formatScheduleTimeWithDate, SCHEDULE_TIME } from '@/@core/hooks/useSchedule'
 import { useGetWeeks, ScheduleStatus as WeekStatus, WeekResponseDto } from '@/@core/hooks/useWeek'
 
 const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
@@ -58,7 +57,8 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
 
 const ScheduleChanges = () => {
     const [selectedWeekId, setSelectedWeekId] = useState<string>('')
-    const [classFilter, setClassFilter] = useState<string | null>(null)
+    const [dateFilter, setDateFilter] = useState<string | null>(null)
+    const [isExporting, setIsExporting] = useState<boolean>(false)
 
     // Fetch weeks to get the open week ID
     const {
@@ -119,21 +119,79 @@ const ScheduleChanges = () => {
         return endDate
     }
 
-    // Get unique class names from schedule changes
-    const getAllClassNames = () => {
-        if (!scheduleChanges) return []
-        const uniqueClassNames = Array.from(
-            new Set(scheduleChanges.map(item => item.className).filter(Boolean))
-        ).sort()
-        return uniqueClassNames
+    // Map scheduleTime to the concrete date (YYYY-MM-DD) of that slot in the selected week
+    const getDateForScheduleTime = (scheduleTime?: number) => {
+        if (!scheduleTime || !selectedWeekInfo?.startDate) return null
+
+        const scheduleStr = SCHEDULE_TIME[scheduleTime - 1]
+        if (!scheduleStr) return null
+
+        const [, dayName] = scheduleStr.split(' ')
+        const dayOffsetMap: Record<string, number> = {
+            Monday: 0,
+            Tuesday: 1,
+            Wednesday: 2,
+            Thursday: 3,
+            Friday: 4,
+            Saturday: 5,
+            Sunday: 6
+        }
+        if (dayName === undefined || dayOffsetMap[dayName] === undefined) return null
+
+        const startDate = new Date(selectedWeekInfo.startDate)
+
+        // Normalize startDate to Monday of that week to align with scheduleTime
+        const startDayOfWeek = startDate.getDay() // 0 (Sun) - 6 (Sat)
+        const daysToMonday = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1
+        startDate.setDate(startDate.getDate() - daysToMonday)
+
+        const targetDate = new Date(startDate)
+        targetDate.setDate(startDate.getDate() + dayOffsetMap[dayName])
+
+        return targetDate.toISOString().split('T')[0]
     }
 
-    // Filter schedule changes by class name
+    // Build date filter options based on available schedule times
+    const dateOptions = useMemo(() => {
+        if (!scheduleChanges) return []
+
+        const dateSet = new Set<string>()
+        scheduleChanges.forEach(item => {
+            const dateStr = getDateForScheduleTime(item.scheduleTime)
+            if (dateStr) {
+                dateSet.add(dateStr)
+            }
+        })
+
+        return Array.from(dateSet)
+            .sort()
+            .map(dateStr => ({
+                value: dateStr,
+                label: new Date(dateStr).toLocaleDateString('vi-VN', {
+                    weekday: 'long',
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                })
+            }))
+    }, [scheduleChanges, selectedWeekInfo])
+
+    // Filter schedule changes by date, then sort by scheduleTime
     const filteredScheduleChanges = useMemo(() => {
         if (!scheduleChanges) return []
-        if (!classFilter) return scheduleChanges
-        return scheduleChanges.filter(item => item.className === classFilter)
-    }, [scheduleChanges, classFilter])
+
+        let result = scheduleChanges
+
+        if (dateFilter) {
+            result = result.filter(item => getDateForScheduleTime(item.scheduleTime) === dateFilter)
+        }
+
+        return [...result].sort((a, b) => {
+            const timeA = a.scheduleTime ?? Number.MAX_SAFE_INTEGER
+            const timeB = b.scheduleTime ?? Number.MAX_SAFE_INTEGER
+            return timeA - timeB
+        })
+    }, [scheduleChanges, dateFilter, selectedWeekInfo])
 
     const formatTimeRange = (startTime?: string, endTime?: string, scheduleTime?: number) => {
         // If scheduleTime is provided, use it to format with date
@@ -149,12 +207,76 @@ const ScheduleChanges = () => {
         return '—'
     }
 
+    const handleExport = async () => {
+        if (!selectedWeekId) return
+        if (!filteredScheduleChanges.length) {
+            alert('Không có dữ liệu để xuất.')
+            return
+        }
+
+        try {
+            setIsExporting(true)
+            const headers = ['Giáo viên', 'Lớp', 'Kỹ năng', 'Buổi', 'Thời gian', 'Biến động ca học']
+
+            const rows = filteredScheduleChanges.map(item => {
+                const teacher = item.teacherName || ''
+                const className = item.className || ''
+                const courseName = item.courseName || ''
+                const lesson = item.lesson ? `Buổi ${item.lesson}` : ''
+                const time = formatTimeRange(item.startTime, item.endTime, item.scheduleTime).replace(/\n/g, ' ')
+                const note = item.teacherNote || ''
+
+                return [teacher, className, courseName, lesson, time, note]
+            })
+
+            const csvContent = [
+                '\uFEFF', // BOM for Excel UTF-8
+                headers.join(','),
+                ...rows.map(row =>
+                    row
+                        .map(value => {
+                            const v = value ?? ''
+                            // Escape double quotes by doubling them
+                            const escaped = String(v).replace(/"/g, '""')
+                            return `"${escaped}"`
+                        })
+                        .join(',')
+                )
+            ].join('\n')
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+            const url = URL.createObjectURL(blob)
+            const link = document.createElement('a')
+            link.href = url
+            link.download = `schedule-info-${selectedWeekId}.csv`
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+            URL.revokeObjectURL(url)
+        } catch (error) {
+            console.error('Export schedule info error:', error)
+            alert('Xuất file thất bại, vui lòng thử lại.')
+        } finally {
+            setIsExporting(false)
+        }
+    }
+
     return (
         <Box>
             <Card sx={{ mb: 4 }}>
                 <CardHeader
                     title="Biến động ca học"
                     subheader="Danh sách các buổi học có ghi chú từ giáo viên"
+                    action={
+                        <Button
+                            variant="outlined"
+                            startIcon={<i className="ri-download-2-line" />}
+                            onClick={handleExport}
+                            disabled={!selectedWeekId || isExporting || isWeeksLoading}
+                        >
+                            {isExporting ? 'Đang xuất...' : 'Xuất CSV'}
+                        </Button>
+                    }
                 />
                 <CardContent>
                     {/* Filter Section */}
@@ -207,29 +329,29 @@ const ScheduleChanges = () => {
                             </Select>
                         </FormControl>
 
-                        {/* Class Name Filter */}
-                        <Autocomplete
-                            options={getAllClassNames()}
-                            value={classFilter}
-                            onChange={(event, newValue) => setClassFilter(newValue || null)}
-                            renderInput={(params) => (
-                                <TextField
-                                    {...params}
-                                    label="Lọc theo tên lớp"
-                                    placeholder="Chọn hoặc nhập tên lớp"
-                                    size="small"
-                                    sx={{ maxWidth: 400 }}
-                                />
-                            )}
-                            renderOption={(props, option) => (
-                                <Box component="li" {...props}>
-                                    {option}
-                                </Box>
-                            )}
-                            clearOnEscape
-                            clearText="Xóa bộ lọc"
-                            noOptionsText="Không tìm thấy lớp nào"
-                        />
+                        {/* Date Filter (styled like week selection) */}
+                        <FormControl size="small" sx={{ minWidth: 250 }}>
+                            <InputLabel>Ngày</InputLabel>
+                            <Select
+                                value={dateFilter || ''}
+                                onChange={(e) => setDateFilter(e.target.value ? String(e.target.value) : null)}
+                                label="Ngày"
+                                displayEmpty
+                            >
+                                <MenuItem value="">
+                                    <em>Tất cả ngày</em>
+                                </MenuItem>
+                                {dateOptions.length === 0 ? (
+                                    <MenuItem disabled>Không có ngày phù hợp</MenuItem>
+                                ) : (
+                                    dateOptions.map(option => (
+                                        <MenuItem key={option.value} value={option.value}>
+                                            {option.label}
+                                        </MenuItem>
+                                    ))
+                                )}
+                            </Select>
+                        </FormControl>
                     </Box>
 
                     {/* Table */}
