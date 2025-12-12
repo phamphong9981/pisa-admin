@@ -415,12 +415,12 @@ const ScheduleChanges = () => {
                                             </StyledTableCell>
                                             <StyledTableCell>
                                                 <Typography variant="body2">
-                                                    {item.className || '—'}
+                                                    {item.courseName || '—'}
                                                 </Typography>
                                             </StyledTableCell>
                                             <StyledTableCell>
                                                 <Typography variant="body2">
-                                                    {item.courseName || '—'}
+                                                    {item.className || '—'}
                                                 </Typography>
                                             </StyledTableCell>
                                             <StyledTableCell>
