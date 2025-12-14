@@ -349,7 +349,7 @@ export interface StudentScheduleDetailDto {
     phone: string
     scheduleId?: string
     scheduleTime?: number
-    scheduleStatus?: string
+    scheduleStatus?: ScheduleStatus
     rollcallStatus: RollcallStatus
     teacherId?: string
     teacherName?: string

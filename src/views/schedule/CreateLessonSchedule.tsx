@@ -22,7 +22,7 @@ import {
 } from '@mui/material'
 
 // Hooks
-import { useCreateLessonSchedule, useGetScheduleDetail, useUpdateUserSchedule, useUpdateLessonSchedule } from '@/@core/hooks/useSchedule'
+import { useCreateLessonSchedule, useGetScheduleDetail, useUpdateUserSchedule, useUpdateLessonSchedule, ScheduleStatus } from '@/@core/hooks/useSchedule'
 import { useStudentList } from '@/@core/hooks/useStudent'
 import { useTeacherList } from '@/@core/hooks/useTeacher'
 import { useCreateClass } from '@/@core/hooks/useClass'
@@ -92,6 +92,25 @@ const CreateLessonSchedule = ({
     weekId,
     (selectedSlot?.slotIndex || 0)
   )
+
+  // Helper function to get schedule status label and color
+  const getScheduleStatusInfo = (status?: ScheduleStatus) => {
+    if (!status) return { label: 'Chưa xác định', color: 'default' as const }
+
+    const statusMap: Record<ScheduleStatus, { label: string; color: 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' }> = {
+      [ScheduleStatus.ACTIVE]: { label: 'Đang hoạt động', color: 'success' },
+      [ScheduleStatus.ON_REQUEST_ACTIVE]: { label: 'Yêu cầu tham gia', color: 'info' },
+      [ScheduleStatus.ON_REQUEST_CANCEL]: { label: 'Yêu cầu hủy', color: 'warning' },
+      [ScheduleStatus.CANCELLED]: { label: 'Đã hủy', color: 'error' },
+      [ScheduleStatus.MAKEUP]: { label: 'Học bù', color: 'info' },
+      [ScheduleStatus.ON_REQUEST_CHANGE]: { label: 'Yêu cầu đổi', color: 'warning' },
+      [ScheduleStatus.CHANGED]: { label: 'Đã đổi', color: 'secondary' },
+      [ScheduleStatus.NO_SCHEDULE]: { label: 'Không có lịch', color: 'default' },
+      [ScheduleStatus.APPROVED_ACTIVE]: { label: 'Đã duyệt kích hoạt', color: 'success' }
+    }
+
+    return statusMap[status] || { label: status, color: 'default' as const }
+  }
 
   // Define student type
   type SelectedStudent = {
@@ -1662,34 +1681,49 @@ const CreateLessonSchedule = ({
                       p: 2
                     }}>
                       <Grid container spacing={1}>
-                        {scheduleDetail.students.absent.map((student) => (
-                          <Grid item xs={12} sm={6} md={4} key={student.profileId}>
-                            <Box sx={{
-                              p: 1,
-                              border: '1px solid #ffcdd2',
-                              borderRadius: 1,
-                              backgroundColor: '#ffebee',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              gap: 0.5
-                            }}>
-                              <Typography variant="body2" fontWeight={500} color="error">
-                                {student.fullname}
-                              </Typography>
-                              {student.courseName && (
-                                <Typography variant="caption" color="text.secondary">
-                                  <i className="ri-book-line" style={{ marginRight: 4, fontSize: '10px' }} />
-                                  {student.courseName}
-                                </Typography>
-                              )}
-                              {student.email && (
-                                <Typography variant="caption" color="text.secondary">
-                                  {student.email}
-                                </Typography>
-                              )}
-                            </Box>
-                          </Grid>
-                        ))}
+                        {scheduleDetail.students.absent.map((student) => {
+                          const statusInfo = getScheduleStatusInfo(student.scheduleStatus)
+
+                          return (
+                            <Grid item xs={12} sm={6} md={4} key={student.profileId}>
+                              <Box sx={{
+                                p: 1,
+                                border: '1px solid #ffcdd2',
+                                borderRadius: 1,
+                                backgroundColor: '#ffebee',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 0.5
+                              }}>
+                                <Box display="flex" alignItems="center" justifyContent="space-between" gap={1}>
+                                  <Typography variant="body2" fontWeight={500} color="error">
+                                    {student.fullname}
+                                  </Typography>
+                                  {student.scheduleStatus && (
+                                    <Chip
+                                      size="small"
+                                      label={statusInfo.label}
+                                      color={statusInfo.color}
+                                      variant="outlined"
+                                      sx={{ fontSize: '0.65rem', height: 20 }}
+                                    />
+                                  )}
+                                </Box>
+                                {student.courseName && (
+                                  <Typography variant="caption" color="text.secondary">
+                                    <i className="ri-book-line" style={{ marginRight: 4, fontSize: '10px' }} />
+                                    {student.courseName}
+                                  </Typography>
+                                )}
+                                {student.email && (
+                                  <Typography variant="caption" color="text.secondary">
+                                    {student.email}
+                                  </Typography>
+                                )}
+                              </Box>
+                            </Grid>
+                          )
+                        })}
                       </Grid>
                     </Box>
                   </Box>
