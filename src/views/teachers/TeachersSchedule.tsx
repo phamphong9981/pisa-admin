@@ -1291,7 +1291,9 @@ const TeachersSchedule = () => {
                                   color: `${rollcallStatusConfig.textColor} !important`,
                                   borderLeft: `4px solid ${rollcallStatusConfig.accentColor}`
                                 }
-                                : undefined
+                                : {
+                                  color: '#000000 !important'
+                                }
 
                               return (
                                 <Tooltip title={displayLabel} arrow placement="top">
