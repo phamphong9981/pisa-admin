@@ -1276,7 +1276,7 @@ const TeachersSchedule = () => {
                       {teachingInfo.students && Array.isArray(teachingInfo.students) && teachingInfo.students.length > 0 && (
                         <Box className="students-content">
                           <Box className="students-list">
-                            {teachingInfo.students.slice(0, 7).map((student: any) => {
+                            {teachingInfo.students.slice(0, 15).map((student: any) => {
                               const coursename = student.coursename ? ` - ${student.coursename}` : ''
                               const displayLabel = student.note
                                 ? `${student.fullname}${coursename} (${student.note})`
@@ -1340,7 +1340,7 @@ const TeachersSchedule = () => {
                                 </Tooltip>
                               )
                             })}
-                            {teachingInfo.students.length > 7 && (
+                            {teachingInfo.students.length > 15 && (
                               <Box
                                 className="student-item"
                                 sx={{
@@ -1352,7 +1352,7 @@ const TeachersSchedule = () => {
                                 }}
                               >
                                 <Typography component="span" variant="caption" sx={{ fontWeight: 600 }}>
-                                  ...và {teachingInfo.students.length - 7} học sinh khác
+                                  ...và {teachingInfo.students.length - 15} học sinh khác
                                 </Typography>
                               </Box>
                             )}
