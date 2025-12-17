@@ -1311,7 +1311,8 @@ const TeachersSchedule = () => {
                                         overflow: 'hidden',
                                         textOverflow: 'ellipsis',
                                         whiteSpace: 'nowrap',
-                                        width: '100%'
+                                        width: '100%',
+                                        color: '#000000 !important'
                                       }}
                                     >
                                       {displayLabel}
