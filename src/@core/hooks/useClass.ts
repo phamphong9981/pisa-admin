@@ -25,6 +25,23 @@ interface ClassInfo {
     fixedSchedule?: number[]
 }
 
+export interface UserClassResponse {
+    id: string
+    name: string
+    totalStudent: number
+    totalLessonPerWeek: number
+    classType: string
+    teacherId: string
+    teacherName: string
+    courseId: string
+    courseName: string
+    fixedSchedule: number[]
+    autoSchedule: boolean
+    registeredLessons: number[]
+    createdAt: string
+    updatedAt: string
+}
+
 export interface ClassListResponse {
     id: string,
     name: string,
@@ -56,6 +73,52 @@ interface UpdateClassDto {
     fixedSchedule?: number[]
 }
 
+export interface BatchRegisterItem {
+    classId: string
+    userIds: string[]
+}
+
+export interface BatchRegisterRequest {
+    items: BatchRegisterItem[]
+}
+
+export interface BatchRegisterResponse {
+    message: string
+    results: {
+        classId: string
+        result: {
+            message: string
+            results: {
+                userId: string
+                status: string
+                message?: string
+            }[]
+        }
+    }[]
+}
+
+export interface BatchUnregisterItem {
+    classId: string
+    userIds: string[]
+}
+
+export interface BatchUnregisterRequest {
+    items: BatchUnregisterItem[]
+}
+
+export interface BatchUnregisterResponse {
+    message: string
+    results: {
+        classId: string
+        results: {
+            userId: string
+            status: string
+            result?: any
+            message?: string
+        }[]
+    }[]
+}
+
 // Function để gọi API lấy danh sách class
 const fetchClassList = async (): Promise<ClassListResponse[]> => {
     const { data } = await apiClient.get('/classes');
@@ -74,6 +137,12 @@ const fetchClassInfo = async (id: string): Promise<ClassInfo> => {
 
     // Thêm một chút delay để thấy trạng thái loading
     await new Promise((resolve) => setTimeout(resolve, 500));
+
+    return data.data;
+}
+
+const fetchUserClassesInCourse = async (userId: string, courseId: string): Promise<UserClassResponse[]> => {
+    const { data } = await apiClient.get(`/classes/user/${userId}/course/${courseId}`);
 
     return data.data;
 }
@@ -117,6 +186,18 @@ const unregisterStudentFromClass = async (classId: string, username: string) => 
         username: username
     });
 
+
+    return data.data;
+}
+
+const batchRegisterUsersToClasses = async (payload: BatchRegisterRequest): Promise<BatchRegisterResponse> => {
+    const { data } = await apiClient.post('/classes/batch/register-users-to-classes', payload);
+
+    return data.data;
+}
+
+const batchUnregisterUsersFromClasses = async (payload: BatchUnregisterRequest): Promise<BatchUnregisterResponse> => {
+    const { data } = await apiClient.post('/classes/batch/unregister-users-from-classes', payload);
 
     return data.data;
 }
@@ -177,6 +258,14 @@ export const useClass = (id: string) => {
     })
 }
 
+export const useUserClassesInCourse = (userId: string, courseId: string) => {
+    return useQuery<UserClassResponse[], Error>({
+        queryKey: ['userClasses', userId, courseId],
+        queryFn: () => fetchUserClassesInCourse(userId, courseId),
+        enabled: !!userId && !!courseId,
+    })
+}
+
 // Hook để tạo class mới
 export const useCreateClass = (courseId: string) => {
     const queryClient = useQueryClient()
@@ -217,6 +306,38 @@ export const useUpdateClass = () => {
         onError: (error) => {
             console.error('Error updating class:', error)
         }
+    })
+}
+
+export const useBatchRegisterUsersToClasses = (courseId?: string) => {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: batchRegisterUsersToClasses,
+        onSuccess: () => {
+            if (courseId) {
+                queryClient.invalidateQueries({ queryKey: ['courseInfo', courseId] })
+            }
+
+            queryClient.invalidateQueries({ queryKey: ['class'] })
+            queryClient.invalidateQueries({ queryKey: ['classes'] })
+        },
+    })
+}
+
+export const useBatchUnregisterUsersFromClasses = (courseId?: string) => {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: batchUnregisterUsersFromClasses,
+        onSuccess: () => {
+            if (courseId) {
+                queryClient.invalidateQueries({ queryKey: ['courseInfo', courseId] })
+            }
+
+            queryClient.invalidateQueries({ queryKey: ['class'] })
+            queryClient.invalidateQueries({ queryKey: ['classes'] })
+        },
     })
 }
 
