@@ -1,6 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from './apiClient';
 
+export interface ScheduleNoteDto {
+    scheduleTime: number
+    note?: string
+}
+
 export interface TeacherListResponse {
     id: string,
     name: string,
@@ -11,6 +16,7 @@ export interface TeacherListResponse {
     userId: string,
     note?: string
     username?: string
+    scheduleNotes?: ScheduleNoteDto[]
 }
 
 // Function để gọi API lấy danh sách teacher

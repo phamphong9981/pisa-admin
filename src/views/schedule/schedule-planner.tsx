@@ -37,7 +37,7 @@ import {
 import { useCourseInfo, useCourseInfoWithReload, useCourseList, RegionId, RegionLabel } from '@/@core/hooks/useCourse'
 import { SCHEDULE_TIME, useAutoScheduleCourse, useGetAllSchedule } from '@/@core/hooks/useSchedule'
 import { useGetWeeks, WeekResponseDto } from '@/@core/hooks/useWeek'
-import { useTeacherList, TeacherListResponse } from '@/@core/hooks/useTeacher'
+import { useTeacherList, TeacherListResponse, useTeacherScheduleNotes } from '@/@core/hooks/useTeacher'
 import useAuth from '@/@core/hooks/useAuth'
 import CreateLessonSchedule from './CreateLessonSchedule'
 import MissingScheduleTable from './MissingScheduleTable'
@@ -189,6 +189,13 @@ const SchedulePlanner = () => {
 
   // Teacher search - use weekId to fetch teacher's busy schedule for that week
   const { data: teachers, isLoading: isTeachersLoading } = useTeacherList(teacherSearchTerm, selectedWeekId || undefined)
+
+  // Fetch teacher schedule notes when a teacher is selected
+  const { data: teacherScheduleNotes } = useTeacherScheduleNotes(
+    selectedTeacher?.id || '',
+    selectedWeekId || '',
+    undefined // Get all notes for the week, not just one scheduleTime
+  )
 
   // Get weeks list
   const weeks = useMemo(() => {
@@ -458,6 +465,19 @@ const SchedulePlanner = () => {
 
     return availableSlots
   }, [selectedTeacher])
+
+  // Create a map of teacher notes by scheduleTime for quick lookup
+  const teacherNotesByScheduleTime = useMemo(() => {
+    const map: Record<number, string> = {}
+    if (teacherScheduleNotes) {
+      teacherScheduleNotes.forEach(note => {
+        if (note.scheduleTime && note.note) {
+          map[note.scheduleTime] = note.note
+        }
+      })
+    }
+    return map
+  }, [teacherScheduleNotes])
 
   // Helper function to check if teacher is busy at specific time slot
   const isTeacherBusy = (teacherId: string, slotIndex: number) => {
@@ -1041,7 +1061,14 @@ const SchedulePlanner = () => {
                                   justifyContent: 'space-between',
                                   backgroundColor: isSelected ? '#e3f2fd' : 'transparent'
                                 }}
-                                onClick={() => setSelectedTeacher(teacher)}
+                                onClick={() => {
+                                  // Toggle: nếu đã chọn thì bỏ chọn, nếu chưa chọn thì chọn
+                                  if (isSelected) {
+                                    setSelectedTeacher(null)
+                                  } else {
+                                    setSelectedTeacher(teacher)
+                                  }
+                                }}
                               >
                                 <Box sx={{ flex: 1 }}>
                                   <Typography variant="body2" fontWeight={500}>
@@ -1086,15 +1113,22 @@ const SchedulePlanner = () => {
 
                   {/* Selected Teacher Display */}
                   {selectedTeacher && !teacherSearchTerm && (
-                    <Box sx={{
-                      p: 1.5,
-                      backgroundColor: '#e8f5e8',
-                      borderRadius: 1,
-                      border: '1px solid #c8e6c9',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between'
-                    }}>
+                    <Box
+                      sx={{
+                        p: 1.5,
+                        backgroundColor: '#e8f5e8',
+                        borderRadius: 1,
+                        border: '1px solid #c8e6c9',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        cursor: 'pointer',
+                        '&:hover': {
+                          backgroundColor: '#c8e6c9'
+                        }
+                      }}
+                      onClick={() => setSelectedTeacher(null)}
+                    >
                       <Box sx={{ flex: 1 }}>
                         <Typography variant="body2" fontWeight={600}>
                           {selectedTeacher.name}
@@ -1114,18 +1148,9 @@ const SchedulePlanner = () => {
                           variant="outlined"
                           sx={{ fontSize: '0.7rem' }}
                         />
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          color="inherit"
-                          onClick={() => {
-                            setTeacherSearchTerm('')
-                            setSelectedTeacher(null)
-                          }}
-                          sx={{ fontSize: '0.7rem', py: 0.25, px: 1 }}
-                        >
-                          Bỏ chọn
-                        </Button>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                          (Click để bỏ chọn)
+                        </Typography>
                       </Box>
                     </Box>
                   )}
@@ -1216,6 +1241,8 @@ const SchedulePlanner = () => {
                           const isTeacherAvailable = selectedTeacher && index > 0 &&
                             teacherAvailableSlots.has(index)
 
+                          // Get teacher note for this time slot if available
+                          const teacherNoteForSlot = selectedTeacher && index > 0 ? teacherNotesByScheduleTime[index] : undefined
 
                           return (
                             <GridCell
@@ -1251,6 +1278,56 @@ const SchedulePlanner = () => {
                                     <i className="ri-check-line" style={{ marginRight: 4 }} />
                                     {selectedTeacher?.name} rảnh
                                   </Typography>
+                                  {teacherNoteForSlot && (
+                                    <Box sx={{ mt: 0.5, pt: 0.5, borderTop: '1px solid rgba(76, 175, 80, 0.2)' }}>
+                                      <Typography
+                                        variant="caption"
+                                        color="text.secondary"
+                                        sx={{
+                                          fontSize: '0.7rem',
+                                          fontStyle: 'italic',
+                                          display: 'block',
+                                          textAlign: 'left',
+                                          wordBreak: 'break-word'
+                                        }}
+                                      >
+                                        <i className="ri-file-text-line" style={{ marginRight: 4, fontSize: '0.75rem' }} />
+                                        {teacherNoteForSlot}
+                                      </Typography>
+                                    </Box>
+                                  )}
+                                </Box>
+                              )}
+
+                              {/* Show teacher note even if teacher is not available (busy) */}
+                              {selectedTeacher && !isTeacherAvailable && teacherNoteForSlot && (
+                                <Box sx={{
+                                  textAlign: 'center',
+                                  mb: 1,
+                                  p: 0.5,
+                                  backgroundColor: 'rgba(255, 152, 0, 0.1)',
+                                  borderRadius: 1,
+                                  border: '1px solid rgba(255, 152, 0, 0.3)'
+                                }}>
+                                  <Typography variant="caption" color="warning.main" fontWeight={600}>
+                                    <i className="ri-file-text-line" style={{ marginRight: 4 }} />
+                                    Ghi chú {selectedTeacher?.name}
+                                  </Typography>
+                                  <Box sx={{ mt: 0.5 }}>
+                                    <Typography
+                                      variant="caption"
+                                      color="text.secondary"
+                                      sx={{
+                                        fontSize: '0.7rem',
+                                        fontStyle: 'italic',
+                                        display: 'block',
+                                        textAlign: 'left',
+                                        wordBreak: 'break-word'
+                                      }}
+                                    >
+                                      {teacherNoteForSlot}
+                                    </Typography>
+                                  </Box>
                                 </Box>
                               )}
 
