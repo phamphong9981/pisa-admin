@@ -37,7 +37,7 @@ import { useExport } from '@/@core/hooks/useExport'
 import { RollcallStatus, SCHEDULE_TIME, useGetAllSchedule } from '@/@core/hooks/useSchedule'
 import { useTeacherList, useUpdateTeacher, useTeacherScheduleNotesByWeek, TeacherScheduleNoteResponseDto } from '@/@core/hooks/useTeacher'
 import { useGetWeeks, WeekResponseDto, ScheduleStatus as WeekStatus } from '@/@core/hooks/useWeek'
-import { RegionId } from '@/@core/hooks/useCourse'
+import { RegionId, RegionLabel } from '@/@core/hooks/useCourse'
 
 // Components
 import ScheduleDetailPopup from './ScheduleDetailPopup'
@@ -407,6 +407,7 @@ const TeachersSchedule = () => {
   const [selectedTeachers, setSelectedTeachers] = useState<any[]>([])
   const [selectedDay, setSelectedDay] = useState<string>('all')
   const [selectedTimeRanges, setSelectedTimeRanges] = useState<string[]>([])
+  const [selectedRegions, setSelectedRegions] = useState<number[]>([])
 
   // States for saved filter groups
   interface SavedFilterGroup {
@@ -524,7 +525,36 @@ const TeachersSchedule = () => {
     return slots
   }, [selectedWeekInfo?.startDate])
 
-  // Filter teachers based on selected teachers and sort by pinned status
+  // Check if teacher has any schedule in selected regions
+  const teacherHasScheduleInSelectedRegions = useMemo(() => {
+    if (!schedules || selectedRegions.length === 0) {
+      return new Set<string>() // Return empty set if no filtering needed
+    }
+
+    const teacherIdsWithSchedules = new Set<string>()
+
+    schedules.forEach(schedule => {
+      // Check if schedule belongs to selected regions
+      if (schedule.region !== undefined && schedule.region !== null && selectedRegions.includes(schedule.region)) {
+        // Add teacher_id if exists
+        if (schedule.teacher_id) {
+          teacherIdsWithSchedules.add(schedule.teacher_id)
+        }
+        // Also check students' teacher_id
+        if (schedule.students && Array.isArray(schedule.students)) {
+          schedule.students.forEach((student: any) => {
+            if (student.teacher_id) {
+              teacherIdsWithSchedules.add(student.teacher_id)
+            }
+          })
+        }
+      }
+    })
+
+    return teacherIdsWithSchedules
+  }, [schedules, selectedRegions])
+
+  // Filter teachers based on selected teachers, selected regions, and sort by pinned status
   const filteredTeachers = useMemo(() => {
     if (!teachers) return []
 
@@ -534,6 +564,13 @@ const TeachersSchedule = () => {
     if (selectedTeachers.length > 0) {
       result = result.filter(teacher =>
         selectedTeachers.some(selected => selected.id === teacher.id)
+      )
+    }
+
+    // Filter by selected regions - only show teachers who have schedules in selected regions
+    if (selectedRegions.length > 0) {
+      result = result.filter(teacher =>
+        teacherHasScheduleInSelectedRegions.has(teacher.id)
       )
     }
 
@@ -557,7 +594,7 @@ const TeachersSchedule = () => {
     })
 
     return result
-  }, [teachers, selectedTeachers, pinnedTeacherIds])
+  }, [teachers, selectedTeachers, pinnedTeacherIds, selectedRegions, teacherHasScheduleInSelectedRegions])
 
   // Handle open schedule note dialog
   const handleOpenScheduleNoteDialog = (teacherId: string, teacherName: string, scheduleTime: number, dayLabel: string, time: string, currentNote?: string) => {
@@ -665,9 +702,23 @@ const TeachersSchedule = () => {
   const getTeachingInfos = (teacherId: string, slotIndex: number) => {
     if (!schedules) return []
 
-    return schedules.filter(schedule =>
+    let filteredSchedules = schedules.filter(schedule =>
       (schedule.teacher_id === teacherId || schedule.students?.some(student => student.teacher_id === teacherId)) && schedule.schedule_time === slotIndex + 1
     )
+
+    // Filter by selected regions if any
+    if (selectedRegions.length > 0) {
+      filteredSchedules = filteredSchedules.filter(schedule => {
+        // If schedule has region, check if it's in selected regions
+        if (schedule.region !== undefined && schedule.region !== null) {
+          return selectedRegions.includes(schedule.region)
+        }
+        // If no region info, exclude it when filtering
+        return false
+      })
+    }
+
+    return filteredSchedules
   }
 
   // Handle export menu
@@ -1384,7 +1435,7 @@ const TeachersSchedule = () => {
     })
 
     return columns
-  }, [filteredTeachers, pinnedTeacherIds, schedules, selectedWeekId, allScheduleNotes, handleOpenScheduleNoteDialog, handleOpenEditNoteDialog, handleTogglePinTeacher, isTeacherPinned, getRollcallStatusConfig, getScheduleNote])
+  }, [filteredTeachers, pinnedTeacherIds, schedules, selectedWeekId, allScheduleNotes, selectedRegions, handleOpenScheduleNoteDialog, handleOpenEditNoteDialog, handleTogglePinTeacher, isTeacherPinned, getRollcallStatusConfig, getScheduleNote])
 
   // Render schedule table (reusable for both card and full screen modal)
   const renderScheduleTable = (isFullScreen: boolean = false) => {
@@ -1611,7 +1662,7 @@ const TeachersSchedule = () => {
         </Box>
 
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={4}>
+          <Grid item xs={12} md={3}>
             <Autocomplete
               multiple
               options={teachers || []}
@@ -1687,7 +1738,7 @@ const TeachersSchedule = () => {
               handleHomeEndKeys
             />
           </Grid>
-          <Grid item xs={12} md={4}>
+          <Grid item xs={12} md={3}>
             <FormControl fullWidth>
               <InputLabel>Lọc theo ngày</InputLabel>
               <Select
@@ -1704,7 +1755,7 @@ const TeachersSchedule = () => {
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12} md={4}>
+          <Grid item xs={12} md={3}>
             <Autocomplete
               multiple
               options={uniqueTimeRanges}
@@ -1760,6 +1811,81 @@ const TeachersSchedule = () => {
               handleHomeEndKeys
             />
           </Grid>
+          <Grid item xs={12} md={3}>
+            <Autocomplete
+              multiple
+              options={Object.values(RegionId).filter((v): v is RegionId => typeof v === 'number')}
+              getOptionLabel={(option) => RegionLabel[option as RegionId]}
+              value={selectedRegions}
+              onChange={(event, newValue) => {
+                setSelectedRegions(newValue)
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  placeholder="Chọn khu vực để lọc..."
+                  label="Lọc theo khu vực"
+                  InputProps={{
+                    ...params.InputProps,
+                    startAdornment: (
+                      <>
+                        <i className="ri-map-pin-line" style={{ color: '#666', marginRight: 8 }} />
+                        {params.InputProps.startAdornment}
+                      </>
+                    ),
+                  }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: 'white',
+                      '&:hover fieldset': {
+                        borderColor: '#1976d2',
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: '#1976d2',
+                      },
+                    }
+                  }}
+                />
+              )}
+              renderTags={(value, getTagProps) =>
+                value.map((option, index) => (
+                  <Chip
+                    {...getTagProps({ index })}
+                    key={option}
+                    label={RegionLabel[option as RegionId]}
+                    size="small"
+                    sx={{
+                      backgroundColor: REGION_COLORS[option] || '#e3f2fd',
+                      color: '#fff',
+                      border: `1px solid ${REGION_COLORS[option] || '#bbdefb'}`,
+                      fontWeight: 600
+                    }}
+                  />
+                ))
+              }
+              renderOption={(props, option) => (
+                <Box component="li" {...props}>
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <Box
+                      sx={{
+                        width: 12,
+                        height: 12,
+                        borderRadius: '50%',
+                        backgroundColor: REGION_COLORS[option] || '#e3f2fd'
+                      }}
+                    />
+                    <Typography variant="body2" fontWeight={600}>
+                      {RegionLabel[option as RegionId]}
+                    </Typography>
+                  </Box>
+                </Box>
+              )}
+              noOptionsText="Không có khu vực nào"
+              clearOnBlur={false}
+              selectOnFocus
+              handleHomeEndKeys
+            />
+          </Grid>
         </Grid>
 
         {/* Selected Teachers Display */}
@@ -1803,7 +1929,7 @@ const TeachersSchedule = () => {
         )}
 
         {/* Filter Summary */}
-        {(selectedDay !== 'all' || selectedTimeRanges.length > 0) && (
+        {(selectedDay !== 'all' || selectedTimeRanges.length > 0 || selectedRegions.length > 0) && (
           <Box sx={{ mt: 2, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
             <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1 }}>
               <i className="ri-filter-line" style={{ marginRight: 8 }} />
@@ -1833,6 +1959,41 @@ const TeachersSchedule = () => {
                       size="small"
                       variant="outlined"
                       onClick={() => setSelectedTimeRanges([])}
+                      sx={{
+                        color: '#d32f2f',
+                        borderColor: '#d32f2f',
+                        '&:hover': {
+                          backgroundColor: '#ffebee'
+                        }
+                      }}
+                    />
+                  )}
+                </>
+              )}
+              {selectedRegions.length > 0 && (
+                <>
+                  {selectedRegions.map((region) => (
+                    <Chip
+                      key={region}
+                      label={`Khu vực: ${RegionLabel[region as RegionId]}`}
+                      size="small"
+                      onDelete={() => {
+                        setSelectedRegions(prev => prev.filter(r => r !== region))
+                      }}
+                      sx={{
+                        backgroundColor: REGION_COLORS[region] || '#e3f2fd',
+                        color: '#fff',
+                        border: `1px solid ${REGION_COLORS[region] || '#bbdefb'}`,
+                        fontWeight: 600
+                      }}
+                    />
+                  ))}
+                  {selectedRegions.length > 1 && (
+                    <Chip
+                      label="Xóa tất cả khu vực"
+                      size="small"
+                      variant="outlined"
+                      onClick={() => setSelectedRegions([])}
                       sx={{
                         color: '#d32f2f',
                         borderColor: '#d32f2f',
