@@ -408,6 +408,7 @@ const TeachersSchedule = () => {
   const [selectedDay, setSelectedDay] = useState<string>('all')
   const [selectedTimeRanges, setSelectedTimeRanges] = useState<string[]>([])
   const [selectedRegions, setSelectedRegions] = useState<number[]>([])
+  const [selectedFreeTimeRanges, setSelectedFreeTimeRanges] = useState<string[]>([])
 
   // States for saved filter groups
   interface SavedFilterGroup {
@@ -554,6 +555,53 @@ const TeachersSchedule = () => {
     return teacherIdsWithSchedules
   }, [schedules, selectedRegions])
 
+  // Map time ranges to slot indices (1-based)
+  const timeRangeToSlotIndices = useMemo(() => {
+    if (selectedFreeTimeRanges.length === 0) {
+      return new Set<number>()
+    }
+
+    const slotIndices = new Set<number>()
+
+    SCHEDULE_TIME.forEach((slotString, index) => {
+      const parts = slotString.split(' ')
+      const time = parts[0]
+
+      if (selectedFreeTimeRanges.includes(time)) {
+        slotIndices.add(index + 1) // Convert to 1-based index
+      }
+    })
+
+    return slotIndices
+  }, [selectedFreeTimeRanges])
+
+  // Check if teacher is free in selected time ranges
+  const teacherIsFreeInSelectedTimeRanges = useMemo(() => {
+    if (selectedFreeTimeRanges.length === 0) {
+      return new Set<string>() // Return empty set if no filtering needed
+    }
+
+    const freeTeacherIds = new Set<string>()
+
+    if (!teachers) return freeTeacherIds
+
+    teachers.forEach(teacher => {
+      const busySchedule = teacher.registeredBusySchedule || []
+
+      // Check if teacher is free in ALL selected time ranges
+      const isFreeInAllRanges = Array.from(timeRangeToSlotIndices).every(slotIndex => {
+        // Teacher is free if slotIndex is NOT in busySchedule
+        return !busySchedule.includes(slotIndex)
+      })
+
+      if (isFreeInAllRanges) {
+        freeTeacherIds.add(teacher.id)
+      }
+    })
+
+    return freeTeacherIds
+  }, [teachers, selectedFreeTimeRanges, timeRangeToSlotIndices])
+
   // Filter teachers based on selected teachers, selected regions, and sort by pinned status
   const filteredTeachers = useMemo(() => {
     if (!teachers) return []
@@ -571,6 +619,13 @@ const TeachersSchedule = () => {
     if (selectedRegions.length > 0) {
       result = result.filter(teacher =>
         teacherHasScheduleInSelectedRegions.has(teacher.id)
+      )
+    }
+
+    // Filter by free time ranges - only show teachers who are free in ALL selected time ranges
+    if (selectedFreeTimeRanges.length > 0) {
+      result = result.filter(teacher =>
+        teacherIsFreeInSelectedTimeRanges.has(teacher.id)
       )
     }
 
@@ -594,7 +649,7 @@ const TeachersSchedule = () => {
     })
 
     return result
-  }, [teachers, selectedTeachers, pinnedTeacherIds, selectedRegions, teacherHasScheduleInSelectedRegions])
+  }, [teachers, selectedTeachers, pinnedTeacherIds, selectedRegions, selectedFreeTimeRanges, teacherHasScheduleInSelectedRegions, teacherIsFreeInSelectedTimeRanges])
 
   // Handle open schedule note dialog
   const handleOpenScheduleNoteDialog = (teacherId: string, teacherName: string, scheduleTime: number, dayLabel: string, time: string, currentNote?: string) => {
@@ -1661,261 +1716,480 @@ const TeachersSchedule = () => {
           </Menu>
         </Box>
 
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={3}>
-            <Autocomplete
-              multiple
-              options={teachers || []}
-              getOptionLabel={(option) => option.name}
-              value={selectedTeachers}
-              onChange={(event, newValue) => {
-                setSelectedTeachers(newValue)
-              }}
-              filterOptions={(options, { inputValue }) => {
-                return options.filter(option =>
-                  option.name.toLowerCase().includes(inputValue.toLowerCase()) ||
-                  option.skills.some((skill: string) =>
-                    skill.toLowerCase().includes(inputValue.toLowerCase())
-                  )
-                )
-              }}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  placeholder="Chọn giáo viên để lọc..."
-                  InputProps={{
-                    ...params.InputProps,
-                    startAdornment: (
-                      <>
-                        <i className="ri-search-line" style={{ color: '#666', marginRight: 8 }} />
-                        {params.InputProps.startAdornment}
-                      </>
-                    ),
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      backgroundColor: 'white',
-                      '&:hover fieldset': {
-                        borderColor: '#1976d2',
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: '#1976d2',
-                      },
-                    }
-                  }}
-                />
-              )}
-              renderTags={(value, getTagProps) =>
-                value.map((option, index) => (
-                  <Chip
-                    {...getTagProps({ index })}
-                    key={option.id}
-                    label={option.name}
-                    size="small"
+        {/* Horizontal Filters - Lọc theo trục ngang (lọc hàng: ngày và khung giờ) */}
+        <Box sx={{ mb: 2, p: 2, backgroundColor: '#fff8e1', borderRadius: 1, border: '1px solid #ffe082' }}>
+          <Typography variant="subtitle2" sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1, color: '#f57c00' }}>
+            <i className="ri-arrow-left-right-line" style={{ fontSize: '18px' }} />
+            Lọc theo trục ngang (Hàng)
+            <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+              - Lọc các hàng thời gian hiển thị trên bảng
+            </Typography>
+          </Typography>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Lọc theo ngày</InputLabel>
+                <Select
+                  value={selectedDay}
+                  onChange={(e) => setSelectedDay(e.target.value)}
+                  label="Lọc theo ngày"
+                  sx={{ backgroundColor: 'white' }}
+                >
+                  <MenuItem value="all">Tất cả các ngày</MenuItem>
+                  {uniqueDayOptions.map((day) => (
+                    <MenuItem key={day.key} value={day.key}>
+                      {day.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Autocomplete
+                multiple
+                size="small"
+                options={uniqueTimeRanges}
+                value={selectedTimeRanges}
+                onChange={(event, newValue) => {
+                  setSelectedTimeRanges(newValue)
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Chọn khung giờ để lọc..."
+                    label="Lọc theo khung giờ"
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment: (
+                        <>
+                          <i className="ri-time-line" style={{ color: '#f57c00', marginRight: 8 }} />
+                          {params.InputProps.startAdornment}
+                        </>
+                      ),
+                    }}
                     sx={{
-                      backgroundColor: '#e3f2fd',
-                      color: '#1976d2',
-                      border: '1px solid #bbdefb'
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: 'white',
+                        '&:hover fieldset': {
+                          borderColor: '#f57c00',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#f57c00',
+                        },
+                      }
                     }}
                   />
-                ))
-              }
-              renderOption={(props, option) => (
-                <Box component="li" {...props}>
-                  <Box>
-                    <Typography variant="body2" fontWeight={600}>
-                      {option.name}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {option.skills?.length || 0} kỹ năng: {option.skills?.join(', ') || 'Không có'}
-                    </Typography>
-                  </Box>
-                </Box>
-              )}
-              noOptionsText="Không tìm thấy giáo viên"
-              clearOnBlur={false}
-              selectOnFocus
-              handleHomeEndKeys
-            />
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <FormControl fullWidth>
-              <InputLabel>Lọc theo ngày</InputLabel>
-              <Select
-                value={selectedDay}
-                onChange={(e) => setSelectedDay(e.target.value)}
-                label="Lọc theo ngày"
-              >
-                <MenuItem value="all">Tất cả các ngày</MenuItem>
-                {uniqueDayOptions.map((day) => (
-                  <MenuItem key={day.key} value={day.key}>
-                    {day.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <Autocomplete
-              multiple
-              options={uniqueTimeRanges}
-              value={selectedTimeRanges}
-              onChange={(event, newValue) => {
-                setSelectedTimeRanges(newValue)
-              }}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  placeholder="Chọn khung giờ để lọc..."
-                  label="Lọc theo khung giờ"
-                  InputProps={{
-                    ...params.InputProps,
-                    startAdornment: (
-                      <>
-                        <i className="ri-time-line" style={{ color: '#666', marginRight: 8 }} />
-                        {params.InputProps.startAdornment}
-                      </>
-                    ),
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      backgroundColor: 'white',
-                      '&:hover fieldset': {
-                        borderColor: '#1976d2',
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: '#1976d2',
-                      },
-                    }
-                  }}
-                />
-              )}
-              renderTags={(value, getTagProps) =>
-                value.map((option, index) => (
-                  <Chip
-                    {...getTagProps({ index })}
-                    key={option}
-                    label={option}
-                    size="small"
-                    sx={{
-                      backgroundColor: '#fff3e0',
-                      color: '#e65100',
-                      border: '1px solid #ffcc80'
-                    }}
-                  />
-                ))
-              }
-              noOptionsText="Không có khung giờ nào"
-              clearOnBlur={false}
-              selectOnFocus
-              handleHomeEndKeys
-            />
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <Autocomplete
-              multiple
-              options={Object.values(RegionId).filter((v): v is RegionId => typeof v === 'number')}
-              getOptionLabel={(option) => RegionLabel[option as RegionId]}
-              value={selectedRegions}
-              onChange={(event, newValue) => {
-                setSelectedRegions(newValue)
-              }}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  placeholder="Chọn khu vực để lọc..."
-                  label="Lọc theo khu vực"
-                  InputProps={{
-                    ...params.InputProps,
-                    startAdornment: (
-                      <>
-                        <i className="ri-map-pin-line" style={{ color: '#666', marginRight: 8 }} />
-                        {params.InputProps.startAdornment}
-                      </>
-                    ),
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      backgroundColor: 'white',
-                      '&:hover fieldset': {
-                        borderColor: '#1976d2',
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: '#1976d2',
-                      },
-                    }
-                  }}
-                />
-              )}
-              renderTags={(value, getTagProps) =>
-                value.map((option, index) => (
-                  <Chip
-                    {...getTagProps({ index })}
-                    key={option}
-                    label={RegionLabel[option as RegionId]}
-                    size="small"
-                    sx={{
-                      backgroundColor: REGION_COLORS[option] || '#e3f2fd',
-                      color: '#fff',
-                      border: `1px solid ${REGION_COLORS[option] || '#bbdefb'}`,
-                      fontWeight: 600
-                    }}
-                  />
-                ))
-              }
-              renderOption={(props, option) => (
-                <Box component="li" {...props}>
-                  <Box display="flex" alignItems="center" gap={1}>
-                    <Box
+                )}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip
+                      {...getTagProps({ index })}
+                      key={option}
+                      label={option}
+                      size="small"
                       sx={{
-                        width: 12,
-                        height: 12,
-                        borderRadius: '50%',
-                        backgroundColor: REGION_COLORS[option] || '#e3f2fd'
+                        backgroundColor: '#fff3e0',
+                        color: '#e65100',
+                        border: '1px solid #ffcc80'
                       }}
                     />
-                    <Typography variant="body2" fontWeight={600}>
-                      {RegionLabel[option as RegionId]}
-                    </Typography>
-                  </Box>
-                </Box>
-              )}
-              noOptionsText="Không có khu vực nào"
-              clearOnBlur={false}
-              selectOnFocus
-              handleHomeEndKeys
-            />
+                  ))
+                }
+                noOptionsText="Không có khung giờ nào"
+                clearOnBlur={false}
+                selectOnFocus
+                handleHomeEndKeys
+              />
+            </Grid>
           </Grid>
-        </Grid>
+        </Box>
 
-        {/* Selected Teachers Display */}
-        {selectedTeachers.length > 0 && (
-          <Box sx={{ mt: 2, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              <i className="ri-filter-line" style={{ marginRight: 8 }} />
-              Giáo viên đã chọn ({selectedTeachers.length}):
+        {/* Vertical Filters - Lọc theo trục dọc (lọc cột: giáo viên) */}
+        <Box sx={{ mb: 2, p: 2, backgroundColor: '#e3f2fd', borderRadius: 1, border: '1px solid #90caf9' }}>
+          <Typography variant="subtitle2" sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1, color: '#1976d2' }}>
+            <i className="ri-arrow-up-down-line" style={{ fontSize: '18px' }} />
+            Lọc theo trục dọc (Cột)
+            <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+              - Lọc các cột giáo viên hiển thị trên bảng
             </Typography>
-            <Box display="flex" gap={1} flexWrap="wrap">
-              {selectedTeachers.map((teacher) => (
-                <Chip
-                  key={teacher.id}
-                  label={teacher.name}
-                  size="small"
-                  onDelete={() => {
-                    setSelectedTeachers(prev => prev.filter(t => t.id !== teacher.id))
-                  }}
-                  sx={{
-                    backgroundColor: '#e3f2fd',
-                    color: '#1976d2',
-                    border: '1px solid #bbdefb'
-                  }}
-                />
-              ))}
+          </Typography>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} md={4}>
+              <Autocomplete
+                multiple
+                size="small"
+                options={teachers || []}
+                getOptionLabel={(option) => option.name}
+                value={selectedTeachers}
+                onChange={(event, newValue) => {
+                  setSelectedTeachers(newValue)
+                }}
+                filterOptions={(options, { inputValue }) => {
+                  return options.filter(option =>
+                    option.name.toLowerCase().includes(inputValue.toLowerCase()) ||
+                    option.skills.some((skill: string) =>
+                      skill.toLowerCase().includes(inputValue.toLowerCase())
+                    )
+                  )
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Chọn giáo viên..."
+                    label="Chọn giáo viên"
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment: (
+                        <>
+                          <i className="ri-user-search-line" style={{ color: '#1976d2', marginRight: 8 }} />
+                          {params.InputProps.startAdornment}
+                        </>
+                      ),
+                    }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: 'white',
+                        '&:hover fieldset': {
+                          borderColor: '#1976d2',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#1976d2',
+                        },
+                      }
+                    }}
+                  />
+                )}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip
+                      {...getTagProps({ index })}
+                      key={option.id}
+                      label={option.name}
+                      size="small"
+                      sx={{
+                        backgroundColor: '#bbdefb',
+                        color: '#1565c0',
+                        border: '1px solid #90caf9'
+                      }}
+                    />
+                  ))
+                }
+                renderOption={(props, option) => (
+                  <Box component="li" {...props}>
+                    <Box>
+                      <Typography variant="body2" fontWeight={600}>
+                        {option.name}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {option.skills?.length || 0} kỹ năng: {option.skills?.join(', ') || 'Không có'}
+                      </Typography>
+                    </Box>
+                  </Box>
+                )}
+                noOptionsText="Không tìm thấy giáo viên"
+                clearOnBlur={false}
+                selectOnFocus
+                handleHomeEndKeys
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Autocomplete
+                multiple
+                size="small"
+                options={uniqueTimeRanges}
+                value={selectedFreeTimeRanges}
+                onChange={(event, newValue) => {
+                  setSelectedFreeTimeRanges(newValue)
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Lọc GV rảnh trong khung giờ..."
+                    label="Lọc GV rảnh trong khung giờ"
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment: (
+                        <>
+                          <i className="ri-user-heart-line" style={{ color: '#2e7d32', marginRight: 8 }} />
+                          {params.InputProps.startAdornment}
+                        </>
+                      ),
+                    }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: 'white',
+                        '&:hover fieldset': {
+                          borderColor: '#2e7d32',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#2e7d32',
+                        },
+                      }
+                    }}
+                  />
+                )}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip
+                      {...getTagProps({ index })}
+                      key={option}
+                      label={option}
+                      size="small"
+                      sx={{
+                        backgroundColor: '#c8e6c9',
+                        color: '#2e7d32',
+                        border: '1px solid #a5d6a7',
+                        fontWeight: 600
+                      }}
+                    />
+                  ))
+                }
+                noOptionsText="Không có khung giờ nào"
+                clearOnBlur={false}
+                selectOnFocus
+                handleHomeEndKeys
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Autocomplete
+                multiple
+                size="small"
+                options={Object.values(RegionId).filter((v): v is RegionId => typeof v === 'number')}
+                getOptionLabel={(option) => RegionLabel[option as RegionId]}
+                value={selectedRegions}
+                onChange={(event, newValue) => {
+                  setSelectedRegions(newValue)
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Lọc GV theo khu vực..."
+                    label="Lọc GV theo khu vực"
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment: (
+                        <>
+                          <i className="ri-map-pin-line" style={{ color: '#7b1fa2', marginRight: 8 }} />
+                          {params.InputProps.startAdornment}
+                        </>
+                      ),
+                    }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: 'white',
+                        '&:hover fieldset': {
+                          borderColor: '#7b1fa2',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#7b1fa2',
+                        },
+                      }
+                    }}
+                  />
+                )}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip
+                      {...getTagProps({ index })}
+                      key={option}
+                      label={RegionLabel[option as RegionId]}
+                      size="small"
+                      sx={{
+                        backgroundColor: REGION_COLORS[option] || '#e3f2fd',
+                        color: '#fff',
+                        border: `1px solid ${REGION_COLORS[option] || '#bbdefb'}`,
+                        fontWeight: 600
+                      }}
+                    />
+                  ))
+                }
+                renderOption={(props, option) => (
+                  <Box component="li" {...props}>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <Box
+                        sx={{
+                          width: 12,
+                          height: 12,
+                          borderRadius: '50%',
+                          backgroundColor: REGION_COLORS[option] || '#e3f2fd'
+                        }}
+                      />
+                      <Typography variant="body2" fontWeight={600}>
+                        {RegionLabel[option as RegionId]}
+                      </Typography>
+                    </Box>
+                  </Box>
+                )}
+                noOptionsText="Không có khu vực nào"
+                clearOnBlur={false}
+                selectOnFocus
+                handleHomeEndKeys
+              />
+            </Grid>
+          </Grid>
+        </Box>
+
+        {/* Filter Summary - Combined display */}
+        {(selectedDay !== 'all' || selectedTimeRanges.length > 0 || selectedRegions.length > 0 || selectedFreeTimeRanges.length > 0 || selectedTeachers.length > 0) && (
+          <Box sx={{ p: 2, backgroundColor: '#fafafa', borderRadius: 1, border: '1px solid #e0e0e0' }}>
+            <Typography variant="subtitle2" sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <i className="ri-filter-3-line" style={{ fontSize: '18px', color: '#666' }} />
+              Tổng hợp bộ lọc đang áp dụng
+            </Typography>
+
+            <Grid container spacing={2}>
+              {/* Horizontal Filters Summary */}
+              {(selectedDay !== 'all' || selectedTimeRanges.length > 0) && (
+                <Grid item xs={12} md={6}>
+                  <Box sx={{ p: 1.5, backgroundColor: '#fff8e1', borderRadius: 1, border: '1px solid #ffe082' }}>
+                    <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: '#f57c00', fontWeight: 600, mb: 1 }}>
+                      <i className="ri-arrow-left-right-line" style={{ fontSize: '14px' }} />
+                      Trục ngang (Hàng):
+                    </Typography>
+                    <Box display="flex" gap={0.5} flexWrap="wrap">
+                      {selectedDay !== 'all' && (
+                        <Chip
+                          label={`Ngày: ${selectedDayLabel || selectedDay}`}
+                          size="small"
+                          onDelete={() => setSelectedDay('all')}
+                          sx={{
+                            backgroundColor: '#fff3e0',
+                            color: '#e65100',
+                            border: '1px solid #ffcc80'
+                          }}
+                        />
+                      )}
+                      {selectedTimeRanges.map((timeRange) => (
+                        <Chip
+                          key={timeRange}
+                          label={`Giờ: ${timeRange}`}
+                          size="small"
+                          onDelete={() => {
+                            setSelectedTimeRanges(prev => prev.filter(t => t !== timeRange))
+                          }}
+                          sx={{
+                            backgroundColor: '#fff3e0',
+                            color: '#e65100',
+                            border: '1px solid #ffcc80'
+                          }}
+                        />
+                      ))}
+                      {(selectedDay !== 'all' || selectedTimeRanges.length > 0) && (
+                        <Chip
+                          label="Xóa lọc ngang"
+                          size="small"
+                          variant="outlined"
+                          onClick={() => {
+                            setSelectedDay('all')
+                            setSelectedTimeRanges([])
+                          }}
+                          sx={{
+                            color: '#e65100',
+                            borderColor: '#e65100',
+                            '&:hover': {
+                              backgroundColor: '#fff3e0'
+                            }
+                          }}
+                        />
+                      )}
+                    </Box>
+                  </Box>
+                </Grid>
+              )}
+
+              {/* Vertical Filters Summary */}
+              {(selectedTeachers.length > 0 || selectedFreeTimeRanges.length > 0 || selectedRegions.length > 0) && (
+                <Grid item xs={12} md={6}>
+                  <Box sx={{ p: 1.5, backgroundColor: '#e3f2fd', borderRadius: 1, border: '1px solid #90caf9' }}>
+                    <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: '#1976d2', fontWeight: 600, mb: 1 }}>
+                      <i className="ri-arrow-up-down-line" style={{ fontSize: '14px' }} />
+                      Trục dọc (Cột):
+                    </Typography>
+                    <Box display="flex" gap={0.5} flexWrap="wrap">
+                      {selectedTeachers.map((teacher) => (
+                        <Chip
+                          key={teacher.id}
+                          label={teacher.name}
+                          size="small"
+                          onDelete={() => {
+                            setSelectedTeachers(prev => prev.filter(t => t.id !== teacher.id))
+                          }}
+                          sx={{
+                            backgroundColor: '#bbdefb',
+                            color: '#1565c0',
+                            border: '1px solid #90caf9'
+                          }}
+                        />
+                      ))}
+                      {selectedFreeTimeRanges.map((timeRange) => (
+                        <Chip
+                          key={`free-${timeRange}`}
+                          label={`Rảnh: ${timeRange}`}
+                          size="small"
+                          onDelete={() => {
+                            setSelectedFreeTimeRanges(prev => prev.filter(t => t !== timeRange))
+                          }}
+                          sx={{
+                            backgroundColor: '#c8e6c9',
+                            color: '#2e7d32',
+                            border: '1px solid #a5d6a7',
+                            fontWeight: 600
+                          }}
+                        />
+                      ))}
+                      {selectedRegions.map((region) => (
+                        <Chip
+                          key={region}
+                          label={`KV: ${RegionLabel[region as RegionId]}`}
+                          size="small"
+                          onDelete={() => {
+                            setSelectedRegions(prev => prev.filter(r => r !== region))
+                          }}
+                          sx={{
+                            backgroundColor: REGION_COLORS[region] || '#e3f2fd',
+                            color: '#fff',
+                            border: `1px solid ${REGION_COLORS[region] || '#bbdefb'}`,
+                            fontWeight: 600
+                          }}
+                        />
+                      ))}
+                      <Chip
+                        label="Xóa lọc dọc"
+                        size="small"
+                        variant="outlined"
+                        onClick={() => {
+                          setSelectedTeachers([])
+                          setSelectedFreeTimeRanges([])
+                          setSelectedRegions([])
+                        }}
+                        sx={{
+                          color: '#1976d2',
+                          borderColor: '#1976d2',
+                          '&:hover': {
+                            backgroundColor: '#e3f2fd'
+                          }
+                        }}
+                      />
+                    </Box>
+                  </Box>
+                </Grid>
+              )}
+            </Grid>
+
+            {/* Clear All Filters */}
+            <Box sx={{ mt: 1.5, display: 'flex', justifyContent: 'flex-end' }}>
               <Chip
-                label="Xóa tất cả"
+                icon={<i className="ri-delete-bin-line" style={{ fontSize: '14px' }} />}
+                label="Xóa tất cả bộ lọc"
                 size="small"
                 variant="outlined"
-                onClick={() => setSelectedTeachers([])}
+                onClick={() => {
+                  setSelectedDay('all')
+                  setSelectedTimeRanges([])
+                  setSelectedTeachers([])
+                  setSelectedFreeTimeRanges([])
+                  setSelectedRegions([])
+                }}
                 sx={{
                   color: '#d32f2f',
                   borderColor: '#d32f2f',
@@ -1925,87 +2199,6 @@ const TeachersSchedule = () => {
                 }}
               />
             </Box>
-          </Box>
-        )}
-
-        {/* Filter Summary */}
-        {(selectedDay !== 'all' || selectedTimeRanges.length > 0 || selectedRegions.length > 0) && (
-          <Box sx={{ mt: 2, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
-            <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1 }}>
-              <i className="ri-filter-line" style={{ marginRight: 8 }} />
-              Đang lọc:
-              {selectedDay !== 'all' && (
-                <Chip
-                  label={`Ngày: ${selectedDayLabel || selectedDay}`}
-                  size="small"
-                  onDelete={() => setSelectedDay('all')}
-                />
-              )}
-              {selectedTimeRanges.length > 0 && (
-                <>
-                  {selectedTimeRanges.map((timeRange) => (
-                    <Chip
-                      key={timeRange}
-                      label={`Khung giờ: ${timeRange}`}
-                      size="small"
-                      onDelete={() => {
-                        setSelectedTimeRanges(prev => prev.filter(t => t !== timeRange))
-                      }}
-                    />
-                  ))}
-                  {selectedTimeRanges.length > 1 && (
-                    <Chip
-                      label="Xóa tất cả khung giờ"
-                      size="small"
-                      variant="outlined"
-                      onClick={() => setSelectedTimeRanges([])}
-                      sx={{
-                        color: '#d32f2f',
-                        borderColor: '#d32f2f',
-                        '&:hover': {
-                          backgroundColor: '#ffebee'
-                        }
-                      }}
-                    />
-                  )}
-                </>
-              )}
-              {selectedRegions.length > 0 && (
-                <>
-                  {selectedRegions.map((region) => (
-                    <Chip
-                      key={region}
-                      label={`Khu vực: ${RegionLabel[region as RegionId]}`}
-                      size="small"
-                      onDelete={() => {
-                        setSelectedRegions(prev => prev.filter(r => r !== region))
-                      }}
-                      sx={{
-                        backgroundColor: REGION_COLORS[region] || '#e3f2fd',
-                        color: '#fff',
-                        border: `1px solid ${REGION_COLORS[region] || '#bbdefb'}`,
-                        fontWeight: 600
-                      }}
-                    />
-                  ))}
-                  {selectedRegions.length > 1 && (
-                    <Chip
-                      label="Xóa tất cả khu vực"
-                      size="small"
-                      variant="outlined"
-                      onClick={() => setSelectedRegions([])}
-                      sx={{
-                        color: '#d32f2f',
-                        borderColor: '#d32f2f',
-                        '&:hover': {
-                          backgroundColor: '#ffebee'
-                        }
-                      }}
-                    />
-                  )}
-                </>
-              )}
-            </Typography>
           </Box>
         )}
       </Box>
