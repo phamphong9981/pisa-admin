@@ -1,7 +1,7 @@
 'use client'
 
 // React Imports
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect, useCallback } from 'react'
 
 // Styled Components
 import { styled } from '@mui/material/styles'
@@ -161,6 +161,9 @@ const dayOffsetMap: Record<string, number> = {
   Sunday: 6
 }
 
+// LocalStorage key for course order
+const COURSE_ORDER_STORAGE_KEY = 'schedule-planner-course-order'
+
 const SchedulePlanner = () => {
   const { isTeacher } = useAuth()
   const isReadOnly = isTeacher() // Teacher chỉ xem, không được chỉnh sửa
@@ -168,15 +171,130 @@ const SchedulePlanner = () => {
   const [selectedRegion, setSelectedRegion] = useState<number>(RegionId.HALONG) // Default to HALONG
   const [selectedWeekId, setSelectedWeekId] = useState<string>('')
   const { data: courses, isLoading: isCoursesLoading, error: coursesError } = useCourseList(selectedRegion, selectedWeekId)
+
+  // State for course order (drag and drop)
+  const [courseOrder, setCourseOrder] = useState<Record<string, string[]>>({})
+  const [draggedCourseId, setDraggedCourseId] = useState<string | null>(null)
+  const [dragOverCourseId, setDragOverCourseId] = useState<string | null>(null)
+
+  // Load course order from localStorage on mount
+  useEffect(() => {
+    try {
+      const savedOrder = localStorage.getItem(COURSE_ORDER_STORAGE_KEY)
+      if (savedOrder) {
+        setCourseOrder(JSON.parse(savedOrder))
+      }
+    } catch (error) {
+      console.error('Error loading course order from localStorage:', error)
+    }
+  }, [])
+
+  // Save course order to localStorage
+  const saveCourseOrder = useCallback((newOrder: Record<string, string[]>) => {
+    try {
+      localStorage.setItem(COURSE_ORDER_STORAGE_KEY, JSON.stringify(newOrder))
+    } catch (error) {
+      console.error('Error saving course order to localStorage:', error)
+    }
+  }, [])
+
+  // Generate storage key based on region and week
+  const courseOrderKey = useMemo(() => {
+    return `${selectedRegion}-${selectedWeekId}`
+  }, [selectedRegion, selectedWeekId])
+
+  // Get sorted active courses based on saved order
   const activeCourses = useMemo(() => {
-    return (courses || []).filter(c => c.status === 'active')
-  }, [courses])
+    const active = (courses || []).filter(c => c.status === 'active')
+
+    const savedOrder = courseOrder[courseOrderKey]
+    if (savedOrder && savedOrder.length > 0) {
+      return [...active].sort((a, b) => {
+        const indexA = savedOrder.indexOf(a.id)
+        const indexB = savedOrder.indexOf(b.id)
+        if (indexA === -1 && indexB === -1) return 0
+        if (indexA === -1) return 1
+        if (indexB === -1) return -1
+        return indexA - indexB
+      })
+    }
+
+    return active
+  }, [courses, courseOrder, courseOrderKey])
+
+  // Get current order of course IDs for drag and drop
+  const currentCourseOrder = useMemo(() => {
+    return activeCourses.map(c => c.id)
+  }, [activeCourses])
+
+  // Drag handlers for courses
+  const handleCourseDragStart = useCallback((e: React.DragEvent<HTMLDivElement>, courseId: string) => {
+    setDraggedCourseId(courseId)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', courseId)
+  }, [])
+
+  const handleCourseDragOver = useCallback((e: React.DragEvent<HTMLDivElement>, courseId: string) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    if (courseId !== draggedCourseId) {
+      setDragOverCourseId(courseId)
+    }
+  }, [draggedCourseId])
+
+  const handleCourseDragLeave = useCallback(() => {
+    setDragOverCourseId(null)
+  }, [])
+
+  const handleCourseDrop = useCallback((e: React.DragEvent<HTMLDivElement>, targetCourseId: string) => {
+    e.preventDefault()
+    if (!draggedCourseId || draggedCourseId === targetCourseId) {
+      setDraggedCourseId(null)
+      setDragOverCourseId(null)
+      return
+    }
+
+    const sourceIndex = currentCourseOrder.indexOf(draggedCourseId)
+    const targetIndex = currentCourseOrder.indexOf(targetCourseId)
+
+    if (sourceIndex === -1 || targetIndex === -1) {
+      setDraggedCourseId(null)
+      setDragOverCourseId(null)
+      return
+    }
+
+    // Create new order array
+    const newOrderArray = [...currentCourseOrder]
+    newOrderArray.splice(sourceIndex, 1)
+    newOrderArray.splice(targetIndex, 0, draggedCourseId)
+
+    // Update state and localStorage
+    const newCourseOrder = {
+      ...courseOrder,
+      [courseOrderKey]: newOrderArray
+    }
+    setCourseOrder(newCourseOrder)
+    saveCourseOrder(newCourseOrder)
+
+    setDraggedCourseId(null)
+    setDragOverCourseId(null)
+  }, [draggedCourseId, courseOrder, courseOrderKey, currentCourseOrder, saveCourseOrder])
+
+  const handleCourseDragEnd = useCallback(() => {
+    setDraggedCourseId(null)
+    setDragOverCourseId(null)
+  }, [])
+
   const [selectedCourseId, setSelectedCourseId] = useState<string>('')
   const [classSearch, setClassSearch] = useState<string>('')
 
   // State for teacher search
   const [teacherSearchTerm, setTeacherSearchTerm] = useState<string>('')
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherListResponse | null>(null)
+
+  // State for student search and filter
+  const [studentSearchTerm, setStudentSearchTerm] = useState<string>('')
+  const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set())
 
   // Week selection
   const { data: weeksData, isLoading: isWeeksLoading } = useGetWeeks()
@@ -478,6 +596,76 @@ const SchedulePlanner = () => {
     }
     return map
   }, [teacherScheduleNotes])
+
+  // Get all students from course info for search
+  const allStudents = useMemo(() => {
+    if (!courseInfo) return []
+    return (courseInfo.profileCourses || []).map(pc => ({
+      id: pc.profile.id,
+      fullname: pc.profile.fullname,
+      email: pc.profile.email,
+      phone: pc.profile.phone
+    }))
+  }, [courseInfo])
+
+  // Filter students by search term
+  const filteredStudents = useMemo(() => {
+    if (!studentSearchTerm.trim()) return []
+    const keyword = studentSearchTerm.toLowerCase()
+    return allStudents.filter(student =>
+      student.fullname.toLowerCase().includes(keyword) ||
+      student.email?.toLowerCase().includes(keyword) ||
+      student.phone?.toLowerCase().includes(keyword)
+    )
+  }, [allStudents, studentSearchTerm])
+
+  // Calculate time slots where all selected students are free
+  const studentsAvailableSlots = useMemo(() => {
+    if (selectedStudentIds.size === 0) return new Set<number>()
+
+    const availableSlots = new Set<number>()
+
+    // Check each time slot
+    for (let i = 1; i <= SCHEDULE_TIME.length; i++) {
+      const freeStudentsAtSlot = freeStudentsByIndex[i] || []
+      const freeStudentIds = new Set(freeStudentsAtSlot.map(s => s.id))
+
+      // Check if all selected students are free at this slot
+      const allSelectedAreFree = Array.from(selectedStudentIds).every(studentId => {
+        // Check if student is in free list and not scheduled
+        if (!freeStudentIds.has(studentId)) return false
+
+        // Also check if student is not scheduled at this time
+        if (scheduledStudentIdsByIndex[i]?.has(studentId)) return false
+
+        return true
+      })
+
+      if (allSelectedAreFree) {
+        availableSlots.add(i)
+      }
+    }
+
+    return availableSlots
+  }, [selectedStudentIds, freeStudentsByIndex, scheduledStudentIdsByIndex])
+
+  // Toggle student selection
+  const toggleStudentSelection = useCallback((studentId: string) => {
+    setSelectedStudentIds(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(studentId)) {
+        newSet.delete(studentId)
+      } else {
+        newSet.add(studentId)
+      }
+      return newSet
+    })
+  }, [])
+
+  // Get selected students info
+  const selectedStudentsInfo = useMemo(() => {
+    return allStudents.filter(s => selectedStudentIds.has(s.id))
+  }, [allStudents, selectedStudentIds])
 
   // Helper function to check if teacher is busy at specific time slot
   const isTeacherBusy = (teacherId: string, slotIndex: number) => {
@@ -871,9 +1059,37 @@ const SchedulePlanner = () => {
 
           {/* Course Selection */}
           <Box sx={{ mb: 2 }}>
-            <Typography variant="subtitle2" gutterBottom>
-              Chọn khóa học:
-            </Typography>
+            <Box display="flex" alignItems="center" gap={1} mb={1}>
+              <Typography variant="subtitle2">
+                Chọn khóa học:
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                <i className="ri-drag-move-2-line" style={{ marginRight: 4 }} />
+                Kéo thả để sắp xếp
+              </Typography>
+              {courseOrder[courseOrderKey] && courseOrder[courseOrderKey].length > 0 && (
+                <Tooltip title="Đặt lại thứ tự mặc định">
+                  <Button
+                    size="small"
+                    variant="text"
+                    color="inherit"
+                    onClick={() => {
+                      const newCourseOrder = { ...courseOrder }
+                      delete newCourseOrder[courseOrderKey]
+                      setCourseOrder(newCourseOrder)
+                      saveCourseOrder(newCourseOrder)
+                    }}
+                    sx={{
+                      minWidth: 'auto',
+                      p: 0.5,
+                      fontSize: '0.7rem'
+                    }}
+                  >
+                    <i className="ri-refresh-line" style={{ fontSize: '14px' }} />
+                  </Button>
+                </Tooltip>
+              )}
+            </Box>
             <Box display="flex" gap={1} flexWrap="wrap">
               {isCoursesLoading ? (
                 <CircularProgress size={20} />
@@ -883,44 +1099,84 @@ const SchedulePlanner = () => {
                 // Check if this course has all classes scheduled
                 const courseScheduleInfo = classesWithCompleteSchedule.find(c => c.courseId === course.id)
                 const isFullyScheduled = courseScheduleInfo?.isComplete || false
+                const isDragging = draggedCourseId === course.id
+                const isDragOver = dragOverCourseId === course.id
 
                 return (
-                  <Chip
+                  <Box
                     key={course.id}
-                    label={course.name}
-                    onClick={() => setSelectedCourseId(course.id)}
+                    draggable
+                    onDragStart={(e) => handleCourseDragStart(e, course.id)}
+                    onDragOver={(e) => handleCourseDragOver(e, course.id)}
+                    onDragLeave={handleCourseDragLeave}
+                    onDrop={(e) => handleCourseDrop(e, course.id)}
+                    onDragEnd={handleCourseDragEnd}
                     sx={{
-                      backgroundColor: selectedCourseId === course.id
-                        ? 'primary.main'
-                        : isFullyScheduled
-                          ? '#e8f5e8'
-                          : '#fff3e0',
-                      color: selectedCourseId === course.id
-                        ? 'white'
-                        : isFullyScheduled
-                          ? '#2e7d32'
-                          : '#f57c00',
-                      border: selectedCourseId === course.id
-                        ? 'none'
-                        : `1px solid ${isFullyScheduled ? '#4caf50' : '#ff9800'}`,
-                      fontWeight: 600,
-                      '&:hover': {
-                        backgroundColor: selectedCourseId === course.id
-                          ? 'primary.dark'
-                          : isFullyScheduled
-                            ? '#c8e6c9'
-                            : '#ffe0b2',
+                      cursor: 'grab',
+                      opacity: isDragging ? 0.5 : 1,
+                      transform: isDragOver ? 'scale(1.05)' : 'none',
+                      transition: 'all 0.2s ease',
+                      position: 'relative',
+                      '&::before': isDragOver ? {
+                        content: '""',
+                        position: 'absolute',
+                        left: -4,
+                        top: 0,
+                        bottom: 0,
+                        width: 3,
+                        backgroundColor: 'primary.main',
+                        borderRadius: 1
+                      } : {},
+                      '&:active': {
+                        cursor: 'grabbing'
                       }
                     }}
-                    icon={
-                      selectedCourseId === course.id ? undefined : (
-                        <i
-                          className={isFullyScheduled ? "ri-check-line" : "ri-time-line"}
-                          style={{ fontSize: '12px' }}
-                        />
-                      )
-                    }
-                  />
+                  >
+                    <Chip
+                      label={
+                        <Box display="flex" alignItems="center" gap={0.5}>
+                          <i className="ri-draggable" style={{ fontSize: '12px', opacity: 0.6 }} />
+                          {course.name}
+                        </Box>
+                      }
+                      onClick={() => setSelectedCourseId(course.id)}
+                      sx={{
+                        backgroundColor: selectedCourseId === course.id
+                          ? 'primary.main'
+                          : isFullyScheduled
+                            ? '#e8f5e8'
+                            : '#fff3e0',
+                        color: selectedCourseId === course.id
+                          ? 'white'
+                          : isFullyScheduled
+                            ? '#2e7d32'
+                            : '#f57c00',
+                        border: selectedCourseId === course.id
+                          ? 'none'
+                          : `1px solid ${isFullyScheduled ? '#4caf50' : '#ff9800'}`,
+                        fontWeight: 600,
+                        '&:hover': {
+                          backgroundColor: selectedCourseId === course.id
+                            ? 'primary.dark'
+                            : isFullyScheduled
+                              ? '#c8e6c9'
+                              : '#ffe0b2',
+                        },
+                        ...(isDragOver && {
+                          borderColor: 'primary.main',
+                          borderWidth: 2
+                        })
+                      }}
+                      icon={
+                        selectedCourseId === course.id ? undefined : (
+                          <i
+                            className={isFullyScheduled ? "ri-check-line" : "ri-time-line"}
+                            style={{ fontSize: '12px' }}
+                          />
+                        )
+                      }
+                    />
+                  </Box>
                 )
               })}
             </Box>
@@ -990,170 +1246,312 @@ const SchedulePlanner = () => {
         <Card>
           <CardHeader title="Lưới học sinh rảnh theo khung giờ" />
           <CardContent>
-            {/* Teacher Search */}
+            {/* Student and Teacher Search */}
             {selectedCourseId && (
               <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" gutterBottom>
-                  Tìm kiếm giáo viên để xem lịch khớp trên lưới:
-                </Typography>
-                <Box sx={{ maxWidth: 400 }}>
-                  {/* Teacher Search */}
-                  <TextField
-                    fullWidth
-                    placeholder="Tìm kiếm giáo viên..."
-                    value={teacherSearchTerm}
-                    onChange={(e) => setTeacherSearchTerm(e.target.value)}
-                    InputProps={{
-                      startAdornment: (
-                        <i className="ri-search-line" style={{ color: '#666', marginRight: 8 }} />
-                      ),
-                      endAdornment: teacherSearchTerm && (
-                        <i
-                          className="ri-close-line"
-                          style={{
-                            color: '#666',
-                            cursor: 'pointer',
-                            fontSize: '18px'
-                          }}
-                          onClick={() => setTeacherSearchTerm('')}
-                        />
-                      )
-                    }}
-                    sx={{ mb: 1 }}
-                  />
+                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                  {/* Student Search */}
+                  <Box sx={{ flex: 1, minWidth: 300 }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Tìm kiếm học sinh để xem lịch rảnh chung:
+                    </Typography>
+                    <Box>
+                      {/* Student Search Input */}
+                      <TextField
+                        fullWidth
+                        placeholder="Tìm kiếm học sinh (tên, email, SĐT)..."
+                        value={studentSearchTerm}
+                        onChange={(e) => setStudentSearchTerm(e.target.value)}
+                        InputProps={{
+                          startAdornment: (
+                            <i className="ri-search-line" style={{ color: '#666', marginRight: 8 }} />
+                          ),
+                          endAdornment: studentSearchTerm && (
+                            <i
+                              className="ri-close-line"
+                              style={{
+                                color: '#666',
+                                cursor: 'pointer',
+                                fontSize: '18px'
+                              }}
+                              onClick={() => setStudentSearchTerm('')}
+                            />
+                          )
+                        }}
+                        sx={{ mb: 1 }}
+                      />
 
-                  {/* Teacher Search Results */}
-                  {teacherSearchTerm && (
-                    <Box sx={{
-                      maxHeight: '200px',
-                      overflowY: 'auto',
-                      border: '1px solid #eee',
-                      borderRadius: 1,
-                      p: 1,
-                      backgroundColor: '#f8f9fa',
-                      mb: 1
-                    }}>
-                      {isTeachersLoading ? (
-                        <Box display="flex" justifyContent="center" p={2}>
-                          <CircularProgress size={20} />
-                        </Box>
-                      ) : teachers && teachers.length > 0 ? (
-                        <Box>
-                          <Typography variant="caption" color="text.secondary" display="block" mb={1}>
-                            Kết quả tìm kiếm ({teachers.length} giáo viên):
-                          </Typography>
-                          {teachers.map((teacher) => {
-                            const isTeacherBusy = teacher.registeredBusySchedule?.includes(0) // Check if teacher is busy at any slot
-                            const isSelected = selectedTeacher?.id === teacher.id
+                      {/* Student Search Results */}
+                      {studentSearchTerm && (
+                        <Box sx={{
+                          maxHeight: '200px',
+                          overflowY: 'auto',
+                          border: '1px solid #eee',
+                          borderRadius: 1,
+                          p: 1,
+                          backgroundColor: '#f8f9fa',
+                          mb: 1
+                        }}>
+                          {filteredStudents.length > 0 ? (
+                            <Box>
+                              <Typography variant="caption" color="text.secondary" display="block" mb={1}>
+                                Kết quả tìm kiếm ({filteredStudents.length} học sinh):
+                              </Typography>
+                              {filteredStudents.map((student) => {
+                                const isSelected = selectedStudentIds.has(student.id)
 
-                            return (
-                              <Box
-                                key={teacher.id}
-                                sx={{
-                                  p: 1,
-                                  borderBottom: '1px solid #eee',
-                                  '&:last-child': { borderBottom: 'none' },
-                                  cursor: 'pointer',
-                                  '&:hover': { backgroundColor: '#e3f2fd' },
-                                  borderRadius: 1,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'space-between',
-                                  backgroundColor: isSelected ? '#e3f2fd' : 'transparent'
-                                }}
-                                onClick={() => {
-                                  // Toggle: nếu đã chọn thì bỏ chọn, nếu chưa chọn thì chọn
-                                  if (isSelected) {
-                                    setSelectedTeacher(null)
-                                  } else {
-                                    setSelectedTeacher(teacher)
-                                  }
-                                }}
-                              >
-                                <Box sx={{ flex: 1 }}>
-                                  <Typography variant="body2" fontWeight={500}>
-                                    {teacher.name}
-                                  </Typography>
-                                  {teacher.skills && teacher.skills.length > 0 && (
-                                    <Typography variant="caption" color="text.secondary" display="block">
-                                      <i className="ri-award-line" style={{ marginRight: 4, fontSize: '12px' }} />
-                                      {teacher.skills.join(', ')}
-                                    </Typography>
-                                  )}
-                                </Box>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                  <Chip
-                                    size="small"
-                                    label="Rảnh"
-                                    color="success"
-                                    variant="outlined"
-                                    sx={{ fontSize: '0.7rem' }}
-                                  />
-                                  {isSelected && (
-                                    <Chip
-                                      size="small"
-                                      label="Đã chọn"
-                                      color="primary"
-                                      variant="filled"
-                                      sx={{ fontSize: '0.7rem' }}
-                                    />
-                                  )}
-                                </Box>
-                              </Box>
-                            )
-                          })}
+                                return (
+                                  <Box
+                                    key={student.id}
+                                    sx={{
+                                      p: 1,
+                                      borderBottom: '1px solid #eee',
+                                      '&:last-child': { borderBottom: 'none' },
+                                      cursor: 'pointer',
+                                      '&:hover': { backgroundColor: '#e3f2fd' },
+                                      borderRadius: 1,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      backgroundColor: isSelected ? '#e3f2fd' : 'transparent'
+                                    }}
+                                    onClick={() => toggleStudentSelection(student.id)}
+                                  >
+                                    <Box sx={{ flex: 1 }}>
+                                      <Typography variant="body2" fontWeight={500}>
+                                        {student.fullname}
+                                      </Typography>
+                                      {student.email && (
+                                        <Typography variant="caption" color="text.secondary" display="block">
+                                          <i className="ri-mail-line" style={{ marginRight: 4, fontSize: '12px' }} />
+                                          {student.email}
+                                        </Typography>
+                                      )}
+                                    </Box>
+                                    {isSelected && (
+                                      <Chip
+                                        size="small"
+                                        label="Đã chọn"
+                                        color="primary"
+                                        variant="filled"
+                                        sx={{ fontSize: '0.7rem' }}
+                                      />
+                                    )}
+                                  </Box>
+                                )
+                              })}
+                            </Box>
+                          ) : (
+                            <Typography variant="body2" color="text.secondary" textAlign="center" p={2}>
+                              Không tìm thấy học sinh nào
+                            </Typography>
+                          )}
                         </Box>
-                      ) : (
-                        <Typography variant="body2" color="text.secondary" textAlign="center" p={2}>
-                          Không tìm thấy giáo viên nào
-                        </Typography>
+                      )}
+
+                      {/* Selected Students Display */}
+                      {selectedStudentIds.size > 0 && !studentSearchTerm && (
+                        <Box sx={{
+                          p: 1.5,
+                          backgroundColor: '#fff3e0',
+                          borderRadius: 1,
+                          border: '1px solid #ffb74d',
+                          mb: 1
+                        }}>
+                          <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
+                            <Typography variant="body2" fontWeight={600}>
+                              Đã chọn {selectedStudentIds.size} học sinh:
+                            </Typography>
+                            <Button
+                              size="small"
+                              variant="text"
+                              color="inherit"
+                              onClick={() => setSelectedStudentIds(new Set())}
+                              sx={{ fontSize: '0.7rem', py: 0.25, px: 1 }}
+                            >
+                              Xóa tất cả
+                            </Button>
+                          </Box>
+                          <Box display="flex" gap={0.5} flexWrap="wrap">
+                            {selectedStudentsInfo.map(student => (
+                              <Chip
+                                key={student.id}
+                                size="small"
+                                label={student.fullname}
+                                onDelete={() => toggleStudentSelection(student.id)}
+                                sx={{ fontSize: '0.75rem' }}
+                              />
+                            ))}
+                          </Box>
+                        </Box>
                       )}
                     </Box>
-                  )}
+                  </Box>
 
-                  {/* Selected Teacher Display */}
-                  {selectedTeacher && !teacherSearchTerm && (
-                    <Box
-                      sx={{
-                        p: 1.5,
-                        backgroundColor: '#e8f5e8',
-                        borderRadius: 1,
-                        border: '1px solid #c8e6c9',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        cursor: 'pointer',
-                        '&:hover': {
-                          backgroundColor: '#c8e6c9'
-                        }
-                      }}
-                      onClick={() => setSelectedTeacher(null)}
-                    >
-                      <Box sx={{ flex: 1 }}>
-                        <Typography variant="body2" fontWeight={600}>
-                          {selectedTeacher.name}
-                        </Typography>
-                        {selectedTeacher.skills && selectedTeacher.skills.length > 0 && (
-                          <Typography variant="caption" color="text.secondary" display="block">
-                            <i className="ri-award-line" style={{ marginRight: 4, fontSize: '12px' }} />
-                            {selectedTeacher.skills.join(', ')}
-                          </Typography>
-                        )}
-                      </Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Chip
-                          size="small"
-                          label="Rảnh"
-                          color="success"
-                          variant="outlined"
-                          sx={{ fontSize: '0.7rem' }}
-                        />
-                        <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                          (Click để bỏ chọn)
-                        </Typography>
-                      </Box>
+                  {/* Teacher Search */}
+                  <Box sx={{ flex: 1, minWidth: 300 }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Tìm kiếm giáo viên để xem lịch khớp trên lưới:
+                    </Typography>
+                    <Box>
+                      <TextField
+                        fullWidth
+                        placeholder="Tìm kiếm giáo viên..."
+                        value={teacherSearchTerm}
+                        onChange={(e) => setTeacherSearchTerm(e.target.value)}
+                        InputProps={{
+                          startAdornment: (
+                            <i className="ri-search-line" style={{ color: '#666', marginRight: 8 }} />
+                          ),
+                          endAdornment: teacherSearchTerm && (
+                            <i
+                              className="ri-close-line"
+                              style={{
+                                color: '#666',
+                                cursor: 'pointer',
+                                fontSize: '18px'
+                              }}
+                              onClick={() => setTeacherSearchTerm('')}
+                            />
+                          )
+                        }}
+                        sx={{ mb: 1 }}
+                      />
+
+                      {/* Teacher Search Results */}
+                      {teacherSearchTerm && (
+                        <Box sx={{
+                          maxHeight: '200px',
+                          overflowY: 'auto',
+                          border: '1px solid #eee',
+                          borderRadius: 1,
+                          p: 1,
+                          backgroundColor: '#f8f9fa',
+                          mb: 1
+                        }}>
+                          {isTeachersLoading ? (
+                            <Box display="flex" justifyContent="center" p={2}>
+                              <CircularProgress size={20} />
+                            </Box>
+                          ) : teachers && teachers.length > 0 ? (
+                            <Box>
+                              <Typography variant="caption" color="text.secondary" display="block" mb={1}>
+                                Kết quả tìm kiếm ({teachers.length} giáo viên):
+                              </Typography>
+                              {teachers.map((teacher) => {
+                                const isTeacherBusy = teacher.registeredBusySchedule?.includes(0) // Check if teacher is busy at any slot
+                                const isSelected = selectedTeacher?.id === teacher.id
+
+                                return (
+                                  <Box
+                                    key={teacher.id}
+                                    sx={{
+                                      p: 1,
+                                      borderBottom: '1px solid #eee',
+                                      '&:last-child': { borderBottom: 'none' },
+                                      cursor: 'pointer',
+                                      '&:hover': { backgroundColor: '#e3f2fd' },
+                                      borderRadius: 1,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      backgroundColor: isSelected ? '#e3f2fd' : 'transparent'
+                                    }}
+                                    onClick={() => {
+                                      // Toggle: nếu đã chọn thì bỏ chọn, nếu chưa chọn thì chọn
+                                      if (isSelected) {
+                                        setSelectedTeacher(null)
+                                      } else {
+                                        setSelectedTeacher(teacher)
+                                      }
+                                    }}
+                                  >
+                                    <Box sx={{ flex: 1 }}>
+                                      <Typography variant="body2" fontWeight={500}>
+                                        {teacher.name}
+                                      </Typography>
+                                      {teacher.skills && teacher.skills.length > 0 && (
+                                        <Typography variant="caption" color="text.secondary" display="block">
+                                          <i className="ri-award-line" style={{ marginRight: 4, fontSize: '12px' }} />
+                                          {teacher.skills.join(', ')}
+                                        </Typography>
+                                      )}
+                                    </Box>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                      <Chip
+                                        size="small"
+                                        label="Rảnh"
+                                        color="success"
+                                        variant="outlined"
+                                        sx={{ fontSize: '0.7rem' }}
+                                      />
+                                      {isSelected && (
+                                        <Chip
+                                          size="small"
+                                          label="Đã chọn"
+                                          color="primary"
+                                          variant="filled"
+                                          sx={{ fontSize: '0.7rem' }}
+                                        />
+                                      )}
+                                    </Box>
+                                  </Box>
+                                )
+                              })}
+                            </Box>
+                          ) : (
+                            <Typography variant="body2" color="text.secondary" textAlign="center" p={2}>
+                              Không tìm thấy giáo viên nào
+                            </Typography>
+                          )}
+                        </Box>
+                      )}
+
+                      {/* Selected Teacher Display */}
+                      {selectedTeacher && !teacherSearchTerm && (
+                        <Box
+                          sx={{
+                            p: 1.5,
+                            backgroundColor: '#e8f5e8',
+                            borderRadius: 1,
+                            border: '1px solid #c8e6c9',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            cursor: 'pointer',
+                            '&:hover': {
+                              backgroundColor: '#c8e6c9'
+                            }
+                          }}
+                          onClick={() => setSelectedTeacher(null)}
+                        >
+                          <Box sx={{ flex: 1 }}>
+                            <Typography variant="body2" fontWeight={600}>
+                              {selectedTeacher.name}
+                            </Typography>
+                            {selectedTeacher.skills && selectedTeacher.skills.length > 0 && (
+                              <Typography variant="caption" color="text.secondary" display="block">
+                                <i className="ri-award-line" style={{ marginRight: 4, fontSize: '12px' }} />
+                                {selectedTeacher.skills.join(', ')}
+                              </Typography>
+                            )}
+                          </Box>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Chip
+                              size="small"
+                              label="Rảnh"
+                              color="success"
+                              variant="outlined"
+                              sx={{ fontSize: '0.7rem' }}
+                            />
+                            <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                              (Click để bỏ chọn)
+                            </Typography>
+                          </Box>
+                        </Box>
+                      )}
                     </Box>
-                  )}
+                  </Box>
                 </Box>
               </Box>
             )}
@@ -1164,7 +1562,6 @@ const SchedulePlanner = () => {
                   const hasSchedule = allScheduledClasses.has(cls.id)
 
                   // Get teacher info for this class
-                  const teacherId = cls.teacherId || ''
                   const teacherName = cls.teacher?.name || 'Chưa có GV'
 
                   return (
@@ -1244,6 +1641,17 @@ const SchedulePlanner = () => {
                           // Get teacher note for this time slot if available
                           const teacherNoteForSlot = selectedTeacher && index > 0 ? teacherNotesByScheduleTime[index] : undefined
 
+                          // Check if all selected students are available at this time slot
+                          const areAllStudentsAvailable = selectedStudentIds.size > 0 && index > 0 &&
+                            studentsAvailableSlots.has(index)
+
+                          // Filter free students if students are selected
+                          let displayFree = free
+                          if (selectedStudentIds.size > 0) {
+                            // Only show selected students in the free list
+                            displayFree = free.filter(s => selectedStudentIds.has(s.id))
+                          }
+
                           return (
                             <GridCell
                               key={`${day}|${time}`}
@@ -1262,9 +1670,61 @@ const SchedulePlanner = () => {
                                     background: '#4caf50',
                                     zIndex: 2
                                   }
+                                }),
+                                ...(areAllStudentsAvailable && !isTeacherAvailable && {
+                                  backgroundColor: '#fff3e0',
+                                  border: '2px solid #ff9800',
+                                  position: 'relative',
+                                  '&::before': {
+                                    content: '""',
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    right: 0,
+                                    height: 4,
+                                    background: '#ff9800',
+                                    zIndex: 2
+                                  }
+                                }),
+                                ...(areAllStudentsAvailable && isTeacherAvailable && {
+                                  backgroundColor: '#e8f5e8',
+                                  border: '2px solid #4caf50',
+                                  position: 'relative',
+                                  '&::before': {
+                                    content: '""',
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    right: 0,
+                                    height: 4,
+                                    background: 'linear-gradient(to right, #4caf50 50%, #ff9800 50%)',
+                                    zIndex: 2
+                                  }
                                 })
                               }}
                             >
+                              {/* Show students available indicator */}
+                              {areAllStudentsAvailable && (
+                                <Box sx={{
+                                  textAlign: 'center',
+                                  mb: 1,
+                                  p: 0.5,
+                                  backgroundColor: isTeacherAvailable
+                                    ? 'rgba(76, 175, 80, 0.1)'
+                                    : 'rgba(255, 152, 0, 0.1)',
+                                  borderRadius: 1,
+                                  border: `1px solid ${isTeacherAvailable ? 'rgba(76, 175, 80, 0.3)' : 'rgba(255, 152, 0, 0.3)'}`
+                                }}>
+                                  <Typography
+                                    variant="caption"
+                                    color={isTeacherAvailable ? "success.main" : "warning.main"}
+                                    fontWeight={600}
+                                  >
+                                    <i className="ri-check-line" style={{ marginRight: 4 }} />
+                                    {selectedStudentIds.size} học sinh rảnh
+                                  </Typography>
+                                </Box>
+                              )}
                               {isTeacherAvailable && (
                                 <Box sx={{
                                   textAlign: 'center',
@@ -1460,16 +1920,31 @@ const SchedulePlanner = () => {
 
                                 {/* Free students list */}
                                 <Box>
-                                  {free.length > 0 ? (() => {
-                                    const visibleFreeStudents = free.slice(0, 10)
-                                    const hasMoreFreeStudents = free.length > 10
-                                    const additionalFreeStudents = hasMoreFreeStudents ? free.slice(10) : []
+                                  {displayFree.length > 0 ? (() => {
+                                    const visibleFreeStudents = displayFree.slice(0, 10)
+                                    const hasMoreFreeStudents = displayFree.length > 10
+                                    const additionalFreeStudents = hasMoreFreeStudents ? displayFree.slice(10) : []
 
                                     return (
                                       <Box display="flex" gap={0.5} flexWrap="wrap">
-                                        {visibleFreeStudents.map(s => (
-                                          <Chip key={s.id} size="small" label={s.fullname} />
-                                        ))}
+                                        {visibleFreeStudents.map(s => {
+                                          const isSelected = selectedStudentIds.has(s.id)
+                                          return (
+                                            <Chip
+                                              key={s.id}
+                                              size="small"
+                                              label={s.fullname}
+                                              sx={{
+                                                ...(isSelected && selectedStudentIds.size > 0 && {
+                                                  backgroundColor: '#fff3e0',
+                                                  borderColor: '#ff9800',
+                                                  borderWidth: 2,
+                                                  fontWeight: 600
+                                                })
+                                              }}
+                                            />
+                                          )
+                                        })}
                                         {hasMoreFreeStudents && (
                                           <Tooltip
                                             title={additionalFreeStudents.map(s => s.fullname).join(', ')}
@@ -1481,13 +1956,15 @@ const SchedulePlanner = () => {
                                     )
                                   })() : (
                                     scheduled.length === 0 ? (
-                                      <Typography variant="caption" color="text.secondary">Không có HS rảnh</Typography>
+                                      <Typography variant="caption" color="text.secondary">
+                                        {selectedStudentIds.size > 0 ? 'Không có học sinh đã chọn nào rảnh' : 'Không có HS rảnh'}
+                                      </Typography>
                                     ) : null
                                   )}
                                 </Box>
 
                                 {/* Create Lesson Button */}
-                                {free.length > 0 && !isReadOnly && (
+                                {displayFree.length > 0 && !isReadOnly && (
                                   <Box sx={{ mt: 1, textAlign: 'center' }}>
                                     <Button
                                       size="small"
