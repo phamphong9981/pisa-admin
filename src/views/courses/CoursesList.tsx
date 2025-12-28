@@ -93,6 +93,8 @@ const getRegionColor = (region: number) => {
       return 'success'
     case RegionId.BAICHAY:
       return 'warning'
+    case RegionId.HAIDUONG:
+      return 'info'
     default:
       return 'default'
   }

@@ -47,14 +47,16 @@ export enum RegionId {
     HALONG = 1,
     UONGBI = 2,
     CAMPHA = 3,
-    BAICHAY = 4
+    BAICHAY = 4,
+    HAIDUONG = 5
 }
 
 export const RegionLabel: Record<RegionId, string> = {
     [RegionId.HALONG]: 'Hạ Long',
     [RegionId.UONGBI]: 'Uông Bí',
     [RegionId.CAMPHA]: 'Cẩm Phả',
-    [RegionId.BAICHAY]: 'Bãi Cháy'
+    [RegionId.BAICHAY]: 'Bãi Cháy',
+    [RegionId.HAIDUONG]: 'Hải Dương'
 }
 
 export const useCourseList = (region?: number, weekId?: string) => {

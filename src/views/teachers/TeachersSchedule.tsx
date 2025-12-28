@@ -49,7 +49,8 @@ const REGION_COLORS: Record<number, string> = {
   [RegionId.HALONG]: '#f6b26b',
   [RegionId.BAICHAY]: '#24cdb4',
   [RegionId.CAMPHA]: '#8e7cc3',
-  [RegionId.UONGBI]: '#91e9b2'
+  [RegionId.UONGBI]: '#91e9b2',
+  [RegionId.HAIDUONG]: '#4caf50'
 }
 
 const getRegionColor = (region?: number): string => {
