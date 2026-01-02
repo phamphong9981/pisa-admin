@@ -198,10 +198,10 @@ const SchedulePlanner = () => {
     }
   }, [])
 
-  // Generate storage key based on region and week
+  // Generate storage key based on region only (not week)
   const courseOrderKey = useMemo(() => {
-    return `${selectedRegion}-${selectedWeekId}`
-  }, [selectedRegion, selectedWeekId])
+    return String(selectedRegion)
+  }, [selectedRegion])
 
   // Get sorted active courses based on saved order
   const activeCourses = useMemo(() => {
