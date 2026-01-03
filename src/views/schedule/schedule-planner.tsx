@@ -356,11 +356,13 @@ const SchedulePlanner = () => {
 
   // State for auto schedule messages
   const [autoScheduleMessage, setAutoScheduleMessage] = useState<{
-    type: 'success' | 'error' | null
+    type: 'success' | 'error' | 'info' | null
     message: string
+    details?: string
   }>({
     type: null,
-    message: ''
+    message: '',
+    details: undefined
   })
 
   // State for export
@@ -757,27 +759,116 @@ const SchedulePlanner = () => {
     }
 
     try {
-      await autoScheduleCourseMutation.mutateAsync(selectedCourseId)
+      const response = await autoScheduleCourseMutation.mutateAsync(selectedCourseId)
+
+      // Parse response để hiển thị thông tin chi tiết
+      let successMessage = 'Xếp lịch tự động thành công!'
+      let details: string | undefined = undefined
+
+      if (response && Array.isArray(response)) {
+        // Response là mảng các kết quả cho từng lớp
+        const totalClasses = response.length
+        const successfulClasses = response.filter((r: any) => r.total_schedules_updated > 0).length
+        const totalSchedules = response.reduce((sum: number, r: any) => sum + (r.total_schedules_updated || 0), 0)
+
+        successMessage = `Xếp lịch tự động thành công! Đã xếp lịch cho ${successfulClasses}/${totalClasses} lớp học.`
+
+        if (totalSchedules > 0) {
+          details = `Tổng cộng ${totalSchedules} buổi học đã được sắp xếp.`
+        }
+
+        // Thêm thông tin chi tiết về từng lớp nếu có
+        const classDetails: string[] = []
+        response.forEach((result: any) => {
+          if (result.total_schedules_updated > 0) {
+            const className = result.class_name || result.class_id || 'Lớp học'
+            const schedulesCount = result.total_schedules_updated
+            const usedFixed = result.used_fixed_schedule ? ' (dùng lịch cố định)' : ''
+            classDetails.push(`• ${className}: ${schedulesCount} buổi học${usedFixed}`)
+          }
+        })
+
+        if (classDetails.length > 0 && classDetails.length <= 10) {
+          // Chỉ hiển thị chi tiết nếu ít hơn 10 lớp để tránh quá dài
+          if (!details) details = ''
+          details += '\n\nChi tiết:\n' + classDetails.join('\n')
+        } else if (classDetails.length > 10) {
+          if (!details) details = ''
+          details += `\n\nĐã xếp lịch cho ${classDetails.length} lớp học.`
+        }
+      } else if (response && typeof response === 'object') {
+        // Response là object đơn (cho một lớp)
+        const result = response as any
+        if (result.total_schedules_updated !== undefined) {
+          const className = result.class_name || result.class_id || 'Lớp học'
+          const schedulesCount = result.total_schedules_updated
+          const usedFixed = result.used_fixed_schedule ? ' (đã sử dụng lịch cố định)' : ''
+
+          successMessage = `Xếp lịch tự động thành công cho ${className}!`
+          details = `Đã sắp xếp ${schedulesCount} buổi học${usedFixed}.`
+        }
+      }
+
       setAutoScheduleMessage({
         type: 'success',
-        message: 'Xếp lịch tự động thành công! Hệ thống đã tự động sắp xếp lịch học cho khóa học này.'
+        message: successMessage,
+        details
       })
 
-      // Clear message after 5 seconds
+      // Clear message after 10 seconds (tăng thời gian để user có thể đọc chi tiết)
       setTimeout(() => {
-        setAutoScheduleMessage({ type: null, message: '' })
-      }, 5000)
-    } catch (error) {
+        setAutoScheduleMessage({ type: null, message: '', details: undefined })
+      }, 10000)
+    } catch (error: any) {
       console.error('Error auto scheduling course:', error)
+
+      let errorMessage = 'Có lỗi xảy ra khi xếp lịch tự động.'
+      let errorDetails: string | undefined = undefined
+
+      // Parse error message từ API
+      if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message
+      } else if (error?.message) {
+        errorMessage = error.message
+      }
+
+      // Kiểm tra các lỗi cụ thể từ AUTO-SCHEDULE.md
+      if (errorMessage.includes('Week not found')) {
+        errorMessage = 'Không tìm thấy tuần học mở (open week).'
+        errorDetails = 'Vui lòng đảm bảo có tuần học đang ở trạng thái "Mở".'
+      } else if (errorMessage.includes('already has active class info')) {
+        errorMessage = 'Lớp học đã có lịch học cho tuần này.'
+        errorDetails = 'Vui lòng xóa lịch hiện tại trước khi xếp lịch tự động lại.'
+      } else if (errorMessage.includes('No no_schedule entries found')) {
+        errorMessage = 'Lớp học chưa có schedule entries.'
+        errorDetails = 'Vui lòng tạo schedule entries trước khi xếp lịch tự động.'
+      } else if (errorMessage.includes('Class not found')) {
+        errorMessage = 'Không tìm thấy lớp học.'
+        errorDetails = 'Vui lòng kiểm tra lại thông tin lớp học.'
+      } else if (errorMessage.includes('has no teacher')) {
+        errorMessage = 'Lớp học chưa được gán giáo viên.'
+        errorDetails = 'Vui lòng gán giáo viên cho lớp học trước khi xếp lịch.'
+      } else if (errorMessage.includes('Invalid fixed schedule slots')) {
+        errorMessage = 'Lịch cố định (fixed schedule) không hợp lệ.'
+        errorDetails = errorMessage
+      } else if (errorMessage.includes('has insufficient slots')) {
+        errorMessage = 'Lịch cố định không đủ slot cho số buổi học cần thiết.'
+        errorDetails = errorMessage
+      } else if (errorMessage.includes('Low participation rate')) {
+        errorMessage = 'Tỷ lệ tham gia quá thấp.'
+        errorDetails = errorMessage
+      }
+
       setAutoScheduleMessage({
         type: 'error',
-        message: 'Có lỗi xảy ra khi xếp lịch tự động. Vui lòng thử lại.'
+        message: errorMessage,
+        details: errorDetails
       })
 
-      // Clear error message after 5 seconds
+      // Clear error message after 10 seconds
       setTimeout(() => {
-        setAutoScheduleMessage({ type: null, message: '' })
-      }, 5000)
+        setAutoScheduleMessage({ type: null, message: '', details: undefined })
+      }, 10000)
     }
   }
 
@@ -1226,9 +1317,44 @@ const SchedulePlanner = () => {
             <Box sx={{ mt: 2 }}>
               <Alert
                 severity={autoScheduleMessage.type}
-                onClose={() => setAutoScheduleMessage({ type: null, message: '' })}
+                onClose={() => setAutoScheduleMessage({ type: null, message: '', details: undefined })}
+                sx={{
+                  '& .MuiAlert-message': {
+                    width: '100%'
+                  }
+                }}
               >
-                {autoScheduleMessage.message}
+                <Box>
+                  <Typography variant="body2" fontWeight={600} sx={{ mb: autoScheduleMessage.details ? 1 : 0 }}>
+                    {autoScheduleMessage.message}
+                  </Typography>
+                  {autoScheduleMessage.details && (
+                    <Box
+                      sx={{
+                        mt: 1.5,
+                        pt: 1.5,
+                        borderTop: `1px solid ${autoScheduleMessage.type === 'success' ? 'rgba(46, 125, 50, 0.2)' : 'rgba(211, 47, 47, 0.2)'}`,
+                        fontSize: '0.875rem',
+                        lineHeight: 1.6
+                      }}
+                    >
+                      <Typography
+                        variant="body2"
+                        component="div"
+                        sx={{
+                          whiteSpace: 'pre-wrap',
+                          wordBreak: 'break-word',
+                          fontSize: '0.875rem',
+                          fontFamily: 'inherit',
+                          margin: 0,
+                          opacity: 0.9
+                        }}
+                      >
+                        {autoScheduleMessage.details}
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
               </Alert>
             </Box>
           )}
