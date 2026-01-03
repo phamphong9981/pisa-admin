@@ -409,7 +409,9 @@ const TeachersSchedule = () => {
   const [selectedDay, setSelectedDay] = useState<string>('all')
   const [selectedTimeRanges, setSelectedTimeRanges] = useState<string[]>([])
   const [selectedRegions, setSelectedRegions] = useState<number[]>([])
-  const [selectedFreeTimeRanges, setSelectedFreeTimeRanges] = useState<string[]>([])
+  const [selectedFreeScheduleTimes, setSelectedFreeScheduleTimes] = useState<number[]>([])
+  const [selectedBusyScheduleTimes, setSelectedBusyScheduleTimes] = useState<number[]>([])
+  const [selectedTeachingScheduleTimes, setSelectedTeachingScheduleTimes] = useState<number[]>([])
 
   // States for saved filter groups
   interface SavedFilterGroup {
@@ -556,29 +558,9 @@ const TeachersSchedule = () => {
     return teacherIdsWithSchedules
   }, [schedules, selectedRegions])
 
-  // Map time ranges to slot indices (1-based)
-  const timeRangeToSlotIndices = useMemo(() => {
-    if (selectedFreeTimeRanges.length === 0) {
-      return new Set<number>()
-    }
-
-    const slotIndices = new Set<number>()
-
-    SCHEDULE_TIME.forEach((slotString, index) => {
-      const parts = slotString.split(' ')
-      const time = parts[0]
-
-      if (selectedFreeTimeRanges.includes(time)) {
-        slotIndices.add(index + 1) // Convert to 1-based index
-      }
-    })
-
-    return slotIndices
-  }, [selectedFreeTimeRanges])
-
-  // Check if teacher is free in selected time ranges
-  const teacherIsFreeInSelectedTimeRanges = useMemo(() => {
-    if (selectedFreeTimeRanges.length === 0) {
+  // Check if teacher is free in selected schedule times (OR logic - rảnh trong ít nhất một slot)
+  const teacherIsFreeInSelectedScheduleTimes = useMemo(() => {
+    if (selectedFreeScheduleTimes.length === 0) {
       return new Set<string>() // Return empty set if no filtering needed
     }
 
@@ -589,19 +571,72 @@ const TeachersSchedule = () => {
     teachers.forEach(teacher => {
       const busySchedule = teacher.registeredBusySchedule || []
 
-      // Check if teacher is free in ALL selected time ranges
-      const isFreeInAllRanges = Array.from(timeRangeToSlotIndices).every(slotIndex => {
-        // Teacher is free if slotIndex is NOT in busySchedule
-        return !busySchedule.includes(slotIndex)
+      // Check if teacher is free in AT LEAST ONE selected schedule time (OR logic)
+      const isFreeInAtLeastOneSlot = selectedFreeScheduleTimes.some(scheduleTime => {
+        // Teacher is free if scheduleTime is NOT in busySchedule
+        return !busySchedule.includes(scheduleTime)
       })
 
-      if (isFreeInAllRanges) {
+      if (isFreeInAtLeastOneSlot) {
         freeTeacherIds.add(teacher.id)
       }
     })
 
     return freeTeacherIds
-  }, [teachers, selectedFreeTimeRanges, timeRangeToSlotIndices])
+  }, [teachers, selectedFreeScheduleTimes])
+
+  // Check if teacher is busy in selected schedule times (OR logic - bận trong ít nhất một slot)
+  const teacherIsBusyInSelectedScheduleTimes = useMemo(() => {
+    if (selectedBusyScheduleTimes.length === 0) {
+      return new Set<string>() // Return empty set if no filtering needed
+    }
+
+    const busyTeacherIds = new Set<string>()
+
+    if (!teachers) return busyTeacherIds
+
+    teachers.forEach(teacher => {
+      const busySchedule = teacher.registeredBusySchedule || []
+
+      // Check if teacher is busy in AT LEAST ONE selected schedule time (OR logic)
+      const isBusyInAtLeastOneSlot = selectedBusyScheduleTimes.some(scheduleTime => {
+        // Teacher is busy if scheduleTime IS in busySchedule
+        return busySchedule.includes(scheduleTime)
+      })
+
+      if (isBusyInAtLeastOneSlot) {
+        busyTeacherIds.add(teacher.id)
+      }
+    })
+
+    return busyTeacherIds
+  }, [teachers, selectedBusyScheduleTimes])
+
+  // Check if teacher is teaching in selected schedule times (OR logic - có lịch dạy trong ít nhất một slot)
+  const teacherIsTeachingInSelectedScheduleTimes = useMemo(() => {
+    if (selectedTeachingScheduleTimes.length === 0) {
+      return new Set<string>() // Return empty set if no filtering needed
+    }
+
+    const teachingTeacherIds = new Set<string>()
+
+    if (!teachers || !schedules) return teachingTeacherIds
+
+    teachers.forEach(teacher => {
+      // Check if teacher is teaching in AT LEAST ONE selected schedule time (OR logic)
+      const isTeachingInAtLeastOneSlot = selectedTeachingScheduleTimes.some(scheduleTime => {
+        return schedules.some(schedule =>
+          (schedule.teacher_id === teacher.id || schedule.students?.some(student => student.teacher_id === teacher.id)) && schedule.schedule_time === scheduleTime
+        )
+      })
+
+      if (isTeachingInAtLeastOneSlot) {
+        teachingTeacherIds.add(teacher.id)
+      }
+    })
+
+    return teachingTeacherIds
+  }, [teachers, schedules, selectedTeachingScheduleTimes])
 
   // Filter teachers based on selected teachers, selected regions, and sort by pinned status
   const filteredTeachers = useMemo(() => {
@@ -623,10 +658,24 @@ const TeachersSchedule = () => {
       )
     }
 
-    // Filter by free time ranges - only show teachers who are free in ALL selected time ranges
-    if (selectedFreeTimeRanges.length > 0) {
+    // Filter by free schedule times - show teachers who are free in AT LEAST ONE selected schedule time (OR logic)
+    if (selectedFreeScheduleTimes.length > 0) {
       result = result.filter(teacher =>
-        teacherIsFreeInSelectedTimeRanges.has(teacher.id)
+        teacherIsFreeInSelectedScheduleTimes.has(teacher.id)
+      )
+    }
+
+    // Filter by busy schedule times - show teachers who are busy in AT LEAST ONE selected schedule time (OR logic)
+    if (selectedBusyScheduleTimes.length > 0) {
+      result = result.filter(teacher =>
+        teacherIsBusyInSelectedScheduleTimes.has(teacher.id)
+      )
+    }
+
+    // Filter by teaching schedule times - show teachers who are teaching in AT LEAST ONE selected schedule time (OR logic)
+    if (selectedTeachingScheduleTimes.length > 0) {
+      result = result.filter(teacher =>
+        teacherIsTeachingInSelectedScheduleTimes.has(teacher.id)
       )
     }
 
@@ -650,7 +699,7 @@ const TeachersSchedule = () => {
     })
 
     return result
-  }, [teachers, selectedTeachers, pinnedTeacherIds, selectedRegions, selectedFreeTimeRanges, teacherHasScheduleInSelectedRegions, teacherIsFreeInSelectedTimeRanges])
+  }, [teachers, selectedTeachers, pinnedTeacherIds, selectedRegions, selectedFreeScheduleTimes, selectedBusyScheduleTimes, selectedTeachingScheduleTimes, teacherHasScheduleInSelectedRegions, teacherIsFreeInSelectedScheduleTimes, teacherIsBusyInSelectedScheduleTimes, teacherIsTeachingInSelectedScheduleTimes])
 
   // Handle open schedule note dialog
   const handleOpenScheduleNoteDialog = (teacherId: string, teacherName: string, scheduleTime: number, dayLabel: string, time: string, currentNote?: string) => {
@@ -1897,16 +1946,17 @@ const TeachersSchedule = () => {
               <Autocomplete
                 multiple
                 size="small"
-                options={uniqueTimeRanges}
-                value={selectedFreeTimeRanges}
+                options={allTimeSlots}
+                getOptionLabel={(option) => `${option.dayLabel} - ${option.time}`}
+                value={allTimeSlots.filter(slot => selectedFreeScheduleTimes.includes(slot.slot + 1))}
                 onChange={(event, newValue) => {
-                  setSelectedFreeTimeRanges(newValue)
+                  setSelectedFreeScheduleTimes(newValue.map(slot => slot.slot + 1))
                 }}
                 renderInput={(params) => (
                   <TextField
                     {...params}
-                    placeholder="Lọc GV rảnh trong khung giờ..."
-                    label="Lọc GV rảnh trong khung giờ"
+                    placeholder="Lọc GV rảnh trong các slot cụ thể (tổng hợp)..."
+                    label="Lọc GV rảnh theo slot (tổng hợp)"
                     InputProps={{
                       ...params.InputProps,
                       startAdornment: (
@@ -1929,12 +1979,19 @@ const TeachersSchedule = () => {
                     }}
                   />
                 )}
+                renderOption={(props, option) => (
+                  <Box component="li" {...props}>
+                    <Typography variant="body2">
+                      {option.dayLabel} - {option.time}
+                    </Typography>
+                  </Box>
+                )}
                 renderTags={(value, getTagProps) =>
                   value.map((option, index) => (
                     <Chip
                       {...getTagProps({ index })}
-                      key={option}
-                      label={option}
+                      key={option.slot}
+                      label={`${option.dayKey} - ${option.time}`}
                       size="small"
                       sx={{
                         backgroundColor: '#c8e6c9',
@@ -1945,7 +2002,139 @@ const TeachersSchedule = () => {
                     />
                   ))
                 }
-                noOptionsText="Không có khung giờ nào"
+                noOptionsText="Không có slot nào"
+                clearOnBlur={false}
+                selectOnFocus
+                handleHomeEndKeys
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Autocomplete
+                multiple
+                size="small"
+                options={allTimeSlots}
+                getOptionLabel={(option) => `${option.dayLabel} - ${option.time}`}
+                value={allTimeSlots.filter(slot => selectedBusyScheduleTimes.includes(slot.slot + 1))}
+                onChange={(event, newValue) => {
+                  setSelectedBusyScheduleTimes(newValue.map(slot => slot.slot + 1))
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Lọc GV bận trong các slot cụ thể (tổng hợp)..."
+                    label="Lọc GV bận theo slot (tổng hợp)"
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment: (
+                        <>
+                          <i className="ri-user-unfollow-line" style={{ color: '#c62828', marginRight: 8 }} />
+                          {params.InputProps.startAdornment}
+                        </>
+                      ),
+                    }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: 'white',
+                        '&:hover fieldset': {
+                          borderColor: '#c62828',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#c62828',
+                        },
+                      }
+                    }}
+                  />
+                )}
+                renderOption={(props, option) => (
+                  <Box component="li" {...props}>
+                    <Typography variant="body2">
+                      {option.dayLabel} - {option.time}
+                    </Typography>
+                  </Box>
+                )}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip
+                      {...getTagProps({ index })}
+                      key={option.slot}
+                      label={`${option.dayKey} - ${option.time}`}
+                      size="small"
+                      sx={{
+                        backgroundColor: '#ffcdd2',
+                        color: '#c62828',
+                        border: '1px solid #ef9a9a',
+                        fontWeight: 600
+                      }}
+                    />
+                  ))
+                }
+                noOptionsText="Không có slot nào"
+                clearOnBlur={false}
+                selectOnFocus
+                handleHomeEndKeys
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Autocomplete
+                multiple
+                size="small"
+                options={allTimeSlots}
+                getOptionLabel={(option) => `${option.dayLabel} - ${option.time}`}
+                value={allTimeSlots.filter(slot => selectedTeachingScheduleTimes.includes(slot.slot + 1))}
+                onChange={(event, newValue) => {
+                  setSelectedTeachingScheduleTimes(newValue.map(slot => slot.slot + 1))
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Lọc GV có lịch dạy trong các slot cụ thể (tổng hợp)..."
+                    label="Lọc GV có lịch dạy theo slot (tổng hợp)"
+                    InputProps={{
+                      ...params.InputProps,
+                      startAdornment: (
+                        <>
+                          <i className="ri-book-open-line" style={{ color: '#1976d2', marginRight: 8 }} />
+                          {params.InputProps.startAdornment}
+                        </>
+                      ),
+                    }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: 'white',
+                        '&:hover fieldset': {
+                          borderColor: '#1976d2',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#1976d2',
+                        },
+                      }
+                    }}
+                  />
+                )}
+                renderOption={(props, option) => (
+                  <Box component="li" {...props}>
+                    <Typography variant="body2">
+                      {option.dayLabel} - {option.time}
+                    </Typography>
+                  </Box>
+                )}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip
+                      {...getTagProps({ index })}
+                      key={option.slot}
+                      label={`${option.dayKey} - ${option.time}`}
+                      size="small"
+                      sx={{
+                        backgroundColor: '#bbdefb',
+                        color: '#1565c0',
+                        border: '1px solid #90caf9',
+                        fontWeight: 600
+                      }}
+                    />
+                  ))
+                }
+                noOptionsText="Không có slot nào"
                 clearOnBlur={false}
                 selectOnFocus
                 handleHomeEndKeys
@@ -2031,7 +2220,7 @@ const TeachersSchedule = () => {
         </Box>
 
         {/* Filter Summary - Combined display */}
-        {(selectedDay !== 'all' || selectedTimeRanges.length > 0 || selectedRegions.length > 0 || selectedFreeTimeRanges.length > 0 || selectedTeachers.length > 0) && (
+        {(selectedDay !== 'all' || selectedTimeRanges.length > 0 || selectedRegions.length > 0 || selectedFreeScheduleTimes.length > 0 || selectedBusyScheduleTimes.length > 0 || selectedTeachingScheduleTimes.length > 0 || selectedTeachers.length > 0) && (
           <Box sx={{ p: 2, backgroundColor: '#fafafa', borderRadius: 1, border: '1px solid #e0e0e0' }}>
             <Typography variant="subtitle2" sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
               <i className="ri-filter-3-line" style={{ fontSize: '18px', color: '#666' }} />
@@ -2099,7 +2288,7 @@ const TeachersSchedule = () => {
               )}
 
               {/* Vertical Filters Summary */}
-              {(selectedTeachers.length > 0 || selectedFreeTimeRanges.length > 0 || selectedRegions.length > 0) && (
+              {(selectedTeachers.length > 0 || selectedFreeScheduleTimes.length > 0 || selectedBusyScheduleTimes.length > 0 || selectedTeachingScheduleTimes.length > 0 || selectedRegions.length > 0) && (
                 <Grid item xs={12} md={6}>
                   <Box sx={{ p: 1.5, backgroundColor: '#e3f2fd', borderRadius: 1, border: '1px solid #90caf9' }}>
                     <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: '#1976d2', fontWeight: 600, mb: 1 }}>
@@ -2122,22 +2311,63 @@ const TeachersSchedule = () => {
                           }}
                         />
                       ))}
-                      {selectedFreeTimeRanges.map((timeRange) => (
-                        <Chip
-                          key={`free-${timeRange}`}
-                          label={`Rảnh: ${timeRange}`}
-                          size="small"
-                          onDelete={() => {
-                            setSelectedFreeTimeRanges(prev => prev.filter(t => t !== timeRange))
-                          }}
-                          sx={{
-                            backgroundColor: '#c8e6c9',
-                            color: '#2e7d32',
-                            border: '1px solid #a5d6a7',
-                            fontWeight: 600
-                          }}
-                        />
-                      ))}
+                      {selectedFreeScheduleTimes.map((scheduleTime) => {
+                        const slot = allTimeSlots.find(s => s.slot + 1 === scheduleTime)
+                        return slot ? (
+                          <Chip
+                            key={`free-${scheduleTime}`}
+                            label={`Rảnh: ${slot.dayKey} - ${slot.time}`}
+                            size="small"
+                            onDelete={() => {
+                              setSelectedFreeScheduleTimes(prev => prev.filter(t => t !== scheduleTime))
+                            }}
+                            sx={{
+                              backgroundColor: '#c8e6c9',
+                              color: '#2e7d32',
+                              border: '1px solid #a5d6a7',
+                              fontWeight: 600
+                            }}
+                          />
+                        ) : null
+                      })}
+                      {selectedBusyScheduleTimes.map((scheduleTime) => {
+                        const slot = allTimeSlots.find(s => s.slot + 1 === scheduleTime)
+                        return slot ? (
+                          <Chip
+                            key={`busy-${scheduleTime}`}
+                            label={`Bận: ${slot.dayKey} - ${slot.time}`}
+                            size="small"
+                            onDelete={() => {
+                              setSelectedBusyScheduleTimes(prev => prev.filter(t => t !== scheduleTime))
+                            }}
+                            sx={{
+                              backgroundColor: '#ffcdd2',
+                              color: '#c62828',
+                              border: '1px solid #ef9a9a',
+                              fontWeight: 600
+                            }}
+                          />
+                        ) : null
+                      })}
+                      {selectedTeachingScheduleTimes.map((scheduleTime) => {
+                        const slot = allTimeSlots.find(s => s.slot + 1 === scheduleTime)
+                        return slot ? (
+                          <Chip
+                            key={`teaching-${scheduleTime}`}
+                            label={`Dạy: ${slot.dayKey} - ${slot.time}`}
+                            size="small"
+                            onDelete={() => {
+                              setSelectedTeachingScheduleTimes(prev => prev.filter(t => t !== scheduleTime))
+                            }}
+                            sx={{
+                              backgroundColor: '#bbdefb',
+                              color: '#1565c0',
+                              border: '1px solid #90caf9',
+                              fontWeight: 600
+                            }}
+                          />
+                        ) : null
+                      })}
                       {selectedRegions.map((region) => (
                         <Chip
                           key={region}
@@ -2160,7 +2390,9 @@ const TeachersSchedule = () => {
                         variant="outlined"
                         onClick={() => {
                           setSelectedTeachers([])
-                          setSelectedFreeTimeRanges([])
+                          setSelectedFreeScheduleTimes([])
+                          setSelectedBusyScheduleTimes([])
+                          setSelectedTeachingScheduleTimes([])
                           setSelectedRegions([])
                         }}
                         sx={{
@@ -2188,7 +2420,9 @@ const TeachersSchedule = () => {
                   setSelectedDay('all')
                   setSelectedTimeRanges([])
                   setSelectedTeachers([])
-                  setSelectedFreeTimeRanges([])
+                  setSelectedFreeScheduleTimes([])
+                  setSelectedBusyScheduleTimes([])
+                  setSelectedTeachingScheduleTimes([])
                   setSelectedRegions([])
                 }}
                 sx={{
