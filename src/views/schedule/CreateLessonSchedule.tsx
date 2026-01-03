@@ -1112,8 +1112,14 @@ const CreateLessonSchedule = ({
                                 <Typography variant="body2" fontWeight={500}>
                                   {teacher.name}
                                 </Typography>
+                                {teacher.skills && teacher.skills.length > 0 && (
+                                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.25 }}>
+                                    <i className="ri-award-line" style={{ marginRight: 4, fontSize: '12px' }} />
+                                    {teacher.skills.join(', ')}
+                                  </Typography>
+                                )}
                                 {isDefaultTeacher && (
-                                  <Typography variant="caption" color="primary" display="block">
+                                  <Typography variant="caption" color="primary" display="block" sx={{ mt: 0.25 }}>
                                     <i className="ri-user-star-line" style={{ marginRight: 4, fontSize: '12px' }} />
                                     Giáo viên mặc định của lớp
                                   </Typography>
@@ -1176,8 +1182,14 @@ const CreateLessonSchedule = ({
                             <Typography variant="body2" fontWeight={600}>
                               {selectedTeacher.name}
                             </Typography>
+                            {selectedTeacher.skills && selectedTeacher.skills.length > 0 && (
+                              <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.25 }}>
+                                <i className="ri-award-line" style={{ marginRight: 4, fontSize: '12px' }} />
+                                {selectedTeacher.skills.join(', ')}
+                              </Typography>
+                            )}
                             {isDefaultTeacher && (
-                              <Typography variant="caption" color="primary" display="block">
+                              <Typography variant="caption" color="primary" display="block" sx={{ mt: 0.25 }}>
                                 <i className="ri-user-star-line" style={{ marginRight: 4, fontSize: '12px' }} />
                                 Giáo viên mặc định của lớp
                               </Typography>
@@ -1235,7 +1247,13 @@ const CreateLessonSchedule = ({
                             <Typography variant="body2" fontWeight={600}>
                               {selectedClass.teacher.name}
                             </Typography>
-                            <Typography variant="caption" color="primary" display="block">
+                            {selectedClass.teacher.skills && selectedClass.teacher.skills.length > 0 && (
+                              <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.25 }}>
+                                <i className="ri-award-line" style={{ marginRight: 4, fontSize: '12px' }} />
+                                {selectedClass.teacher.skills.join(', ')}
+                              </Typography>
+                            )}
+                            <Typography variant="caption" color="primary" display="block" sx={{ mt: 0.25 }}>
                               <i className="ri-user-star-line" style={{ marginRight: 4, fontSize: '12px' }} />
                               Giáo viên mặc định của lớp
                             </Typography>
