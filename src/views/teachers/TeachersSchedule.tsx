@@ -638,6 +638,26 @@ const TeachersSchedule = () => {
     return teachingTeacherIds
   }, [teachers, schedules, selectedTeachingScheduleTimes])
 
+  // Filter schedules based on selected regions (for export)
+  const filteredSchedules = useMemo(() => {
+    if (!schedules) return undefined
+
+    // If no region filter is selected, return all schedules
+    if (selectedRegions.length === 0) {
+      return schedules
+    }
+
+    // Filter schedules by selected regions
+    return schedules.filter(schedule => {
+      // If schedule has region, check if it's in selected regions
+      if (schedule.region !== undefined && schedule.region !== null) {
+        return selectedRegions.includes(schedule.region)
+      }
+      // If no region info, exclude it when filtering
+      return false
+    })
+  }, [schedules, selectedRegions])
+
   // Filter teachers based on selected teachers, selected regions, and sort by pinned status
   const filteredTeachers = useMemo(() => {
     if (!teachers) return []
@@ -892,7 +912,7 @@ const TeachersSchedule = () => {
       time: slot.time
     }))
 
-    const result = exportToExcel(filteredTeachers, schedules, {
+    const result = exportToExcel(filteredTeachers, filteredSchedules, {
       timeSlots: exportSlots,
       filename: buildExportFilename('lich-giao-vien')
     })
@@ -914,7 +934,7 @@ const TeachersSchedule = () => {
       time: slot.time
     }))
 
-    const result = exportToCSV(filteredTeachers, schedules, {
+    const result = exportToCSV(filteredTeachers, filteredSchedules, {
       timeSlots: exportSlots,
       filename: buildExportFilename('lich-giao-vien')
     })
