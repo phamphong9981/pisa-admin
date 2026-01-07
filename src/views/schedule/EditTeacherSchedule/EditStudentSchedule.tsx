@@ -37,10 +37,15 @@ import {
 } from '@mui/material'
 import { styled } from '@mui/material/styles'
 
+// Third-party imports
+import { saveAs } from 'file-saver'
+import * as XLSX from 'xlsx'
+
 // Hooks
 import { useStudentListWithReload } from '@/@core/hooks/useStudent'
 import { SCHEDULE_TIME, useBatchOrderSchedule } from '@/@core/hooks/useSchedule'
 import { useGetWeeks, ScheduleStatus as WeekStatus, WeekResponseDto } from '@/@core/hooks/useWeek'
+import { RegionId, RegionLabel } from '@/@core/hooks/useCourse'
 
 const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
   fontWeight: 600,
@@ -136,6 +141,7 @@ const EditStudentSchedule = () => {
   const [selectedDay, setSelectedDay] = useState<string>('all')
   const [completionStatus, setCompletionStatus] = useState<string>('all') // 'all' | 'completed' | 'incomplete'
   const [selectedWeekId, setSelectedWeekId] = useState<string>('')
+  const [selectedRegion, setSelectedRegion] = useState<number | 'all'>('all')
 
   // Fetch weeks to get the open week ID
   const { data: weeks, isLoading: isWeeksLoading } = useGetWeeks()
@@ -161,7 +167,11 @@ const EditStudentSchedule = () => {
   }, [weeks, openWeekId, selectedWeekId])
 
   // Hook for fetching students - use weekId to fetch student's busy schedule for that week
-  const { data: studentData, isLoading, error } = useStudentListWithReload(activeStudentSearch, selectedWeekId || undefined)
+  const { data: studentData, isLoading, error } = useStudentListWithReload(
+    activeStudentSearch,
+    selectedWeekId || undefined,
+    selectedRegion === 'all' ? undefined : selectedRegion
+  )
 
   // Hook for batch order schedule
   const batchOrderScheduleMutation = useBatchOrderSchedule()
@@ -827,6 +837,111 @@ const EditStudentSchedule = () => {
     setNotification(prev => ({ ...prev, open: false }))
   }
 
+  // Handle export to Excel
+  const handleExportToExcel = () => {
+    if (!filteredStudents || filteredStudents.length === 0) {
+      setNotification({
+        open: true,
+        message: 'Không có dữ liệu để xuất file!',
+        severity: 'error'
+      })
+      return
+    }
+
+    try {
+      // Prepare data for export
+      const exportData: any[] = []
+
+      // Header row
+      const headerRow: any = {
+        'Thứ': 'Thứ',
+        'Khung giờ': 'Khung giờ'
+      }
+      filteredStudents.forEach(student => {
+        headerRow[student.profile.fullname] = student.course?.name || 'Chưa có khóa học'
+      })
+      exportData.push(headerRow)
+
+      // Data rows - group by day
+      const groups: Record<string, { day: string; slots: typeof filteredTimeSlots }> = {}
+      filteredTimeSlots.forEach(s => {
+        const key = s.day
+        if (!groups[key]) groups[key] = { day: s.day, slots: [] as any }
+        groups[key].slots.push(s)
+      })
+
+      Object.values(groups).forEach(group => {
+        group.slots.forEach((slot, idx) => {
+          const row: any = {
+            'Thứ': idx === 0 ? group.day : '',
+            'Khung giờ': slot.time
+          }
+
+          filteredStudents.forEach(student => {
+            const isBusy = isStudentBusy(student.profile.busyScheduleArr, slot.slot)
+            row[student.profile.fullname] = isBusy ? 'x' : 'v'
+          })
+
+          exportData.push(row)
+        })
+      })
+
+      // Create worksheet
+      const worksheet = XLSX.utils.json_to_sheet(exportData)
+
+      // Set column widths
+      const colWidths = [
+        { wch: 15 }, // Thứ
+        { wch: 20 }, // Khung giờ
+        ...filteredStudents.map(() => ({ wch: 25 })) // Student columns
+      ]
+      worksheet['!cols'] = colWidths
+
+      // Style header row
+      const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1')
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const address = XLSX.utils.encode_cell({ r: 0, c: C })
+        if (!worksheet[address]) continue
+        worksheet[address].s = {
+          font: { bold: true },
+          fill: { fgColor: { rgb: 'E3F2FD' } }
+        }
+      }
+
+      // Create workbook
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Lịch học sinh')
+
+      // Export file
+      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
+      const blob = new Blob([excelBuffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      })
+
+      const currentDate = new Date().toISOString().slice(0, 10)
+      const selectedWeek = weeks?.find(w => w.id === selectedWeekId)
+      const weekLabel = selectedWeek
+        ? `${new Date(selectedWeek.startDate).toISOString().slice(0, 10)}`
+        : ''
+      const filename = `lich-hoc-sinh${weekLabel ? `-${weekLabel}` : ''}-${currentDate}`
+
+      saveAs(blob, `${filename}.xlsx`)
+
+      setNotification({
+        open: true,
+        message: 'Xuất file Excel thành công!',
+        severity: 'success'
+      })
+    } catch (error) {
+      console.error('Export to Excel error:', error)
+      setNotification({
+        open: true,
+        message: 'Lỗi khi xuất file Excel!',
+        severity: 'error'
+      })
+    }
+  }
+
   if (isLoading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
@@ -854,6 +969,15 @@ const EditStudentSchedule = () => {
           subheader="Click vào ô lịch để thay đổi trạng thái bận/rảnh của học sinh (42 khung giờ/tuần)"
           action={
             <Box display="flex" gap={1} alignItems="center">
+              <Button
+                variant="contained"
+                color="success"
+                onClick={handleExportToExcel}
+                disabled={!filteredStudents || filteredStudents.length === 0}
+                startIcon={<i className="ri-download-line" />}
+              >
+                Xuất Excel
+              </Button>
               <Box display="flex" flexDirection="column" alignItems="center">
                 <input
                   accept=".csv"
@@ -1077,10 +1201,29 @@ const EditStudentSchedule = () => {
                   </Select>
                 </FormControl>
               </Grid>
+              <Grid item xs={12} md={3}>
+                <FormControl fullWidth>
+                  <InputLabel>Khu vực</InputLabel>
+                  <Select
+                    value={selectedRegion}
+                    onChange={(e) => setSelectedRegion(e.target.value as number | 'all')}
+                    label="Khu vực"
+                  >
+                    <MenuItem value="all">Tất cả khu vực</MenuItem>
+                    {Object.values(RegionId)
+                      .filter((v): v is RegionId => typeof v === 'number')
+                      .map(region => (
+                        <MenuItem key={region} value={region}>
+                          {RegionLabel[region]}
+                        </MenuItem>
+                      ))}
+                  </Select>
+                </FormControl>
+              </Grid>
             </Grid>
 
             {/* Filter Summary */}
-            {(activeStudentSearch || selectedDay !== 'all' || completionStatus !== 'all') && (
+            {(activeStudentSearch || selectedDay !== 'all' || completionStatus !== 'all' || selectedRegion !== 'all') && (
               <Box sx={{ mt: 2, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
                 <Typography variant="body2" color="text.secondary">
                   <i className="ri-filter-line" style={{ marginRight: 8 }} />
@@ -1110,6 +1253,14 @@ const EditStudentSchedule = () => {
                       size="small"
                       sx={{ ml: 1 }}
                       onDelete={() => setCompletionStatus('all')}
+                    />
+                  )}
+                  {selectedRegion !== 'all' && (
+                    <Chip
+                      label={`Khu vực: ${RegionLabel[selectedRegion as RegionId]}`}
+                      size="small"
+                      sx={{ ml: 1 }}
+                      onDelete={() => setSelectedRegion('all')}
                     />
                   )}
                 </Typography>
@@ -1312,52 +1463,6 @@ const EditStudentSchedule = () => {
               </Box>
             </Box>
           )}
-
-          {/* Summary */}
-          <Box mt={3}>
-            <Typography variant="h6" gutterBottom>
-              Thống kê {filteredStudents.length !== studentData?.users?.length && `(${filteredStudents.length}/${studentData?.users?.length} học sinh)`}
-            </Typography>
-            <Box display="flex" gap={2} flexWrap="wrap">
-              {filteredStudents.map((student) => {
-                // Note: busyScheduleArr contains API indices (1-42), not UI indices (0-41)
-                const busySlots = student.profile.busyScheduleArr?.length || 0
-                const totalSlots = SCHEDULE_TIME.length
-                const freeSlots = totalSlots - busySlots
-
-                return (
-                  <Card key={student.id} variant="outlined" sx={{ minWidth: 200 }}>
-                    <CardContent sx={{ p: 2 }}>
-                      <Typography variant="subtitle2" fontWeight={600}>
-                        {student.profile.fullname}
-                      </Typography>
-                      <Box display="flex" justifyContent="space-between" mt={1}>
-                        <Typography variant="body2" sx={{ color: '#2e7d32' }}>
-                          Rảnh: {freeSlots}/{totalSlots}
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: '#c62828' }}>
-                          Bận: {busySlots}/{totalSlots}
-                        </Typography>
-                      </Box>
-                      <Box display="flex" justifyContent="space-between" mt={0.5}>
-                        <Typography variant="body2" sx={{ color: '#1976d2' }}>
-                          Khóa học: {student.course?.name || 'Chưa có'}
-                        </Typography>
-                      </Box>
-                      <Box display="flex" gap={0.5} mt={1}>
-                        <Chip
-                          label={student.profile.ieltsPoint || 'N/A'}
-                          size="small"
-                          variant="outlined"
-                          color="primary"
-                        />
-                      </Box>
-                    </CardContent>
-                  </Card>
-                )
-              })}
-            </Box>
-          </Box>
         </CardContent>
       </Card>
 

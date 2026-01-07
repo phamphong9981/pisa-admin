@@ -51,22 +51,23 @@ interface ListUsersResponseDto {
     };
 }
 
-const fetchStudentList = async (search: string, weekId?: string): Promise<ListUsersResponseDto> => {
+const fetchStudentList = async (search: string, weekId?: string, region?: number): Promise<ListUsersResponseDto> => {
     const { data } = await apiClient.get('/user/', {
         params: {
             type: 'user',
             search,
-            weekId
+            weekId,
+            region
         }
     });
 
     return data.data;
 }
 
-export const useStudentList = (search: string, weekId?: string) => {
+export const useStudentList = (search: string, weekId?: string, region?: number) => {
     return useQuery<ListUsersResponseDto, Error>({
-        queryKey: ['students', search, weekId],
-        queryFn: () => fetchStudentList(search, weekId),
+        queryKey: ['students', search, weekId, region],
+        queryFn: () => fetchStudentList(search, weekId, region),
         staleTime: 5 * 60 * 1000,
         gcTime: 10 * 60 * 1000,
         retry: 1,
@@ -74,10 +75,10 @@ export const useStudentList = (search: string, weekId?: string) => {
     })
 }
 
-export const useStudentListWithReload = (search: string, weekId?: string) => {
+export const useStudentListWithReload = (search: string, weekId?: string, region?: number) => {
     return useQuery<ListUsersResponseDto, Error>({
-        queryKey: ['students', search, weekId],
-        queryFn: () => fetchStudentList(search, weekId),
+        queryKey: ['students', search, weekId, region],
+        queryFn: () => fetchStudentList(search, weekId, region),
         refetchInterval: 3000,
         refetchIntervalInBackground: true,
         staleTime: 5 * 60 * 1000,

@@ -38,6 +38,10 @@ import {
 import { styled } from '@mui/material/styles'
 import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid'
 
+// Third-party imports
+import { saveAs } from 'file-saver'
+import * as XLSX from 'xlsx'
+
 // Hooks
 import { SCHEDULE_TIME, useBatchOrderSchedule } from '@/@core/hooks/useSchedule'
 import { useTeacherList } from '@/@core/hooks/useTeacher'
@@ -1111,6 +1115,120 @@ const EditTeacherSchedule = () => {
     setNotification(prev => ({ ...prev, open: false }))
   }
 
+  // Handle export to Excel
+  const handleExportToExcel = () => {
+    if (!filteredTeachers || filteredTeachers.length === 0) {
+      setNotification({
+        open: true,
+        message: 'Không có dữ liệu để xuất file!',
+        severity: 'error'
+      })
+      return
+    }
+
+    try {
+      // Prepare data for export
+      const exportData: any[] = []
+
+      // Header row
+      const headerRow: any = {
+        'Thứ': 'Thứ',
+        'Khung giờ': 'Khung giờ'
+      }
+      filteredTeachers.forEach(teacher => {
+        headerRow[teacher.name] = teacher.skills?.length ? teacher.skills.join(', ') : 'Không có kỹ năng'
+      })
+      exportData.push(headerRow)
+
+      // Data rows - group by day
+      const groups: Record<string, { day: string; slots: typeof filteredTimeSlots }> = {}
+      filteredTimeSlots.forEach(s => {
+        const key = s.day
+        if (!groups[key]) groups[key] = { day: s.day, slots: [] as any }
+        groups[key].slots.push(s)
+      })
+
+      Object.values(groups).forEach(group => {
+        group.slots.forEach((slot, idx) => {
+          const row: any = {
+            'Thứ': idx === 0 ? group.day : '',
+            'Khung giờ': slot.time
+          }
+
+          filteredTeachers.forEach(teacher => {
+            const isBusy = isTeacherBusy(teacher.registeredBusySchedule, slot.slot)
+            const isTeaching = isTeacherTeaching(teacher.id, slot.slot)
+
+            if (isTeaching) {
+              const teachingInfo = getTeachingInfo(teacher.id, slot.slot)
+              row[teacher.name] = teachingInfo
+                ? `Đang dạy: ${teachingInfo.class_name} (Buổi ${teachingInfo.lesson})`
+                : 'Đang dạy'
+            } else {
+              row[teacher.name] = isBusy ? 'x' : 'v'
+            }
+          })
+
+          exportData.push(row)
+        })
+      })
+
+      // Create worksheet
+      const worksheet = XLSX.utils.json_to_sheet(exportData)
+
+      // Set column widths
+      const colWidths = [
+        { wch: 15 }, // Thứ
+        { wch: 20 }, // Khung giờ
+        ...filteredTeachers.map(() => ({ wch: 30 })) // Teacher columns
+      ]
+      worksheet['!cols'] = colWidths
+
+      // Style header row
+      const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1')
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const address = XLSX.utils.encode_cell({ r: 0, c: C })
+        if (!worksheet[address]) continue
+        worksheet[address].s = {
+          font: { bold: true },
+          fill: { fgColor: { rgb: 'E3F2FD' } }
+        }
+      }
+
+      // Create workbook
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Lịch giáo viên')
+
+      // Export file
+      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
+      const blob = new Blob([excelBuffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      })
+
+      const currentDate = new Date().toISOString().slice(0, 10)
+      const selectedWeek = weeks?.find(w => w.id === selectedWeekId)
+      const weekLabel = selectedWeek
+        ? `${new Date(selectedWeek.startDate).toISOString().slice(0, 10)}`
+        : ''
+      const filename = `lich-giao-vien${weekLabel ? `-${weekLabel}` : ''}-${currentDate}`
+
+      saveAs(blob, `${filename}.xlsx`)
+
+      setNotification({
+        open: true,
+        message: 'Xuất file Excel thành công!',
+        severity: 'success'
+      })
+    } catch (error) {
+      console.error('Export to Excel error:', error)
+      setNotification({
+        open: true,
+        message: 'Lỗi khi xuất file Excel!',
+        severity: 'error'
+      })
+    }
+  }
+
   if (isLoading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
@@ -1138,6 +1256,15 @@ const EditTeacherSchedule = () => {
           subheader="Click vào ô lịch để thay đổi trạng thái bận/rảnh của giáo viên (42 khung giờ/tuần)"
           action={
             <Box display="flex" gap={1} alignItems="center">
+              <Button
+                variant="contained"
+                color="success"
+                onClick={handleExportToExcel}
+                disabled={!filteredTeachers || filteredTeachers.length === 0}
+                startIcon={<i className="ri-download-line" />}
+              >
+                Xuất Excel
+              </Button>
               <Box display="flex" flexDirection="column" alignItems="center">
                 <input
                   accept=".csv"
