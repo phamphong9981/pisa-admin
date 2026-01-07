@@ -35,7 +35,7 @@ import {
   DialogContent,
   DialogActions
 } from '@mui/material'
-import { styled } from '@mui/material/styles'
+import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid'
 
 // Third-party imports
 import { saveAs } from 'file-saver'
@@ -46,79 +46,6 @@ import { useStudentListWithReload } from '@/@core/hooks/useStudent'
 import { SCHEDULE_TIME, useBatchOrderSchedule } from '@/@core/hooks/useSchedule'
 import { useGetWeeks, ScheduleStatus as WeekStatus, WeekResponseDto } from '@/@core/hooks/useWeek'
 import { RegionId, RegionLabel } from '@/@core/hooks/useCourse'
-
-const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
-  fontWeight: 600,
-  fontSize: '0.875rem',
-  padding: theme.spacing(1.5),
-  backgroundColor: '#f5f5f5',
-  color: '#424242',
-  border: `1px solid ${theme.palette.divider}`,
-  textAlign: 'center',
-  position: 'sticky',
-  top: 0,
-  zIndex: 1
-}))
-
-const StyledTimeCell = styled(TableCell)(({ theme }) => ({
-  fontWeight: 600,
-  fontSize: '0.75rem',
-  padding: theme.spacing(1),
-  backgroundColor: '#fafafa',
-  color: '#424242',
-  border: `1px solid ${theme.palette.divider}`,
-  textAlign: 'center',
-  minWidth: '100px',
-  position: 'sticky',
-  left: 0,
-  zIndex: 1
-}))
-
-const StyledDayCell = styled(TableCell)(({ theme }) => ({
-  fontWeight: 700,
-  fontSize: '0.8rem',
-  padding: theme.spacing(1),
-  backgroundColor: '#f0f0f0',
-  color: '#424242',
-  border: `1px solid ${theme.palette.divider}`,
-  textAlign: 'left',
-  minWidth: '120px',
-  position: 'sticky',
-  left: 0,
-  zIndex: 2
-}))
-
-const ScheduleCell = styled(TableCell, {
-  shouldForwardProp: (prop) => prop !== 'isBusy' && prop !== 'isTeaching' && prop !== 'isEditable' && prop !== 'isSelected'
-})<{ isBusy?: boolean; isTeaching?: boolean; isEditable?: boolean; isSelected?: boolean }>(({ theme, isBusy, isTeaching, isEditable, isSelected }) => ({
-  padding: theme.spacing(0.5),
-  border: `1px solid ${isSelected ? '#1976d2' : theme.palette.divider}`,
-  borderWidth: isSelected ? '2px' : '1px',
-  textAlign: 'center',
-  cursor: isEditable ? 'pointer' : isTeaching ? 'pointer' : 'default',
-  minWidth: '120px',
-  minHeight: '60px',
-  backgroundColor: isSelected
-    ? '#fff3e0' // Orange tint for selected
-    : isTeaching
-      ? '#e3f2fd' // Light blue for teaching
-      : isBusy
-        ? '#ffebee' // Light red for busy
-        : '#f1f8e9', // Light green for free
-  '&:hover': {
-    backgroundColor: isSelected
-      ? '#ffe0b2' // Darker orange on hover when selected
-      : isEditable
-        ? '#e8f5e8' // Light green on hover for editable
-        : isTeaching
-          ? '#bbdefb' // Darker blue on hover
-          : isBusy
-            ? '#ffcdd2' // Darker red on hover
-            : '#dcedc8', // Darker green on hover
-  },
-  transition: 'background-color 0.2s ease, border 0.2s ease',
-  position: 'relative'
-}))
 
 const getDayInVietnamese = (englishDay: string) => {
   const dayMap: { [key: string]: string } = {
@@ -332,6 +259,57 @@ const EditStudentSchedule = () => {
 
     return studentSchedule.includes(slotIndex + 1)
   }
+
+  // Prepare rows for DataGrid
+  const gridRows = useMemo(() => {
+    if (!filteredTimeSlots.length) return []
+
+    const groups: Record<string, { day: string; slots: typeof filteredTimeSlots }> = {}
+    filteredTimeSlots.forEach(s => {
+      const key = s.day
+      if (!groups[key]) groups[key] = { day: s.day, slots: [] as any }
+      groups[key].slots.push(s)
+    })
+
+    const rows: Array<{
+      id: string
+      day: string
+      time: string
+      slot: number
+      _dayGroup: string
+      _dayRowIndex: number
+      [key: string]: any
+    }> = []
+
+    Object.values(groups).forEach(group => {
+      group.slots.forEach((slot, idx) => {
+        const row: any = {
+          id: `${group.day}-${slot.time}-${slot.slot}`,
+          day: idx === 0 ? group.day : '',
+          time: slot.time,
+          slot: slot.slot,
+          _dayGroup: group.day,
+          _dayRowIndex: idx
+        }
+
+        filteredStudents.forEach(student => {
+          row[`student_${student.id}`] = {
+            studentId: student.id,
+            studentName: student.profile.fullname,
+            courseName: student.course?.name,
+            isBusy: isStudentBusy(student.profile.busyScheduleArr, slot.slot),
+            day: slot.day,
+            time: slot.time
+          }
+        })
+
+        rows.push(row)
+      })
+    })
+
+    return rows
+  }, [filteredTimeSlots, filteredStudents])
+
 
   // Map time range string to slot number
   // Examples: "8-10am" -> slot 1, "10-12pm" -> slot 2, "1.30-3pm" -> slot 3, etc.
@@ -832,6 +810,160 @@ const EditStudentSchedule = () => {
     handleCloseEditDialog()
   }
 
+  // Prepare columns for DataGrid
+  const gridColumns = useMemo<GridColDef[]>(() => {
+    const columns: GridColDef[] = [
+      {
+        field: 'day',
+        headerName: 'Thứ',
+        width: 120,
+        minWidth: 120,
+        headerAlign: 'center',
+        align: 'left',
+        renderCell: (params: GridRenderCellParams) => {
+          if (!params.value) return null
+          return (
+            <Box
+              sx={{
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                backgroundColor: '#f0f0f0',
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                padding: '0 8px'
+              }}
+            >
+              {params.value}
+            </Box>
+          )
+        }
+      },
+      {
+        field: 'time',
+        headerName: 'Khung giờ',
+        width: 100,
+        minWidth: 100,
+        headerAlign: 'center',
+        align: 'center',
+        renderCell: (params: GridRenderCellParams) => (
+          <Typography variant="caption" color="primary" fontWeight={600}>
+            {params.value}
+          </Typography>
+        )
+      }
+    ]
+
+    filteredStudents.forEach(student => {
+      columns.push({
+        field: `student_${student.id}`,
+        headerName: student.profile.fullname,
+        width: 150,
+        minWidth: 130,
+        headerAlign: 'center',
+        align: 'center',
+        renderHeader: () => (
+          <Box sx={{ textAlign: 'center' }}>
+            <Typography variant="body2" fontWeight={600}>
+              {student.profile.fullname}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {student.course?.name || 'Chưa có khóa học'}
+            </Typography>
+          </Box>
+        ),
+        renderCell: (params: GridRenderCellParams) => {
+          const cellData = params.value as {
+            studentId: string
+            studentName: string
+            courseName?: string
+            isBusy: boolean
+            day: string
+            time: string
+          }
+          if (!cellData) return null
+
+          const row = params.row as any
+          const slotIndex = row.slot
+          const cellKey = `${cellData.studentId}-${slotIndex}`
+          const isSelected = selectedCells.some(cell => `${cell.studentId}-${cell.slotIndex}` === cellKey)
+
+          return (
+            <Box
+              sx={{
+                width: '100%',
+                height: '100%',
+                minHeight: '60px',
+                padding: '4px',
+                border: `2px solid ${isSelected ? '#1976d2' : 'transparent'}`,
+                borderRadius: 1,
+                backgroundColor: isSelected
+                  ? '#fff3e0'
+                  : cellData.isBusy
+                    ? '#ffebee'
+                    : '#f1f8e9',
+                cursor: 'pointer',
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'background-color 0.2s ease, border 0.2s ease',
+                '&:hover': {
+                  backgroundColor: isSelected
+                    ? '#ffe0b2'
+                    : cellData.isBusy
+                      ? '#ffcdd2'
+                      : '#dcedc8'
+                }
+              }}
+              onClick={() => handleCellClick(cellData.studentId, slotIndex, cellData.day, cellData.time)}
+            >
+              {isSelected && (
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    top: 4,
+                    right: 4,
+                    width: 20,
+                    height: 20,
+                    borderRadius: '50%',
+                    backgroundColor: '#1976d2',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '12px',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  ✓
+                </Box>
+              )}
+              <Tooltip
+                title={
+                  cellData.isBusy
+                    ? `${cellData.studentName} bận vào ${cellData.day} ${cellData.time}`
+                    : `${cellData.studentName} rảnh vào ${cellData.day} ${cellData.time}`
+                }
+              >
+                <IconButton size="small">
+                  {cellData.isBusy ? (
+                    <i className="ri-close-line" style={{ color: '#c62828', fontSize: '18px' }} />
+                  ) : (
+                    <i className="ri-check-line" style={{ color: '#2e7d32', fontSize: '18px' }} />
+                  )}
+                </IconButton>
+              </Tooltip>
+            </Box>
+          )
+        }
+      })
+    })
+
+    return columns
+  }, [filteredStudents, selectedCells, handleCellClick])
+
   // Handle close notification
   const handleCloseNotification = () => {
     setNotification(prev => ({ ...prev, open: false }))
@@ -1268,136 +1400,91 @@ const EditStudentSchedule = () => {
             )}
           </Box>
 
-          <TableContainer sx={{
-            maxHeight: '70vh',
-            overflow: 'auto',
-            border: '1px solid #e0e0e0',
-            borderRadius: '8px'
-          }}>
-            <Table stickyHeader>
-              <TableHead>
-                <TableRow>
-                  <StyledHeaderCell sx={{ minWidth: '120px', position: 'sticky', left: 0, zIndex: 3 }}>
-                    <Typography variant="body2" fontWeight={600}>Thứ</Typography>
-                  </StyledHeaderCell>
-                  <StyledHeaderCell sx={{ minWidth: '100px', position: 'sticky', left: 120, zIndex: 3 }}>
-                    <Typography variant="body2" fontWeight={600}>Khung giờ</Typography>
-                  </StyledHeaderCell>
-                  {filteredStudents.map((student) => (
-                    <StyledHeaderCell key={student.id}>
-                      <Box>
-                        <Typography variant="body2" fontWeight={600}>
-                          {student.profile.fullname}
-                        </Typography>
-                        <Typography variant="caption" color="textSecondary">
-                          {student.course?.name || 'Chưa có khóa học'}
-                        </Typography>
-                      </Box>
-                    </StyledHeaderCell>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredTimeSlots.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={filteredStudents.length + 2} align="center" sx={{ py: 4 }}>
-                      <Box display="flex" flexDirection="column" alignItems="center" gap={2}>
-                        <i className="ri-calendar-line" style={{ fontSize: '48px', color: '#ccc' }} />
-                        <Typography variant="h6" color="text.secondary">
-                          Không có dữ liệu phù hợp
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Thử thay đổi bộ lọc để xem kết quả khác
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  (() => {
-                    const groups: Record<string, { day: string; slots: typeof filteredTimeSlots }> = {}
-                    filteredTimeSlots.forEach(s => {
-                      const key = s.day
-                      if (!groups[key]) groups[key] = { day: s.day, slots: [] as any }
-                      groups[key].slots.push(s)
-                    })
-                    return Object.values(groups).flatMap(group =>
-                      group.slots.map((slot, idx) => (
-                        <TableRow key={`${group.day}-${slot.time}`}>
-                          {idx === 0 && (
-                            <StyledDayCell rowSpan={group.slots.length}>
-                              {group.day}
-                            </StyledDayCell>
-                          )}
-                          <StyledTimeCell sx={{ left: 120 }}>
-                            <Typography variant="caption" color="primary">{slot.time}</Typography>
-                          </StyledTimeCell>
-                          {filteredStudents.map((student) => {
-                            const isBusy = isStudentBusy(student.profile.busyScheduleArr, slot.slot)
-                            const cellKey = `${student.id}-${slot.slot}`
-                            const isSelected = selectedCells.some(cell => `${cell.studentId}-${cell.slotIndex}` === cellKey)
-
-                            return (
-                              <ScheduleCell
-                                key={cellKey}
-                                isBusy={isBusy}
-                                isTeaching={false}
-                                isEditable={true}
-                                isSelected={isSelected}
-                                onClick={() => handleCellClick(
-                                  student.id,
-                                  slot.slot,
-                                  slot.day,
-                                  slot.time
-                                )}
-                              >
-                                {isSelected && (
-                                  <Box
-                                    sx={{
-                                      position: 'absolute',
-                                      top: 4,
-                                      right: 4,
-                                      width: 20,
-                                      height: 20,
-                                      borderRadius: '50%',
-                                      backgroundColor: '#1976d2',
-                                      color: 'white',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      fontSize: '12px',
-                                      fontWeight: 'bold'
-                                    }}
-                                  >
-                                    ✓
-                                  </Box>
-                                )}
-                                <Tooltip
-                                  title={
-                                    isBusy
-                                      ? `${student.profile.fullname} bận vào ${slot.day} ${slot.time}`
-                                      : `${student.profile.fullname} rảnh vào ${slot.day} ${slot.time}`
-                                  }
-                                >
-                                  <IconButton size="small">
-                                    {isBusy ? (
-                                      <i className="ri-close-line" style={{ color: '#c62828', fontSize: '18px' }} />
-                                    ) : (
-                                      <i className="ri-check-line" style={{ color: '#2e7d32', fontSize: '18px' }} />
-                                    )}
-                                  </IconButton>
-                                </Tooltip>
-
-                              </ScheduleCell>
-                            )
-                          })}
-                        </TableRow>
-                      ))
-                    )
-                  })()
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <Box
+            sx={{
+              height: '70vh',
+              width: '100%',
+              border: '1px solid #e0e0e0',
+              borderRadius: '8px',
+              overflow: 'hidden',
+              '& .MuiDataGrid-root': {
+                border: 'none'
+              },
+              '& .MuiDataGrid-columnHeaders': {
+                backgroundColor: '#f5f5f5',
+                borderBottom: '1px solid #e0e0e0'
+              },
+              '& .MuiDataGrid-columnHeader': {
+                fontWeight: 600,
+                fontSize: '0.875rem'
+              },
+              '& .MuiDataGrid-cell': {
+                borderRight: '1px solid #e0e0e0',
+                borderBottom: '1px solid #e0e0e0'
+              },
+              '& .MuiDataGrid-cell--pinnedLeft': {
+                backgroundColor: '#fafafa'
+              },
+              '& .MuiDataGrid-row': {
+                '&:hover': {
+                  backgroundColor: 'transparent'
+                }
+              }
+            }}
+          >
+            {filteredTimeSlots.length === 0 ? (
+              <Box
+                display="flex"
+                flexDirection="column"
+                alignItems="center"
+                justifyContent="center"
+                height="100%"
+                gap={2}
+              >
+                <i className="ri-calendar-line" style={{ fontSize: '48px', color: '#ccc' }} />
+                <Typography variant="h6" color="text.secondary">
+                  Không có dữ liệu phù hợp
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Thử thay đổi bộ lọc để xem kết quả khác
+                </Typography>
+              </Box>
+            ) : (
+              <DataGrid
+                rows={gridRows}
+                columns={gridColumns}
+                columnHeaderHeight={80}
+                rowHeight={80}
+                disableRowSelectionOnClick
+                disableColumnMenu
+                disableColumnFilter
+                disableColumnSelector
+                hideFooter
+                getRowId={(row) => row.id}
+                sx={{
+                  '& .MuiDataGrid-main': {
+                    overflow: 'auto'
+                  },
+                  '& .MuiDataGrid-virtualScroller': {
+                    overflowX: 'auto',
+                    overflowY: 'auto'
+                  },
+                  '& .MuiDataGrid-columnHeader[data-field="day"], & .MuiDataGrid-cell[data-field="day"]': {
+                    position: 'sticky',
+                    left: 0,
+                    zIndex: 3,
+                    backgroundColor: '#f0f0f0'
+                  },
+                  '& .MuiDataGrid-columnHeader[data-field="time"], & .MuiDataGrid-cell[data-field="time"]': {
+                    position: 'sticky',
+                    left: 120,
+                    zIndex: 2,
+                    backgroundColor: '#fafafa'
+                  }
+                }}
+              />
+            )}
+          </Box>
 
           {/* Batch Update Panel */}
           {selectedCells.length > 0 && (
@@ -1569,12 +1656,12 @@ const EditStudentSchedule = () => {
                 <Table stickyHeader size="small">
                   <TableHead>
                     <TableRow>
-                      <StyledHeaderCell>Email</StyledHeaderCell>
-                      <StyledHeaderCell>Họ tên</StyledHeaderCell>
-                      <StyledHeaderCell>Lớp</StyledHeaderCell>
-                      <StyledHeaderCell>Số khung giờ bận</StyledHeaderCell>
-                      <StyledHeaderCell>Khung giờ bận</StyledHeaderCell>
-                      <StyledHeaderCell>Lỗi</StyledHeaderCell>
+                      <TableCell>Email</TableCell>
+                      <TableCell>Họ tên</TableCell>
+                      <TableCell>Lớp</TableCell>
+                      <TableCell>Số khung giờ bận</TableCell>
+                      <TableCell>Khung giờ bận</TableCell>
+                      <TableCell>Lỗi</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
