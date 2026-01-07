@@ -4,7 +4,7 @@
 import { useMemo, useState, useEffect, useCallback } from 'react'
 
 // Styled Components
-import { styled } from '@mui/material/styles'
+import { styled, useTheme } from '@mui/material/styles'
 
 // MUI Imports
 import {
@@ -165,6 +165,7 @@ const dayOffsetMap: Record<string, number> = {
 const COURSE_ORDER_STORAGE_KEY = 'schedule-planner-course-order'
 
 const SchedulePlanner = () => {
+  const theme = useTheme()
   const { isTeacher } = useAuth()
   const isReadOnly = isTeacher() // Teacher chỉ xem, không được chỉnh sửa
 
@@ -1919,130 +1920,164 @@ const SchedulePlanner = () => {
 
                               <Box display="flex" flexDirection="column" gap={0.75}>
                                 {/* Scheduled classes as boxes */}
-                                {scheduled.map((s, i) => (
-                                  <ClassBox
-                                    key={`${s.class_id}-${s.lesson}-${i}`}
-                                    onClick={() => handleClassBoxClick(s)}
-                                    sx={{
-                                      cursor: isReadOnly ? 'default' : 'pointer',
-                                      opacity: isReadOnly ? 1 : 1,
-                                      '&:hover': isReadOnly ? {} : {
-                                        boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-                                        transform: 'translateY(-2px)'
-                                      }
-                                    }}
-                                  >
-                                    <ClassBoxHeader>
-                                      <Box display="flex" gap={1} alignItems="center">
-                                        <Typography variant="body2" fontWeight={700}>{s.class_name}
-                                          {s.note && (
-                                            <Typography
-                                              variant="caption"
-                                              color="text.secondary"
+                                {scheduled.map((s, i) => {
+                                  const isTransferred = s.isTransferred === true
+
+                                  return (
+                                    <ClassBox
+                                      key={`${s.class_id}-${s.lesson}-${i}`}
+                                      onClick={() => handleClassBoxClick(s)}
+                                      sx={{
+                                        cursor: isReadOnly ? 'default' : 'pointer',
+                                        opacity: isReadOnly ? 1 : 1,
+                                        border: isTransferred
+                                          ? `1px solid ${theme.palette.warning.light}`
+                                          : undefined,
+                                        '&::before': {
+                                          background: isTransferred
+                                            ? theme.palette.warning.main
+                                            : theme.palette.primary.main
+                                        },
+                                        '&:hover': isReadOnly ? {} : {
+                                          boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                                          transform: 'translateY(-2px)'
+                                        }
+                                      }}
+                                    >
+                                      <ClassBoxHeader
+                                        sx={{
+                                          background: isTransferred
+                                            ? `linear-gradient(135deg, ${theme.palette.warning.light}, ${theme.palette.warning.main})`
+                                            : undefined,
+                                          borderBottom: isTransferred
+                                            ? `1px solid ${theme.palette.warning.main}`
+                                            : undefined
+                                        }}
+                                      >
+                                        <Box display="flex" gap={1} alignItems="center">
+                                          <Typography variant="body2" fontWeight={700}>{s.class_name}
+                                            {s.note && (
+                                              <Typography
+                                                variant="caption"
+                                                color="text.secondary"
+                                                sx={{
+                                                  fontStyle: 'italic',
+                                                  fontSize: '0.7rem',
+                                                  lineHeight: 1.2,
+                                                  overflow: 'hidden',
+                                                  textOverflow: 'ellipsis',
+                                                  display: '-webkit-box',
+                                                  WebkitLineClamp: 2,
+                                                  WebkitBoxOrient: 'vertical'
+                                                }}
+                                              >
+                                                {s.note}
+                                              </Typography>
+                                            )}
+                                          </Typography>
+                                          <Chip
+                                            size="small"
+                                            variant="outlined"
+                                            label={`Buổi ${s.lesson}`}
+                                            sx={{
+                                              borderColor: 'rgba(255,255,255,0.8)',
+                                              color: '#fff',
+                                              height: 22
+                                            }}
+                                          />
+                                          {isTransferred && (
+                                            <Chip
+                                              size="small"
+                                              label="Chuyển lớp"
                                               sx={{
-                                                fontStyle: 'italic',
+                                                backgroundColor: 'rgba(255,255,255,0.2)',
+                                                color: '#fff',
+                                                height: 22,
                                                 fontSize: '0.7rem',
-                                                lineHeight: 1.2,
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis',
-                                                display: '-webkit-box',
-                                                WebkitLineClamp: 2,
-                                                WebkitBoxOrient: 'vertical'
+                                                fontWeight: 600
                                               }}
-                                            >
-                                              {s.note}
+                                            />
+                                          )}
+                                        </Box>
+                                      </ClassBoxHeader>
+                                      <ClassBoxSubHeader>
+                                        <Box display="flex" flexDirection="column" gap={0.5} width="100%">
+                                          <Typography variant="caption">GV: {s.teacher_name}</Typography>
+                                          {(s.start_time || s.end_time) && (
+                                            <Typography variant="caption" sx={{
+                                              color: isTransferred ? 'warning.main' : 'primary.main',
+                                              fontWeight: 600,
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              gap: 0.5
+                                            }}>
+                                              <i className="ri-time-line" style={{ fontSize: '0.75rem' }} />
+                                              {s.start_time && s.end_time
+                                                ? `${s.start_time} - ${s.end_time}`
+                                                : s.start_time || s.end_time
+                                              }
                                             </Typography>
                                           )}
-                                        </Typography>
-                                        <Chip
-                                          size="small"
-                                          variant="outlined"
-                                          label={`Buổi ${s.lesson}`}
-                                          sx={{
-                                            borderColor: 'rgba(255,255,255,0.8)',
-                                            color: '#fff',
-                                            height: 22
-                                          }}
-                                        />
-                                      </Box>
-                                    </ClassBoxHeader>
-                                    <ClassBoxSubHeader>
-                                      <Box display="flex" flexDirection="column" gap={0.5} width="100%">
-                                        <Typography variant="caption">GV: {s.teacher_name}</Typography>
-                                        {(s.start_time || s.end_time) && (
-                                          <Typography variant="caption" sx={{
-                                            color: 'primary.main',
-                                            fontWeight: 600,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 0.5
-                                          }}>
-                                            <i className="ri-time-line" style={{ fontSize: '0.75rem' }} />
-                                            {s.start_time && s.end_time
-                                              ? `${s.start_time} - ${s.end_time}`
-                                              : s.start_time || s.end_time
-                                            }
-                                          </Typography>
+                                        </Box>
+                                      </ClassBoxSubHeader>
+                                      <ClassBoxBody>
+                                        {Array.isArray(s.students) && s.students.length > 0 ? (() => {
+                                          const visibleStudents = s.students.slice(0, 10)
+                                          const hasMoreStudents = s.students.length > 10
+                                          const additionalStudents = hasMoreStudents ? s.students.slice(10) : []
+
+                                          return (
+                                            <Box display="flex" gap={0.5} flexWrap="wrap">
+                                              {visibleStudents.map((st: any) => {
+                                                const coursename = st.coursename ? ` - ${st.coursename}` : ''
+                                                const displayLabel = st.note
+                                                  ? `${st.fullname}${coursename} (${st.note})`
+                                                  : `${st.fullname}${coursename}`
+
+                                                return (
+                                                  <Chip
+                                                    key={st.id}
+                                                    size="small"
+                                                    label={displayLabel}
+                                                    sx={{
+                                                      maxWidth: '100%',
+                                                      '& .MuiChip-label': {
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis',
+                                                        whiteSpace: 'nowrap'
+                                                      }
+                                                    }}
+                                                  />
+                                                )
+                                              })}
+
+                                              {hasMoreStudents && (
+                                                <Tooltip
+                                                  title={additionalStudents.map((st: any) => st.fullname).join(', ')}
+                                                >
+                                                  <Chip
+                                                    size="small"
+                                                    label="..."
+                                                    sx={{
+                                                      maxWidth: '100%',
+                                                      '& .MuiChip-label': {
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis',
+                                                        whiteSpace: 'nowrap'
+                                                      }
+                                                    }}
+                                                  />
+                                                </Tooltip>
+                                              )}
+                                            </Box>
+                                          )
+                                        })() : (
+                                          <Typography variant="caption" color="text.secondary">Chưa có danh sách học sinh</Typography>
                                         )}
-                                      </Box>
-                                    </ClassBoxSubHeader>
-                                    <ClassBoxBody>
-                                      {Array.isArray(s.students) && s.students.length > 0 ? (() => {
-                                        const visibleStudents = s.students.slice(0, 10)
-                                        const hasMoreStudents = s.students.length > 10
-                                        const additionalStudents = hasMoreStudents ? s.students.slice(10) : []
-
-                                        return (
-                                          <Box display="flex" gap={0.5} flexWrap="wrap">
-                                            {visibleStudents.map((st: any) => {
-                                              const coursename = st.coursename ? ` - ${st.coursename}` : ''
-                                              const displayLabel = st.note
-                                                ? `${st.fullname}${coursename} (${st.note})`
-                                                : `${st.fullname}${coursename}`
-
-                                              return (
-                                                <Chip
-                                                  key={st.id}
-                                                  size="small"
-                                                  label={displayLabel}
-                                                  sx={{
-                                                    maxWidth: '100%',
-                                                    '& .MuiChip-label': {
-                                                      overflow: 'hidden',
-                                                      textOverflow: 'ellipsis',
-                                                      whiteSpace: 'nowrap'
-                                                    }
-                                                  }}
-                                                />
-                                              )
-                                            })}
-
-                                            {hasMoreStudents && (
-                                              <Tooltip
-                                                title={additionalStudents.map((st: any) => st.fullname).join(', ')}
-                                              >
-                                                <Chip
-                                                  size="small"
-                                                  label="..."
-                                                  sx={{
-                                                    maxWidth: '100%',
-                                                    '& .MuiChip-label': {
-                                                      overflow: 'hidden',
-                                                      textOverflow: 'ellipsis',
-                                                      whiteSpace: 'nowrap'
-                                                    }
-                                                  }}
-                                                />
-                                              </Tooltip>
-                                            )}
-                                          </Box>
-                                        )
-                                      })() : (
-                                        <Typography variant="caption" color="text.secondary">Chưa có danh sách học sinh</Typography>
-                                      )}
-                                    </ClassBoxBody>
-                                  </ClassBox>
-                                ))}
+                                      </ClassBoxBody>
+                                    </ClassBox>
+                                  )
+                                })}
 
                                 {/* Free students list */}
                                 <Box>
