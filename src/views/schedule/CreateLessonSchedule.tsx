@@ -162,6 +162,9 @@ const CreateLessonSchedule = ({
   const [editingStudentEndTime, setEditingStudentEndTime] = useState<string>('')
   const [editingStudentNote, setEditingStudentNote] = useState<string>('')
 
+  // Toggle state for showing/hiding current info for each student
+  const [expandedStudentInfo, setExpandedStudentInfo] = useState<Record<string, boolean>>({})
+
   // Search states
   const [studentSearch, setStudentSearch] = useState('')
   const [showSearchResults, setShowSearchResults] = useState(false)
@@ -211,6 +214,7 @@ const CreateLessonSchedule = ({
         setEditingStudentNote('')
         setOriginalValues(null)
         setNote('')
+        setExpandedStudentInfo({})
       }
 
       // Parse time from slot and format to HH:MM
@@ -551,6 +555,14 @@ const CreateLessonSchedule = ({
     setEditingStudentNote('')
   }
 
+  // Handle toggle student info
+  const handleToggleStudentInfo = (studentId: string) => {
+    setExpandedStudentInfo(prev => ({
+      ...prev,
+      [studentId]: !prev[studentId]
+    }))
+  }
+
   // Handle search student
   const handleSearchStudent = (searchTerm: string) => {
     setStudentSearch(searchTerm)
@@ -735,35 +747,66 @@ const CreateLessonSchedule = ({
               {/* Show current values when not editing */}
               {editingStudentId !== student.profile_id && (
                 <Box sx={{
-                  p: 1,
                   backgroundColor: '#f5f5f5',
                   borderRadius: 1,
-                  border: '1px solid #e0e0e0'
+                  border: '1px solid #e0e0e0',
+                  overflow: 'hidden'
                 }}>
-                  <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                    <Typography variant="caption" color="text.secondary" fontWeight={500}>
-                      Thông tin hiện tại:
-                    </Typography>
+                  <Box
+                    display="flex"
+                    justifyContent="space-between"
+                    alignItems="center"
+                    p={1}
+                    sx={{
+                      cursor: 'pointer',
+                      '&:hover': {
+                        backgroundColor: '#eeeeee'
+                      }
+                    }}
+                    onClick={() => handleToggleStudentInfo(student.profile_id)}
+                  >
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <i
+                        className={expandedStudentInfo[student.profile_id] ? "ri-arrow-down-s-line" : "ri-arrow-right-s-line"}
+                        style={{ fontSize: '16px', color: '#666', transition: 'transform 0.2s' }}
+                      />
+                      <Typography variant="caption" color="text.secondary" fontWeight={500}>
+                        Thông tin hiện tại
+                      </Typography>
+                    </Box>
                     <Button
                       size="small"
                       variant="outlined"
                       startIcon={<i className="ri-edit-line" />}
-                      onClick={() => handleStartEditStudent(student)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleStartEditStudent(student)
+                      }}
                       sx={{ fontSize: '0.7rem', py: 0.25, px: 1 }}
                     >
                       Chỉnh sửa
                     </Button>
                   </Box>
 
-                  {/* Current values display */}
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      <strong>Thời gian:</strong> {formatTimeToHHMM(student.startTime || '') || 'Chưa có'} - {formatTimeToHHMM(student.endTime || '') || 'Chưa có'}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      <strong>Ghi chú:</strong> {studentNotes[student.profile_id] || 'Chưa có ghi chú'}
-                    </Typography>
-                  </Box>
+                  {/* Current values display - only show when expanded */}
+                  {expandedStudentInfo[student.profile_id] && (
+                    <Box sx={{
+                      p: 1,
+                      pt: 0,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 0.5,
+                      borderTop: '1px solid #e0e0e0',
+                      backgroundColor: '#fafafa'
+                    }}>
+                      <Typography variant="caption" color="text.secondary">
+                        <strong>Thời gian:</strong> {formatTimeToHHMM(student.startTime || '') || 'Chưa có'} - {formatTimeToHHMM(student.endTime || '') || 'Chưa có'}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        <strong>Ghi chú:</strong> {studentNotes[student.profile_id] || 'Chưa có ghi chú'}
+                      </Typography>
+                    </Box>
+                  )}
                 </Box>
               )}
 
@@ -904,6 +947,7 @@ const CreateLessonSchedule = ({
     setOriginalValues(null)
     setShowDeleteConfirm(false)
     setNote('')
+    setExpandedStudentInfo({})
     onClose()
   }
 
