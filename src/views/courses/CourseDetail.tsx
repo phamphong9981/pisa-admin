@@ -56,6 +56,7 @@ import {
   useRegisterStudentToClass,
   useUnregisterStudentFromClass
 } from '@/@core/hooks/useClass'
+import { ClassType } from '@/types/classes'
 
 const StyledCard = styled(Card)(({ theme }) => ({
   marginBottom: theme.spacing(3)
@@ -68,40 +69,40 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
 
 const getCourseTypeColor = (courseType: string) => {
   switch (courseType) {
-    case 'FT_listening': return 'primary'
-    case 'FT_writing': return 'secondary'
-    case 'FT_reading': return 'success'
-    case 'FT_speaking': return 'warning'
+    case ClassType.FT_LISTENING: return 'primary'
+    case ClassType.FT_WRITING: return 'secondary'
+    case ClassType.FT_READING: return 'success'
+    case ClassType.FT_SPEAKING: return 'warning'
     default: return 'default'
   }
 }
 
 const getCourseTypeLabel = (courseType: string) => {
   switch (courseType) {
-    case 'FT_listening': return 'Nghe'
-    case 'FT_writing': return 'Viết'
-    case 'FT_reading': return 'Đọc'
-    case 'FT_speaking': return 'Nói'
+    case ClassType.FT_LISTENING: return 'Nghe'
+    case ClassType.FT_WRITING: return 'Viết'
+    case ClassType.FT_READING: return 'Đọc'
+    case ClassType.FT_SPEAKING: return 'Nói'
     default: return courseType
   }
 }
 
 const getClassTypeColor = (classType: string) => {
   switch (classType) {
-    case 'FT_listening': return 'primary'
-    case 'FT_writing': return 'secondary'
-    case 'FT_reading': return 'success'
-    case 'FT_speaking': return 'warning'
+    case ClassType.FT_LISTENING: return 'primary'
+    case ClassType.FT_WRITING: return 'secondary'
+    case ClassType.FT_READING: return 'success'
+    case ClassType.FT_SPEAKING: return 'warning'
     default: return 'default'
   }
 }
 
 const getClassTypeLabel = (classType: string) => {
   switch (classType) {
-    case 'FT_listening': return 'Nghe'
-    case 'FT_writing': return 'Viết'
-    case 'FT_reading': return 'Đọc'
-    case 'FT_speaking': return 'Nói'
+    case ClassType.FT_LISTENING: return 'Nghe'
+    case ClassType.FT_WRITING: return 'Viết'
+    case ClassType.FT_READING: return 'Đọc'
+    case ClassType.FT_SPEAKING: return 'Nói'
     default: return classType
   }
 }

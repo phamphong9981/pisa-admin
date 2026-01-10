@@ -41,6 +41,7 @@ import { useCourseList, useUpdateCourse, CourseStatus, RegionId, RegionLabel } f
 
 // Component Imports
 import CreateCourseForm from './CreateCourseForm'
+import { ClassType } from '@/types/classes'
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   fontWeight: 500,
@@ -49,13 +50,13 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
 
 const getCourseTypeColor = (courseType: string) => {
   switch (courseType) {
-    case 'FT_listening':
+    case ClassType.FT_LISTENING:
       return 'primary'
-    case 'FT_writing':
+    case ClassType.FT_WRITING:
       return 'secondary'
-    case 'FT_reading':
+    case ClassType.FT_READING:
       return 'success'
-    case 'FT_speaking':
+    case ClassType.FT_SPEAKING:
       return 'warning'
     default:
       return 'default'
@@ -64,13 +65,13 @@ const getCourseTypeColor = (courseType: string) => {
 
 const getDisplayCourseTypeLabel = (courseType: string) => {
   switch (courseType) {
-    case 'FT_listening':
+    case ClassType.FT_LISTENING:
       return 'Nghe'
-    case 'FT_writing':
+    case ClassType.FT_WRITING:
       return 'Viết'
-    case 'FT_reading':
+    case ClassType.FT_READING:
       return 'Đọc'
-    case 'FT_speaking':
+    case ClassType.FT_SPEAKING:
       return 'Nói'
     default:
       return courseType

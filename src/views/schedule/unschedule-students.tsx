@@ -46,6 +46,7 @@ import {
 // Hooks
 import { SCHEDULE_TIME, useCreateSchedule, useMissingSchedulesList, MissingSchedulesDto } from '@/@core/hooks/useSchedule'
 import { useTeacherList } from '@/@core/hooks/useTeacher'
+import { ClassType } from '@/types/classes'
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   fontWeight: 600,
@@ -125,10 +126,10 @@ const UnscheduledStudents = () => {
 
   const getClassTypeLabel = (type: string) => {
     const typeMap: { [key: string]: string } = {
-      'FT_listening': 'Nghe',
-      'FT_writing': 'Viết',
-      'FT_reading': 'Đọc',
-      'FT_speaking': 'Nói'
+      [ClassType.FT_LISTENING]: 'Nghe',
+      [ClassType.FT_WRITING]: 'Viết',
+      [ClassType.FT_READING]: 'Đọc',
+      [ClassType.FT_SPEAKING]: 'Nói'
     }
 
     return typeMap[type] || type

@@ -12,7 +12,7 @@ export interface ClassData {
     name: string
     totalStudent: number
     totalLessonPerWeek: number
-    classType: 'FT_listening' | 'FT_writing' | 'FT_reading' | 'FT_speaking'
+    classType: ClassType
     teacherId: string | null
     teacherName?: string
     createdAt: string
@@ -26,9 +26,9 @@ export interface ClassesResponse {
 }
 
 export enum ClassType {
-    FT_LISTENING = 'FT_listening',
-    FT_SPEAKING = 'FT_speaking',
-    FT_WRITING = 'FT_writing',
-    FT_READING = 'FT_reading',
+    FT_LISTENING = 'listening',
+    FT_SPEAKING = 'speaking',
+    FT_WRITING = 'writing',
+    FT_READING = 'reading',
     OTHER = 'other',
 }

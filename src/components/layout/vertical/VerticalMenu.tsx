@@ -75,7 +75,10 @@ const VerticalMenu = ({ scrollMenu }: { scrollMenu: (container: any, isPerfectSc
           <MenuItem href='/courses' icon={<i className='ri-book-open-line' />}>Quản lý lớp học</MenuItem>
         )}
         {canAccessAccounting && (
-          <MenuItem href='/accounting' icon={<i className='ri-calculator-line' />}>Kế toán</MenuItem>
+          <SubMenu label='Kế toán' icon={<i className='ri-calculator-line' />}>
+            <MenuItem href='/accounting/statistics' icon={<i className='ri-bar-chart-line' />}>Thống kê học sinh</MenuItem>
+            <MenuItem href='/accounting/reports' icon={<i className='ri-file-excel-2-line' />}>Xuất báo cáo</MenuItem>
+          </SubMenu>
         )}
         {canAccessSchedule && (
           <SubMenu label='Quản lý lịch học' icon={<i className='ri-calendar-schedule-line' />}>
