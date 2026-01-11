@@ -26,9 +26,9 @@ export interface ClassesResponse {
 }
 
 export enum ClassType {
-    FT_LISTENING = 'listening',
-    FT_SPEAKING = 'speaking',
-    FT_WRITING = 'writing',
-    FT_READING = 'reading',
-    OTHER = 'other',
+    FT_LISTENING = 'Listening',
+    FT_SPEAKING = 'Speaking',
+    FT_WRITING = 'Writing',
+    FT_READING = 'Reading',
+    OTHER = 'Other',
 }
