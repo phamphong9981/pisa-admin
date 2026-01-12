@@ -107,12 +107,12 @@ const StatusChip = styled(Chip)<{ status: string }>(({ status }) => ({
     color: '#c62828',
     border: '1px solid #f44336'
   }),
-  ...(status === 'absent_with_reason' && {
+  ...(status === 'trial' && {
     backgroundColor: '#fff3e0',
     color: '#ef6c00',
     border: '1px solid #ff9800'
   }),
-  ...(status === 'absent_with_late_reason' && {
+  ...(status === 'retake' && {
     backgroundColor: '#f3e5f5',
     color: '#7b1fa2',
     border: '1px solid #9c27b0'
@@ -208,6 +208,10 @@ const getRollcallStatusText = (status: RollcallStatus) => {
       return 'Có mặt'
     case RollcallStatus.ABSENT_WITHOUT_REASON:
       return 'Vắng mặt'
+    case RollcallStatus.TRIAL:
+      return 'Học thử'
+    case RollcallStatus.RETAKE:
+      return 'Học lại'
     case RollcallStatus.NOT_ROLLCALL:
       return 'Chưa điểm danh'
     default:
@@ -820,7 +824,7 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                                     return RollcallStatus.ABSENT_WITHOUT_REASON
                                   }
                                   // Các trạng thái khác giữ nguyên
-                                  return effectiveStatus as RollcallStatus.NOT_ROLLCALL | RollcallStatus.ABSENT_WITHOUT_REASON
+                                  return effectiveStatus as RollcallStatus.NOT_ROLLCALL | RollcallStatus.ABSENT_WITHOUT_REASON | RollcallStatus.TRIAL | RollcallStatus.RETAKE
                                 })()}
                                 onChange={(e) => handleStatusSelectChange(student.profileId, e.target.value as RollcallStatus)}
                                 displayEmpty
@@ -831,6 +835,12 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                                 </MenuItem>
                                 <MenuItem value={RollcallStatus.ABSENT_WITHOUT_REASON}>
                                   {getRollcallStatusText(RollcallStatus.ABSENT_WITHOUT_REASON)}
+                                </MenuItem>
+                                <MenuItem value={RollcallStatus.TRIAL}>
+                                  {getRollcallStatusText(RollcallStatus.TRIAL)}
+                                </MenuItem>
+                                <MenuItem value={RollcallStatus.RETAKE}>
+                                  {getRollcallStatusText(RollcallStatus.RETAKE)}
                                 </MenuItem>
                               </Select>
                             </FormControl>

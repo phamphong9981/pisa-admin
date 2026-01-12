@@ -340,6 +340,8 @@ export enum RollcallStatus {
     ABSENT_WITHOUT_REASON = 'absent_without_reason',
     ABSENT_WITH_REASON = 'absent_with_reason',
     ABSENT_WITH_LATE_REASON = 'absent_with_late_reason',
+    TRIAL = 'trial',
+    RETAKE = 'retake',
 }
 
 // New DTOs for getScheduleDetail

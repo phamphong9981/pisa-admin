@@ -400,7 +400,7 @@ const TeacherScheduleView = () => {
                     textColor: '#b71c1c',
                     accentColor: '#d32f2f'
                 }
-            case RollcallStatus.ABSENT_WITH_REASON:
+            case RollcallStatus.TRIAL:
                 return {
                     label: 'Vắng có lý do',
                     backgroundColor: '#ffe0b2',
@@ -408,7 +408,7 @@ const TeacherScheduleView = () => {
                     textColor: '#e65100',
                     accentColor: '#fb8c00'
                 }
-            case RollcallStatus.ABSENT_WITH_LATE_REASON:
+            case RollcallStatus.RETAKE:
                 return {
                     label: 'Vắng xin muộn',
                     backgroundColor: '#d1c4e9',
