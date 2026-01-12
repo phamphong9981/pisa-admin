@@ -53,6 +53,7 @@ import {
 } from '@/@core/hooks/useOrders'
 import { useStudentList } from '@/@core/hooks/useStudent'
 import OrderDialog from './OrderDialog'
+import ImportOrdersDialog from './ImportOrdersDialog'
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   fontWeight: 700,
@@ -78,6 +79,7 @@ const OrdersPage = () => {
   const [openCreateDialog, setOpenCreateDialog] = React.useState(false)
   const [openEditDialog, setOpenEditDialog] = React.useState(false)
   const [openDeleteDialog, setOpenDeleteDialog] = React.useState(false)
+  const [openImportDialog, setOpenImportDialog] = React.useState(false)
   const [selectedOrder, setSelectedOrder] = React.useState<Order | null>(null)
 
   // Notification state
@@ -398,6 +400,14 @@ const OrdersPage = () => {
               <Box flex={1} />
 
               <Button
+                variant='outlined'
+                color='primary'
+                startIcon={<i className='ri-file-upload-line' />}
+                onClick={() => setOpenImportDialog(true)}
+              >
+                Import CSV/Excel
+              </Button>
+              <Button
                 variant='contained'
                 color='primary'
                 startIcon={<i className='ri-add-line' />}
@@ -539,6 +549,21 @@ const OrdersPage = () => {
         onDialogSearchChange={setDialogSearch}
         dialogSelectedStudent={dialogSelectedStudent}
         onDialogSelectedStudentChange={setDialogSelectedStudent}
+      />
+
+      {/* Import Orders Dialog */}
+      <ImportOrdersDialog
+        open={openImportDialog}
+        onClose={() => setOpenImportDialog(false)}
+        onSuccess={() => {
+          setOpenImportDialog(false)
+          refetch()
+          setNotification({
+            open: true,
+            message: 'Import hóa đơn thành công!',
+            severity: 'success'
+          })
+        }}
       />
 
       {/* Delete Confirmation Dialog */}
