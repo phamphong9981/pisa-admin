@@ -23,8 +23,11 @@ import {
   Typography
 } from '@mui/material'
 
+import { format } from 'date-fns'
+
 import { useExportStudentProgressReport, ReportFormat } from '@/@core/hooks/useAccounting'
 import { useStudentList } from '@/@core/hooks/useStudent'
+import { SingleDatePicker } from '@/components/ui/date-picker'
 
 interface StudentOption {
   id: string
@@ -36,6 +39,8 @@ const AccountingReportsPage = () => {
   const [searchTerm, setSearchTerm] = React.useState('')
   const [selectedStudents, setSelectedStudents] = React.useState<StudentOption[]>([])
   const [reportFormat, setReportFormat] = React.useState<ReportFormat>(ReportFormat.EXCEL)
+  const [fromDate, setFromDate] = React.useState<Date | undefined>(undefined)
+  const [toDate, setToDate] = React.useState<Date | undefined>(undefined)
   const [notification, setNotification] = React.useState<{
     open: boolean
     message: string
@@ -78,15 +83,21 @@ const AccountingReportsPage = () => {
 
     try {
       const profileIds = selectedStudents.map(s => s.id)
-      const blob = await exportMutation.mutateAsync({ profileIds, format: reportFormat })
-      
+      const request = {
+        profileIds,
+        format: reportFormat,
+        fromDate: fromDate ? format(fromDate, 'yyyy-MM-dd') : undefined,
+        toDate: toDate ? format(toDate, 'yyyy-MM-dd') : undefined,
+      }
+      const blob = await exportMutation.mutateAsync(request)
+
       // Determine file extension based on number of students and format
       const isZip = selectedStudents.length > 1
       const ext = getFileExtension(reportFormat)
-      const filename = isZip 
+      const filename = isZip
         ? 'student_progress_reports.zip'
         : `student_progress_report_${selectedStudents[0].fullname.replace(/[^a-zA-Z0-9]/g, '_')}.${ext}`
-      
+
       // Download the file
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
@@ -115,8 +126,14 @@ const AccountingReportsPage = () => {
   // Handle export for all students
   const handleExportAll = async () => {
     try {
-      const blob = await exportMutation.mutateAsync({ profileIds: [], format: reportFormat })
-      
+      const request = {
+        profileIds: [],
+        format: reportFormat,
+        fromDate: fromDate ? format(fromDate, 'yyyy-MM-dd') : undefined,
+        toDate: toDate ? format(toDate, 'yyyy-MM-dd') : undefined,
+      }
+      const blob = await exportMutation.mutateAsync(request)
+
       // Download the file
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
@@ -154,8 +171,8 @@ const AccountingReportsPage = () => {
       {/* Notification */}
       {notification.open && (
         <Grid item xs={12}>
-          <Alert 
-            severity={notification.severity} 
+          <Alert
+            severity={notification.severity}
             onClose={() => setNotification(prev => ({ ...prev, open: false }))}
           >
             {notification.message}
@@ -224,6 +241,53 @@ const AccountingReportsPage = () => {
                   />
                 </RadioGroup>
               </FormControl>
+            </Box>
+
+            {/* Date Range Selection */}
+            <Box sx={{ mb: 3 }}>
+              <Typography variant='subtitle2' gutterBottom>
+                Khoảng thời gian (tùy chọn):
+              </Typography>
+              <Box display='flex' gap={2} flexWrap='wrap' alignItems='center'>
+                <Box>
+                  <Typography variant='caption' color='text.secondary' sx={{ mb: 0.5, display: 'block' }}>
+                    Từ ngày:
+                  </Typography>
+                  <SingleDatePicker
+                    date={fromDate}
+                    onSelect={setFromDate}
+                    placeholder='Chọn ngày bắt đầu'
+                    disabled={toDate ? { after: toDate } : { after: new Date() }}
+                  />
+                </Box>
+                <Box>
+                  <Typography variant='caption' color='text.secondary' sx={{ mb: 0.5, display: 'block' }}>
+                    Đến ngày:
+                  </Typography>
+                  <SingleDatePicker
+                    date={toDate}
+                    onSelect={setToDate}
+                    placeholder='Chọn ngày kết thúc'
+                    disabled={fromDate ? { after: new Date(), before: fromDate } : { after: new Date() }}
+                  />
+                </Box>
+              </Box>
+              {(fromDate || toDate) && (
+                <Box sx={{ mt: 1 }}>
+                  <Button
+                    size='small'
+                    variant='text'
+                    color='inherit'
+                    onClick={() => {
+                      setFromDate(undefined)
+                      setToDate(undefined)
+                    }}
+                    startIcon={<i className='ri-close-line' />}
+                  >
+                    Xóa khoảng thời gian
+                  </Button>
+                </Box>
+              )}
             </Box>
 
             {/* Student Selection */}

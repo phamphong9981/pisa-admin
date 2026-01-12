@@ -19,6 +19,8 @@ export enum ReportFormat {
 export interface StudentProgressReportRequest {
     profileIds?: string[]
     format?: ReportFormat
+    fromDate?: string // Format: YYYY-MM-DD
+    toDate?: string // Format: YYYY-MM-DD
 }
 
 const api = {
