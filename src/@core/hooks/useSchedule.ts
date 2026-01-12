@@ -104,7 +104,7 @@ export const formatScheduleTimeWithDate = (scheduleTime: number | undefined, wee
     const scheduleStr = SCHEDULE_TIME[scheduleTime - 1]
     const [timeRange, dayName] = scheduleStr.split(' ')
 
-    if (!dayName || !dayOffsetMap[dayName]) {
+    if (!dayName || !(dayName in dayOffsetMap)) {
         return timeRange || '—'
     }
 
