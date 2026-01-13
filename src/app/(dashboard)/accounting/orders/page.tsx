@@ -1,6 +1,6 @@
 'use client'
 
-// export const runtime = 'edge';
+export const runtime = 'edge';
 
 import React from 'react'
 import { format } from 'date-fns'
