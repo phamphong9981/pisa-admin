@@ -116,7 +116,7 @@ const ImportOrdersDialog: React.FC<ImportOrdersDialogProps> = ({
     if (!value) return undefined
     const parts = value.split('|')
     const methodValue = parts[0]?.trim().toLowerCase()
-    
+
     const methodMap: Record<string, PaymentMethod> = {
       'cash': PaymentMethod.CASH,
       'deposit': PaymentMethod.DEPOSIT,
@@ -124,7 +124,7 @@ const ImportOrdersDialog: React.FC<ImportOrdersDialogProps> = ({
       'mpos': PaymentMethod.MPOS,
       'installment': PaymentMethod.INSTALLMENT,
     }
-    
+
     return methodMap[methodValue] || undefined
   }
 
@@ -446,8 +446,8 @@ const ImportOrdersDialog: React.FC<ImportOrdersDialogProps> = ({
                               </TableCell>
                               <TableCell>{order.billCategoryName}</TableCell>
                               <TableCell>{order.studentCode}</TableCell>
-                              <TableCell align='right'>{order.totalAmount.toLocaleString('vi-VN')}</TableCell>
-                              <TableCell align='right'>{order.paidAmount.toLocaleString('vi-VN')}</TableCell>
+                              <TableCell align='right'>{order.totalAmount?.toLocaleString('vi-VN')}</TableCell>
+                              <TableCell align='right'>{order?.paidAmount?.toLocaleString('vi-VN')}</TableCell>
                               <TableCell>{order.deadline || '—'}</TableCell>
                               <TableCell>
                                 {order.errors && order.errors.length > 0 ? (
