@@ -23,6 +23,11 @@ export interface StudentProgressReportRequest {
     toDate?: string // Format: YYYY-MM-DD
 }
 
+export interface ClassSessionReportRequest {
+    fromDate?: string // Format: YYYY-MM-DD
+    toDate?: string // Format: YYYY-MM-DD
+}
+
 const api = {
     getTotalStudyHours: async (search?: string): Promise<TotalStudyHoursResponse[]> => {
         const { data } = await apiClient.get('/total-study-hours', {
@@ -36,6 +41,14 @@ const api = {
 
     exportStudentProgressReport: async (request: StudentProgressReportRequest): Promise<Blob> => {
         const response = await apiClient.post('/statistics/student-progress-report', request, {
+            responseType: 'blob'
+        })
+
+        return response.data
+    },
+
+    exportClassSessionReport: async (request: ClassSessionReportRequest): Promise<Blob> => {
+        const response = await apiClient.post('/statistics/class-session-report', request, {
             responseType: 'blob'
         })
 
@@ -55,6 +68,15 @@ export const useExportStudentProgressReport = () => {
         mutationFn: (request: StudentProgressReportRequest) => api.exportStudentProgressReport(request),
         onError: (error) => {
             console.error('Error exporting student progress report:', error)
+        }
+    })
+}
+
+export const useExportClassSessionReport = () => {
+    return useMutation({
+        mutationFn: (request: ClassSessionReportRequest) => api.exportClassSessionReport(request),
+        onError: (error) => {
+            console.error('Error exporting class session report:', error)
         }
     })
 }
