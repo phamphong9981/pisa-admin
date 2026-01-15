@@ -15,6 +15,11 @@ export enum PaymentMethod {
     INSTALLMENT = 'installment',
 }
 
+export enum ReportFormat {
+    EXCEL = 'excel',
+    PDF = 'pdf',
+}
+
 // Bill Categories
 export const RECEIPT_CATEGORIES = [
     { id: 325, name: 'Các khoản giảm trừ doanh thu' },
@@ -123,6 +128,14 @@ export interface OrdersQueryParams {
     limit?: number;
 }
 
+export interface ExportFeeReceiptDto {
+    profileId: string;
+    month: number;
+    year: number;
+    regionId: number;
+    format?: ReportFormat;
+}
+
 // API functions
 const ordersApi = {
     getOrders: async (params: OrdersQueryParams): Promise<OrdersListResponse> => {
@@ -153,6 +166,13 @@ const ordersApi = {
     deleteOrder: async (id: string): Promise<{ message: string }> => {
         const { data } = await apiClient.delete(`/orders/${id}`);
         return data?.data;
+    },
+
+    exportFeeReceipt: async (dto: ExportFeeReceiptDto): Promise<Blob> => {
+        const response = await apiClient.post('/orders/export/fee-receipt', dto, {
+            responseType: 'blob'
+        });
+        return response.data;
     },
 };
 
@@ -208,6 +228,15 @@ export const useDeleteOrder = () => {
         mutationFn: ordersApi.deleteOrder,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['orders'] });
+        },
+    });
+};
+
+export const useExportFeeReceipt = () => {
+    return useMutation({
+        mutationFn: ordersApi.exportFeeReceipt,
+        onError: (error) => {
+            console.error('Error exporting fee receipt:', error);
         },
     });
 };

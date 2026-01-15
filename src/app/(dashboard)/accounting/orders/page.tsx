@@ -41,17 +41,21 @@ import { styled } from '@mui/material/styles'
 import {
   BillType,
   PaymentMethod,
+  ReportFormat,
   useGetOrders,
   useCreateOrder,
   useUpdateOrder,
   useDeleteOrder,
+  useExportFeeReceipt,
   getBillTypeName,
   formatCurrency,
   type Order,
   type CreateOrderDto,
   type UpdateOrderDto,
+  type ExportFeeReceiptDto,
 } from '@/@core/hooks/useOrders'
 import { useStudentList } from '@/@core/hooks/useStudent'
+import { RegionId, RegionLabel } from '@/@core/hooks/useCourse'
 import OrderDialog from './OrderDialog'
 import ImportOrdersDialog from './ImportOrdersDialog'
 
@@ -80,6 +84,7 @@ const OrdersPage = () => {
   const [openEditDialog, setOpenEditDialog] = React.useState(false)
   const [openDeleteDialog, setOpenDeleteDialog] = React.useState(false)
   const [openImportDialog, setOpenImportDialog] = React.useState(false)
+  const [openExportDialog, setOpenExportDialog] = React.useState(false)
   const [selectedOrder, setSelectedOrder] = React.useState<Order | null>(null)
 
   // Notification state
@@ -120,6 +125,16 @@ const OrdersPage = () => {
   const createOrderMutation = useCreateOrder()
   const updateOrderMutation = useUpdateOrder()
   const deleteOrderMutation = useDeleteOrder()
+  const exportFeeReceiptMutation = useExportFeeReceipt()
+
+  // Export dialog state
+  const [exportSearch, setExportSearch] = React.useState('')
+  const [exportSelectedStudent, setExportSelectedStudent] = React.useState<{ id: string; fullname: string; email: string } | null>(null)
+  const [exportMonth, setExportMonth] = React.useState<number>(new Date().getMonth() + 1)
+  const [exportYear, setExportYear] = React.useState<number>(new Date().getFullYear())
+  const [exportRegionId, setExportRegionId] = React.useState<number>(RegionId.HALONG)
+  const [exportFormat, setExportFormat] = React.useState<ReportFormat>(ReportFormat.EXCEL)
+  const { data: exportStudentsData, isLoading: isLoadingExportStudents } = useStudentList(exportSearch)
 
   // 1) Tính options từ API (không setState ở đây)
   const computedFilterOptions = React.useMemo(() => {
@@ -199,9 +214,14 @@ const OrdersPage = () => {
     setOpenCreateDialog(false)
     setOpenEditDialog(false)
     setOpenDeleteDialog(false)
+    setOpenExportDialog(false)
     setSelectedOrder(null)
     setDialogSearch('')
     setDialogSelectedStudent(null)
+    setExportSearch('')
+    setExportSelectedStudent(null)
+    setExportRegionId(RegionId.HALONG)
+    setExportFormat(ReportFormat.EXCEL)
   }
 
   const handleFormChange = (field: keyof CreateOrderDto, value: any) => {
@@ -315,6 +335,92 @@ const OrdersPage = () => {
     return <Chip label='Chưa thanh toán' color='error' size='small' />
   }
 
+  const handleExportFeeReceipt = async () => {
+    if (!exportSelectedStudent) {
+      setNotification({
+        open: true,
+        message: 'Vui lòng chọn học sinh',
+        severity: 'error'
+      })
+      return
+    }
+
+    if (exportMonth < 1 || exportMonth > 12) {
+      setNotification({
+        open: true,
+        message: 'Tháng phải từ 1 đến 12',
+        severity: 'error'
+      })
+      return
+    }
+
+    if (exportYear < 2000) {
+      setNotification({
+        open: true,
+        message: 'Năm phải từ 2000 trở lên',
+        severity: 'error'
+      })
+      return
+    }
+
+    if (!exportRegionId || exportRegionId < 1) {
+      setNotification({
+        open: true,
+        message: 'Vui lòng chọn khu vực',
+        severity: 'error'
+      })
+      return
+    }
+
+    try {
+      const dto: ExportFeeReceiptDto = {
+        profileId: exportSelectedStudent.id,
+        month: exportMonth,
+        year: exportYear,
+        regionId: exportRegionId,
+        format: exportFormat,
+      }
+
+      const blob = await exportFeeReceiptMutation.mutateAsync(dto)
+
+      // Create download link with appropriate extension
+      const fileExtension = exportFormat === ReportFormat.PDF ? 'pdf' : 'xlsx'
+      const filename = `fee_receipt_${exportMonth}_${exportYear}.${fileExtension}`
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+
+      setNotification({
+        open: true,
+        message: `Xuất file ${exportFormat === ReportFormat.PDF ? 'PDF' : 'Excel'} thành công!`,
+        severity: 'success'
+      })
+      handleCloseDialogs()
+    } catch (error) {
+      console.error('Export fee receipt error:', error)
+      setNotification({
+        open: true,
+        message: 'Có lỗi xảy ra khi xuất file Excel',
+        severity: 'error'
+      })
+    }
+  }
+
+  // Export dialog student options
+  const exportStudentOptions = React.useMemo(() => {
+    if (!exportStudentsData?.users) return []
+    return exportStudentsData.users.map(user => ({
+      id: user.profile.id,
+      fullname: user.profile.fullname,
+      email: user.profile.email,
+    }))
+  }, [exportStudentsData])
+
   return (
     <Grid container spacing={6}>
       <Grid item xs={12}>
@@ -406,6 +512,14 @@ const OrdersPage = () => {
                 onClick={() => setOpenImportDialog(true)}
               >
                 Import CSV/Excel
+              </Button>
+              <Button
+                variant='outlined'
+                color='success'
+                startIcon={<i className='ri-file-download-line' />}
+                onClick={() => setOpenExportDialog(true)}
+              >
+                Xuất phiếu thu
               </Button>
               <Button
                 variant='contained'
@@ -565,6 +679,143 @@ const OrdersPage = () => {
           })
         }}
       />
+
+      {/* Export Fee Receipt Dialog */}
+      <Dialog open={openExportDialog} onClose={handleCloseDialogs} maxWidth='sm' fullWidth>
+        <DialogTitle>
+          <Box display='flex' alignItems='center' gap={1}>
+            <i className='ri-file-download-line' style={{ color: '#4caf50' }} />
+            <Typography variant='h6'>Xuất phiếu thu học phí</Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box display='flex' flexDirection='column' gap={3} sx={{ mt: 2 }}>
+            <Autocomplete
+              size='small'
+              options={exportStudentOptions}
+              getOptionLabel={(option) => `${option.fullname} (${option.email})`}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              loading={isLoadingExportStudents}
+              inputValue={exportSearch}
+              onInputChange={(_, value, reason) => {
+                // Cho phép cập nhật khi gõ phím ('input') HOẶC khi chọn giá trị ('reset', 'clear')
+                if (reason === 'input' || reason === 'reset' || reason === 'clear') {
+                  setExportSearch(value)
+                }
+              }}
+              value={exportSelectedStudent}
+              onChange={(_, value) => {
+                setExportSelectedStudent(value)
+                // Cập nhật inputValue để hiển thị đầy đủ tên học sinh khi chọn
+                if (value) {
+                  setExportSearch(`${value.fullname} (${value.email})`)
+                } else {
+                  setExportSearch('')
+                }
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label='Chọn học sinh'
+                  required
+                  InputProps={{
+                    ...params.InputProps,
+                    endAdornment: (
+                      <>
+                        {isLoadingExportStudents ? <CircularProgress color='inherit' size={16} /> : null}
+                        {params.InputProps.endAdornment}
+                      </>
+                    )
+                  }}
+                />
+              )}
+              renderOption={(props, option) => (
+                <Box component='li' {...props} key={option.id}>
+                  <Box>
+                    <Typography variant='body2' fontWeight={500}>{option.fullname}</Typography>
+                    <Typography variant='caption' color='text.secondary'>{option.email}</Typography>
+                  </Box>
+                </Box>
+              )}
+            />
+
+            <Box display='flex' gap={2}>
+              <FormControl size='small' fullWidth>
+                <InputLabel>Tháng</InputLabel>
+                <Select
+                  value={exportMonth}
+                  label='Tháng'
+                  onChange={(e) => setExportMonth(Number(e.target.value))}
+                >
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
+                    <MenuItem key={month} value={month}>
+                      Tháng {month}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <FormControl size='small' fullWidth>
+                <InputLabel>Năm</InputLabel>
+                <Select
+                  value={exportYear}
+                  label='Năm'
+                  onChange={(e) => setExportYear(Number(e.target.value))}
+                >
+                  {Array.from({ length: 30 }, (_, i) => new Date().getFullYear() - i).map((year) => (
+                    <MenuItem key={year} value={year}>
+                      {year}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+
+            <FormControl size='small' fullWidth>
+              <InputLabel>Khu vực</InputLabel>
+              <Select
+                value={exportRegionId}
+                label='Khu vực'
+                onChange={(e) => setExportRegionId(Number(e.target.value))}
+              >
+                {Object.entries(RegionLabel).map(([key, label]) => (
+                  <MenuItem key={key} value={Number(key)}>
+                    {label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl size='small' fullWidth>
+              <InputLabel>Định dạng</InputLabel>
+              <Select
+                value={exportFormat}
+                label='Định dạng'
+                onChange={(e) => setExportFormat(e.target.value as ReportFormat)}
+              >
+                <MenuItem value={ReportFormat.EXCEL}>Excel (.xlsx)</MenuItem>
+                <MenuItem value={ReportFormat.PDF}>PDF (.pdf)</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={handleCloseDialogs} color='inherit'>
+            Hủy
+          </Button>
+          <Button
+            variant='contained'
+            color='success'
+            onClick={handleExportFeeReceipt}
+            disabled={exportFeeReceiptMutation.isPending}
+            startIcon={
+              exportFeeReceiptMutation.isPending && <CircularProgress size={16} color='inherit' />
+            }
+          >
+            Xuất file Excel
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={openDeleteDialog} onClose={handleCloseDialogs} maxWidth='xs' fullWidth>
