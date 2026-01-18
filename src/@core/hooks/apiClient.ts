@@ -30,6 +30,22 @@ apiClient.interceptors.request.use(
     }
 )
 
+// Helper function to handle logout (clear storage and redirect)
+const handleUnauthorized = () => {
+    if (typeof window !== 'undefined') {
+        // Clear localStorage
+        localStorage.removeItem('auth_token')
+        localStorage.removeItem('user_role')
+
+        // Clear cookies
+        document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
+        document.cookie = 'user_role=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
+
+        // Redirect to login page
+        window.location.href = '/login'
+    }
+}
+
 // Add response interceptor for error handling
 apiClient.interceptors.response.use(
     (response: AxiosResponse) => {
@@ -37,6 +53,13 @@ apiClient.interceptors.response.use(
     },
     (error) => {
         console.error('❌ API Error:', error.response?.data || error.message)
+
+        // Handle 401 Unauthorized - token expired or invalid
+        if (error.response?.status === 401) {
+            console.warn('🔒 Unauthorized - logging out and redirecting to login')
+            handleUnauthorized()
+        }
+
         return Promise.reject(error)
     }
 )
