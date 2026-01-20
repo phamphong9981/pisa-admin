@@ -73,19 +73,33 @@ const ImportOrdersDialog: React.FC<ImportOrdersDialogProps> = ({
 
   const createOrdersBulkMutation = useCreateOrdersBulk()
 
-  // Parse date from MM/DD/YYYY format
+  // Helper to safely convert value to string
+  const safeToString = (value: any): string => {
+    if (value === null || value === undefined) return ''
+    if (value instanceof Date && !isNaN(value.getTime())) {
+      return format(value, 'MM/dd/yyyy')
+    }
+    return String(value)
+  }
+
+  // Parse date from MM/DD/YYYY or DD/MM/YYYY format
   const parseDate = (dateStr: string): string | undefined => {
     if (!dateStr || dateStr.trim() === '') return undefined
+    const cleanStr = dateStr.trim()
     try {
-      // Try MM/DD/YYYY format
-      const date = parse(dateStr.trim(), 'MM/dd/yyyy', new Date())
-      if (isNaN(date.getTime())) {
-        // Try other formats
-        const date2 = new Date(dateStr)
-        if (isNaN(date2.getTime())) return undefined
-        return format(date2, 'yyyy-MM-dd')
-      }
-      return format(date, 'yyyy-MM-dd')
+      // Try MM/dd/yyyy
+      let date = parse(cleanStr, 'MM/dd/yyyy', new Date())
+      if (!isNaN(date.getTime())) return format(date, 'yyyy-MM-dd')
+
+      // Try dd/MM/yyyy
+      date = parse(cleanStr, 'dd/MM/yyyy', new Date())
+      if (!isNaN(date.getTime())) return format(date, 'yyyy-MM-dd')
+
+      // Try other formats
+      date = new Date(cleanStr)
+      if (!isNaN(date.getTime())) return format(date, 'yyyy-MM-dd')
+
+      return undefined
     } catch {
       return undefined
     }
@@ -267,20 +281,20 @@ const ImportOrdersDialog: React.FC<ImportOrdersDialogProps> = ({
       reader.onload = (e) => {
         try {
           const data = new Uint8Array(e.target?.result as ArrayBuffer)
-          const workbook = XLSX.read(data, { type: 'array' })
+          const workbook = XLSX.read(data, { type: 'array', cellDates: true })
           const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
           const jsonData = XLSX.utils.sheet_to_json(firstSheet) as any[]
 
           // Map Excel columns to our structure
           const parsed: ParsedOrderRow[] = jsonData.map((row: any) => ({
-            billType: row['Loại hóa đơn'] || row['Bill Type'] || '',
-            billCategory: row['Danh mục hóa đơn'] || row['Bill Category'] || '',
-            studentCode: row['Mã học sinh'] || row['Student Code'] || '',
-            paymentMethod: row['Hình thức thanh toán'] || row['Payment Method'] || '',
-            description: row['Mô tả'] || row['Description'] || '',
-            totalAmount: row['Số tiền hóa đơn'] || row['Total Amount'] || '',
-            paidAmount: row['Số tiền đã thanh toán'] || row['Paid Amount'] || '',
-            deadline: row['Ngày phải trả'] || row['Deadline'] || '',
+            billType: safeToString(row['Loại hóa đơn'] || row['Bill Type']),
+            billCategory: safeToString(row['Danh mục hóa đơn'] || row['Bill Category']),
+            studentCode: safeToString(row['Mã học sinh'] || row['Student Code']),
+            paymentMethod: safeToString(row['Hình thức thanh toán'] || row['Payment Method']),
+            description: safeToString(row['Mô tả'] || row['Description']),
+            totalAmount: safeToString(row['Số tiền hóa đơn'] || row['Total Amount']),
+            paidAmount: safeToString(row['Số tiền đã thanh toán'] || row['Paid Amount']),
+            deadline: safeToString(row['Ngày phải trả'] || row['Deadline']),
           }))
 
           setParsedData(parsed)
