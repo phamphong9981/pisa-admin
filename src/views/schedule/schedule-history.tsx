@@ -33,13 +33,15 @@ import {
   TableRow,
   TextField,
   Tooltip,
-  Typography
+  Typography,
+  Autocomplete
 } from '@mui/material'
 
 // Hooks
 import { useScheduleAudit, type ScheduleAuditLog, type AuditOperation } from '@/@core/hooks/useScheduleAudit'
 import { useGetWeeks, type WeekResponseDto } from '@/@core/hooks/useWeek'
 import { useCourseList } from '@/@core/hooks/useCourse'
+import { SCHEDULE_TIME } from '@/@core/hooks/useSchedule'
 
 // Styled Components
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
@@ -153,7 +155,12 @@ const ScheduleHistory = () => {
 
   // Render JSON diff
   const renderValuesDiff = (log: ScheduleAuditLog) => {
+    const ignoredFields = ['created_at', 'updated_at']
+
     if (log.operation === 'INSERT' && log.newValues) {
+      const displayValues = { ...log.newValues } as Record<string, any>
+      ignoredFields.forEach(field => delete displayValues[field])
+
       return (
         <Box>
           <Typography variant="subtitle2" color="success.main" sx={{ mb: 1 }}>
@@ -161,7 +168,7 @@ const ScheduleHistory = () => {
           </Typography>
           <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
             <pre style={{ margin: 0, fontSize: '0.75rem', whiteSpace: 'pre-wrap' }}>
-              {JSON.stringify(log.newValues, null, 2)}
+              {JSON.stringify(displayValues, null, 2)}
             </pre>
           </Paper>
         </Box>
@@ -169,6 +176,9 @@ const ScheduleHistory = () => {
     }
 
     if (log.operation === 'DELETE' && log.oldValues) {
+      const displayValues = { ...log.oldValues } as Record<string, any>
+      ignoredFields.forEach(field => delete displayValues[field])
+
       return (
         <Box>
           <Typography variant="subtitle2" color="error.main" sx={{ mb: 1 }}>
@@ -176,7 +186,7 @@ const ScheduleHistory = () => {
           </Typography>
           <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
             <pre style={{ margin: 0, fontSize: '0.75rem', whiteSpace: 'pre-wrap' }}>
-              {JSON.stringify(log.oldValues, null, 2)}
+              {JSON.stringify(displayValues, null, 2)}
             </pre>
           </Paper>
         </Box>
@@ -189,12 +199,29 @@ const ScheduleHistory = () => {
       const allKeys = new Set([...Object.keys(log.oldValues), ...Object.keys(log.newValues)])
 
       allKeys.forEach(key => {
+        if (ignoredFields.includes(key)) return
+
         const oldVal = (log.oldValues as any)?.[key]
         const newVal = (log.newValues as any)?.[key]
-        if (JSON.stringify(oldVal) !== JSON.stringify(newVal)) {
+
+        // Handle undefined/null explicitly
+        const oldStr = oldVal === undefined ? 'undefined' : JSON.stringify(oldVal)
+        const newStr = newVal === undefined ? 'undefined' : JSON.stringify(newVal)
+
+        if (oldStr !== newStr) {
           changedFields.push({ field: key, oldValue: oldVal, newValue: newVal })
         }
       })
+
+      if (changedFields.length === 0) {
+        return (
+          <Box>
+            <Typography variant="body2" color="text.secondary">
+              Không có thay đổi dữ liệu quan trọng (chỉ thay đổi timestamps)
+            </Typography>
+          </Box>
+        )
+      }
 
       return (
         <Box>
@@ -296,62 +323,58 @@ const ScheduleHistory = () => {
             </Grid>
 
             <Grid item xs={12} sm={6} md={3}>
-              <TextField
+              <FormControl fullWidth>
+                <InputLabel>Thời gian</InputLabel>
+                <Select
+                  value={selectedScheduleTime}
+                  label="Thời gian"
+                  onChange={(e) => {
+                    setSelectedScheduleTime(e.target.value as number)
+                    setPage(0)
+                  }}
+                  MenuProps={{ PaperProps: { sx: { maxHeight: 300 } } }}
+                >
+                  <MenuItem value="">Tất cả</MenuItem>
+                  {SCHEDULE_TIME.map((time, index) => (
+                    <MenuItem key={index} value={index + 1}>
+                      {time}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12} sm={6} md={3}>
+              <Autocomplete
                 fullWidth
-                type="number"
-                label="Thời gian (1-42)"
-                value={selectedScheduleTime}
-                onChange={(e) => {
-                  const val = e.target.value
-                  setSelectedScheduleTime(val ? parseInt(val) : '')
+                options={courses || []}
+                getOptionLabel={(option) => option.name}
+                value={courses?.find(c => c.id === selectedCourseId) || null}
+                onChange={(_, newValue) => {
+                  setSelectedCourseId(newValue?.id || '')
+                  setSelectedClassId('')
                   setPage(0)
                 }}
-                InputProps={{ inputProps: { min: 1, max: 42 } }}
+                disabled={isCoursesLoading}
+                renderInput={(params) => <TextField {...params} label="Khóa học" />}
+                noOptionsText="Không có dữ liệu"
               />
             </Grid>
 
             <Grid item xs={12} sm={6} md={3}>
-              <FormControl fullWidth>
-                <InputLabel>Khóa học</InputLabel>
-                <Select
-                  value={selectedCourseId}
-                  label="Khóa học"
-                  onChange={(e) => {
-                    setSelectedCourseId(e.target.value)
-                    setSelectedClassId('')
-                    setPage(0)
-                  }}
-                  disabled={isCoursesLoading}
-                >
-                  <MenuItem value="">Tất cả</MenuItem>
-                  {courses?.map((course) => (
-                    <MenuItem key={course.id} value={course.id}>
-                      {course.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-
-            <Grid item xs={12} sm={6} md={3}>
-              <FormControl fullWidth disabled={!selectedCourseId}>
-                <InputLabel>Lớp học</InputLabel>
-                <Select
-                  value={selectedClassId}
-                  label="Lớp học"
-                  onChange={(e) => {
-                    setSelectedClassId(e.target.value)
-                    setPage(0)
-                  }}
-                >
-                  <MenuItem value="">Tất cả</MenuItem>
-                  {selectedCourse?.classes.map((classItem) => (
-                    <MenuItem key={classItem.id} value={classItem.id}>
-                      {classItem.id}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Autocomplete
+                fullWidth
+                options={selectedCourse?.classes || []}
+                getOptionLabel={(option) => option.name}
+                value={selectedCourse?.classes.find(c => c.id === selectedClassId) || null}
+                onChange={(_, newValue) => {
+                  setSelectedClassId(newValue?.id || '')
+                  setPage(0)
+                }}
+                disabled={!selectedCourseId}
+                renderInput={(params) => <TextField {...params} label="Lớp học" />}
+                noOptionsText={!selectedCourseId ? "Vui lòng chọn khóa học trước" : "Không có dữ liệu"}
+              />
             </Grid>
 
             <Grid item xs={12}>
@@ -446,7 +469,7 @@ const ScheduleHistory = () => {
                               </TableCell>
                               <TableCell>
                                 <Chip
-                                  label={scheduleTime || 'N/A'}
+                                  label={scheduleTime ? SCHEDULE_TIME[scheduleTime - 1] : 'N/A'}
                                   size="small"
                                   color="primary"
                                   variant="outlined"

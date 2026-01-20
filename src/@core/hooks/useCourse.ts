@@ -26,6 +26,7 @@ interface CourseListResponse {
         startTime: string | null,
         endTime: string | null,
         autoSchedule: boolean
+        name: string
     }[],
     region: number
 }
