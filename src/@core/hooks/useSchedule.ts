@@ -16,48 +16,48 @@ export enum ScheduleStatus {
 }
 
 export const SCHEDULE_TIME = [
-    "8:00-10:00 Monday",
-    "10:00-12:00 Monday",
-    "13:30-15:00 Monday",
-    "15:00-17:00 Monday",
-    "17:00-19:00 Monday",
-    "19:30-21:30 Monday",
-    "8:00-10:00 Tuesday",
-    "10:00-12:00 Tuesday",
-    "13:30-15:00 Tuesday",
-    "15:00-17:00 Tuesday",
-    "17:00-19:00 Tuesday",
-    "19:30-21:30 Tuesday",
-    "8:00-10:00 Wednesday",
-    "10:00-12:00 Wednesday",
-    "13:30-15:00 Wednesday",
-    "15:00-17:00 Wednesday",
-    "17:00-19:00 Wednesday",
-    "19:30-21:30 Wednesday",
-    "8:00-10:00 Thursday",
-    "10:00-12:00 Thursday",
-    "13:30-15:00 Thursday",
-    "15:00-17:00 Thursday",
-    "17:00-19:00 Thursday",
-    "19:30-21:30 Thursday",
-    "8:00-10:00 Friday",
-    "10:00-12:00 Friday",
-    "13:30-15:00 Friday",
-    "15:00-17:00 Friday",
-    "17:00-19:00 Friday",
-    "19:30-21:30 Friday",
-    "8:00-10:00 Saturday",
-    "10:00-12:00 Saturday",
-    "13:30-15:00 Saturday",
-    "15:00-17:00 Saturday",
-    "17:00-19:00 Saturday",
-    "19:30-21:30 Saturday",
-    "8:00-10:00 Sunday",
-    "10:00-12:00 Sunday",
-    "13:30-15:00 Sunday",
-    "15:00-17:00 Sunday",
-    "17:00-19:00 Sunday",
-    "19:30-21:30 Sunday",
+    "8:00-10:00 Thứ Hai",
+    "10:00-12:00 Thứ Hai",
+    "13:30-15:00 Thứ Hai",
+    "15:00-17:00 Thứ Hai",
+    "17:00-19:00 Thứ Hai",
+    "19:30-21:30 Thứ Hai",
+    "8:00-10:00 Thứ Ba",
+    "10:00-12:00 Thứ Ba",
+    "13:30-15:00 Thứ Ba",
+    "15:00-17:00 Thứ Ba",
+    "17:00-19:00 Thứ Ba",
+    "19:30-21:30 Thứ Ba",
+    "8:00-10:00 Thứ Tư",
+    "10:00-12:00 Thứ Tư",
+    "13:30-15:00 Thứ Tư",
+    "15:00-17:00 Thứ Tư",
+    "17:00-19:00 Thứ Tư",
+    "19:30-21:30 Thứ Tư",
+    "8:00-10:00 Thứ Năm",
+    "10:00-12:00 Thứ Năm",
+    "13:30-15:00 Thứ Năm",
+    "15:00-17:00 Thứ Năm",
+    "17:00-19:00 Thứ Năm",
+    "19:30-21:30 Thứ Năm",
+    "8:00-10:00 Thứ Sáu",
+    "10:00-12:00 Thứ Sáu",
+    "13:30-15:00 Thứ Sáu",
+    "15:00-17:00 Thứ Sáu",
+    "17:00-19:00 Thứ Sáu",
+    "19:30-21:30 Thứ Sáu",
+    "8:00-10:00 Thứ Bảy",
+    "10:00-12:00 Thứ Bảy",
+    "13:30-15:00 Thứ Bảy",
+    "15:00-17:00 Thứ Bảy",
+    "17:00-19:00 Thứ Bảy",
+    "19:30-21:30 Thứ Bảy",
+    "8:00-10:00 Chủ nhật",
+    "10:00-12:00 Chủ nhật",
+    "13:30-15:00 Chủ nhật",
+    "15:00-17:00 Chủ nhật",
+    "17:00-19:00 Chủ nhật",
+    "19:30-21:30 Chủ nhật",
 ]
 
 // Map day names to Vietnamese
@@ -754,18 +754,38 @@ export interface SearchScheduleResponseDto {
     scheduleInfoTeacherNote?: string
 }
 
-const searchSchedule = async (search?: string, weekId?: string, scheduleTime?: number): Promise<SearchScheduleResponseDto[]> => {
+export interface SearchSchedulePaginationResponseDto {
+    data: SearchScheduleResponseDto[]
+    total: number
+    page: number
+    limit: number
+    totalPages: number
+}
+
+const searchSchedule = async (
+    search?: string,
+    weekId?: string,
+    scheduleTime?: number,
+    page: number = 1,
+    limit: number = 50
+): Promise<SearchSchedulePaginationResponseDto> => {
     const { data } = await apiClient.get('/search-schedule', {
-        params: { search, weekId, schedule_time: scheduleTime }
+        params: { search, weekId, scheduleTime, page, limit }
     })
 
     return data.data
 }
 
-export const useSearchSchedule = (search?: string, weekId?: string, scheduleTime?: number) => {
+export const useSearchSchedule = (
+    search?: string,
+    weekId?: string,
+    scheduleTime?: number,
+    page: number = 1,
+    limit: number = 50
+) => {
     return useQuery({
-        queryKey: ['search-schedule', search, weekId, scheduleTime],
-        queryFn: () => searchSchedule(search, weekId, scheduleTime),
+        queryKey: ['search-schedule', search, weekId, scheduleTime, page, limit],
+        queryFn: () => searchSchedule(search, weekId, scheduleTime, page, limit),
         // Enabled if search string is provided (at least 2 chars) or weekId is present
         enabled: !!weekId && !!scheduleTime,
         staleTime: 1 * 60 * 1000,

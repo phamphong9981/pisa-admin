@@ -1,7 +1,5 @@
 'use client'
 
-export const runtime = 'edge';
-
 import { useState, useMemo } from 'react'
 import {
     Card,
@@ -27,7 +25,8 @@ import {
     MenuItem,
     CircularProgress,
     Box,
-    Alert
+    Alert,
+    TablePagination
 } from '@mui/material'
 import { styled } from '@mui/material/styles'
 import { format } from 'date-fns'
@@ -72,19 +71,29 @@ const AttendanceView = () => {
     const [searchTerm, setSearchTerm] = useState('')
     const [selectedWeekId, setSelectedWeekId] = useState<string>('')
     const [selectedScheduleTime, setSelectedScheduleTime] = useState<number | undefined>(undefined)
+    const [page, setPage] = useState(0)
+    const [rowsPerPage, setRowsPerPage] = useState(50)
 
     // Debounce search
     const debouncedSearch = useDebounce(searchTerm, 500)
 
     // Hooks
     const { data: weeks } = useGetWeeks()
-    const { data: searchResults, isLoading } = useSearchSchedule(debouncedSearch, selectedWeekId, selectedScheduleTime)
 
     // Handlers
     const updateRollcallMutation = useUpdateRollcallStatus()
 
-    // Query client to invalidate queries after update
-    const { refetch: refetchSearch } = useSearchSchedule(debouncedSearch, selectedWeekId, selectedScheduleTime)
+    const searchQuery = useSearchSchedule(debouncedSearch, selectedWeekId, selectedScheduleTime, page + 1, rowsPerPage)
+    const { data: searchResults, isLoading, refetch: refetchSearch } = searchQuery
+
+    const handleChangePage = (event: unknown, nextPage: number) => {
+        setPage(nextPage)
+    }
+
+    const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+        setRowsPerPage(parseInt(event.target.value, 10))
+        setPage(0)
+    }
 
     // Format schedule time display
     const getScheduleTimeDisplay = (timeIndex: number) => {
@@ -160,7 +169,10 @@ const AttendanceView = () => {
                             label="Tìm kiếm"
                             placeholder="Nhập tên học sinh, email hoặc tên khóa học..."
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onChange={(e) => {
+                                setSearchTerm(e.target.value)
+                                setPage(0)
+                            }}
                             InputProps={{
                                 startAdornment: (
                                     <InputAdornment position="start">
@@ -177,7 +189,10 @@ const AttendanceView = () => {
                             <Select
                                 value={selectedWeekId}
                                 label="Tuần học"
-                                onChange={(e) => setSelectedWeekId(e.target.value)}
+                                onChange={(e) => {
+                                    setSelectedWeekId(e.target.value)
+                                    setPage(0)
+                                }}
                             >
                                 <MenuItem value="">Tất cả các tuần</MenuItem>
                                 {weeks?.map((week) => {
@@ -200,7 +215,10 @@ const AttendanceView = () => {
                             <Select
                                 value={selectedScheduleTime}
                                 label="Ca học"
-                                onChange={(e) => setSelectedScheduleTime(e.target.value === '' ? undefined : Number(e.target.value))}
+                                onChange={(e) => {
+                                    setSelectedScheduleTime(e.target.value === '' ? undefined : Number(e.target.value))
+                                    setPage(0)
+                                }}
                             >
                                 <MenuItem value="">Tất cả các ca</MenuItem>
                                 {SCHEDULE_TIME.map((time, index) => (
@@ -218,7 +236,7 @@ const AttendanceView = () => {
                     <Box display="flex" justifyContent="center" py={5}>
                         <CircularProgress />
                     </Box>
-                ) : !searchResults || searchResults.length === 0 ? (
+                ) : !searchResults?.data || searchResults.data.length === 0 ? (
                     <Box textAlign="center" py={5} sx={{ color: 'text.secondary' }}>
                         <i className="ri-calendar-line" style={{ fontSize: 48, marginBottom: 8, display: 'block' }} />
                         <Typography>
@@ -228,140 +246,149 @@ const AttendanceView = () => {
                         </Typography>
                     </Box>
                 ) : (
-                    <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #e0e0e0' }}>
-                        <Table>
-                            <TableHead>
-                                <TableRow>
-                                    <StyledTableCell>Học sinh</StyledTableCell>
-                                    <StyledTableCell>Lớp / Khóa học</StyledTableCell>
-                                    <StyledTableCell>Thời gian</StyledTableCell>
-                                    <StyledTableCell>Buổi</StyledTableCell>
-                                    <StyledTableCell align="center">Điểm danh</StyledTableCell>
-                                    <StyledTableCell>Lý do</StyledTableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {searchResults.map((schedule) => {
-                                    const isAttending = schedule.rollcallStatus === RollcallStatus.ATTENDING
-                                    return (
-                                        <TableRow key={schedule.scheduleId} hover>
-                                            <TableCell>
-                                                <Box>
-                                                    <Typography variant="body2" fontWeight={600}>
-                                                        {schedule.profileFullname}
-                                                    </Typography>
-                                                    <Typography variant="caption" color="text.secondary">
-                                                        {schedule.profileEmail}
-                                                    </Typography>
-                                                </Box>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Box>
-                                                    <Typography variant="body2" fontWeight={500}>
-                                                        {schedule.className} {schedule.teacherName ? `- ${schedule.teacherName}` : ''}
-                                                    </Typography>
-                                                    <Typography variant="caption" color="text.secondary">
-                                                        {schedule.courseName}
-                                                    </Typography>
-                                                </Box>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
-                                                    {getScheduleTimeDisplay(schedule.scheduleTime)}
-                                                </Typography>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Chip label={`Buổi ${schedule.lesson}`} size="small" variant="outlined" />
-                                            </TableCell>
-                                            <TableCell align="center" sx={{ minWidth: 200 }}>
-                                                <Box display="flex" alignItems="center" justifyContent="center" gap={1}>
-                                                    <Box
-                                                        sx={{
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            cursor: 'pointer',
-                                                            border: isAttending ? '1px solid #2e7d32' : '1px solid #e0e0e0',
-                                                            borderRadius: '8px',
-                                                            px: 1.5,
-                                                            py: 0.5,
-                                                            bgcolor: isAttending ? '#e8f5e8' : 'transparent',
-                                                            transition: 'all 0.2s',
-                                                            '&:hover': { bgcolor: isAttending ? '#c8e6c9' : '#f5f5f5' }
-                                                        }}
-                                                        onClick={() => handleAttendanceChange(schedule.scheduleId, !isAttending)}
-                                                    >
-                                                        <i
-                                                            className={isAttending ? 'ri-checkbox-circle-fill' : 'ri-checkbox-blank-circle-line'}
-                                                            style={{
-                                                                fontSize: 20,
-                                                                color: isAttending ? '#2e7d32' : '#757575',
-                                                                marginRight: 8
-                                                            }}
-                                                        />
-                                                        <Typography
-                                                            variant="body2"
-                                                            color={isAttending ? 'success.main' : 'text.primary'}
-                                                            fontWeight={isAttending ? 600 : 400}
-                                                        >
-                                                            Có mặt
+                    <>
+                        <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #e0e0e0' }}>
+                            <Table>
+                                <TableHead>
+                                    <TableRow>
+                                        <StyledTableCell>Học sinh</StyledTableCell>
+                                        <StyledTableCell>Lớp / Khóa học</StyledTableCell>
+                                        <StyledTableCell>Thời gian</StyledTableCell>
+                                        <StyledTableCell align="center">Điểm danh</StyledTableCell>
+                                        <StyledTableCell>Lý do</StyledTableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {searchResults.data.map((schedule) => {
+                                        const isAttending = schedule.rollcallStatus === RollcallStatus.ATTENDING
+                                        return (
+                                            <TableRow key={schedule.scheduleId} hover>
+                                                <TableCell>
+                                                    <Box>
+                                                        <Typography variant="body2" fontWeight={600}>
+                                                            {schedule.profileFullname}
+                                                        </Typography>
+                                                        <Typography variant="caption" color="text.secondary">
+                                                            {schedule.profileEmail}
                                                         </Typography>
                                                     </Box>
-
-                                                    {!isAttending && (
-                                                        <Select
-                                                            size="small"
-                                                            value={schedule.rollcallStatus}
-                                                            onChange={(e) => handleStatusChange(schedule.scheduleId, e.target.value as RollcallStatus)}
-                                                            sx={{ minWidth: 150, '.MuiSelect-select': { py: 0.75, fontSize: '0.875rem' } }}
-                                                            displayEmpty
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Box>
+                                                        <Typography variant="body2" fontWeight={500}>
+                                                            {schedule.className} {schedule.teacherName ? `- ${schedule.teacherName}` : ''}
+                                                        </Typography>
+                                                        <Typography variant="caption" color="text.secondary">
+                                                            {schedule.courseName}
+                                                        </Typography>
+                                                    </Box>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+                                                        {getScheduleTimeDisplay(schedule.scheduleTime)}
+                                                    </Typography>
+                                                </TableCell>
+                                                <TableCell align="center" sx={{ minWidth: 200 }}>
+                                                    <Box display="flex" alignItems="center" justifyContent="center" gap={1}>
+                                                        <Box
+                                                            sx={{
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                cursor: 'pointer',
+                                                                border: isAttending ? '1px solid #2e7d32' : '1px solid #e0e0e0',
+                                                                borderRadius: '8px',
+                                                                px: 1.5,
+                                                                py: 0.5,
+                                                                bgcolor: isAttending ? '#e8f5e8' : 'transparent',
+                                                                transition: 'all 0.2s',
+                                                                '&:hover': { bgcolor: isAttending ? '#c8e6c9' : '#f5f5f5' }
+                                                            }}
+                                                            onClick={() => handleAttendanceChange(schedule.scheduleId, !isAttending)}
                                                         >
-                                                            <MenuItem value={RollcallStatus.NOT_ROLLCALL}>Chưa điểm danh</MenuItem>
-                                                            <MenuItem value={RollcallStatus.ABSENT_WITH_REASON}>Vắng có phép</MenuItem>
-                                                            <MenuItem value={RollcallStatus.ABSENT_WITHOUT_REASON}>Vắng không phép</MenuItem>
-                                                            <MenuItem value={RollcallStatus.ABSENT_WITH_LATE_REASON}>Vắng báo muộn</MenuItem>
-                                                            <MenuItem value={RollcallStatus.TRIAL}>Học thử</MenuItem>
-                                                            <MenuItem value={RollcallStatus.RETAKE}>Học lại</MenuItem>
-                                                        </Select>
-                                                    )}
-                                                </Box>
-                                            </TableCell>
-                                            <TableCell sx={{ minWidth: 200 }}>
-                                                <TextField
-                                                    fullWidth
-                                                    size="small"
-                                                    placeholder="Nhập lý do..."
-                                                    defaultValue={schedule.reason || ''}
-                                                    onBlur={(e) => {
-                                                        const newVal = e.target.value
-                                                        if (newVal !== (schedule.reason || '')) {
-                                                            handleReasonChange(schedule.scheduleId, schedule.rollcallStatus, newVal)
-                                                        }
-                                                    }}
-                                                    sx={{
-                                                        '& .MuiOutlinedInput-root': {
-                                                            bgcolor: 'white',
-                                                            '& fieldset': {
-                                                                borderColor: 'transparent', // borderless unless focused/hovered if desired, or keep as is
-                                                            },
-                                                            '&:hover fieldset': {
-                                                                borderColor: '#e0e0e0',
-                                                            },
-                                                            '&.Mui-focused fieldset': {
-                                                                borderColor: 'primary.main',
-                                                            },
-                                                        }
-                                                    }}
-                                                    InputProps={{
-                                                        sx: { fontSize: '0.875rem', bgcolor: '#f5f5f5', borderRadius: 2 }
-                                                    }}
-                                                />
-                                            </TableCell>
-                                        </TableRow>
-                                    )
-                                })}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
+                                                            <i
+                                                                className={isAttending ? 'ri-checkbox-circle-fill' : 'ri-checkbox-blank-circle-line'}
+                                                                style={{
+                                                                    fontSize: 20,
+                                                                    color: isAttending ? '#2e7d32' : '#757575',
+                                                                    marginRight: 8
+                                                                }}
+                                                            />
+                                                            <Typography
+                                                                variant="body2"
+                                                                color={isAttending ? 'success.main' : 'text.primary'}
+                                                                fontWeight={isAttending ? 600 : 400}
+                                                            >
+                                                                Có mặt
+                                                            </Typography>
+                                                        </Box>
+
+                                                        {!isAttending && (
+                                                            <Select
+                                                                size="small"
+                                                                value={schedule.rollcallStatus}
+                                                                onChange={(e) => handleStatusChange(schedule.scheduleId, e.target.value as RollcallStatus)}
+                                                                sx={{ minWidth: 150, '.MuiSelect-select': { py: 0.75, fontSize: '0.875rem' } }}
+                                                                displayEmpty
+                                                            >
+                                                                <MenuItem value={RollcallStatus.NOT_ROLLCALL}>Chưa điểm danh</MenuItem>
+                                                                <MenuItem value={RollcallStatus.ABSENT_WITH_REASON}>Vắng có phép</MenuItem>
+                                                                <MenuItem value={RollcallStatus.ABSENT_WITHOUT_REASON}>Vắng không phép</MenuItem>
+                                                                <MenuItem value={RollcallStatus.ABSENT_WITH_LATE_REASON}>Vắng báo muộn</MenuItem>
+                                                                <MenuItem value={RollcallStatus.TRIAL}>Học thử</MenuItem>
+                                                                <MenuItem value={RollcallStatus.RETAKE}>Học lại</MenuItem>
+                                                            </Select>
+                                                        )}
+                                                    </Box>
+                                                </TableCell>
+                                                <TableCell sx={{ minWidth: 200 }}>
+                                                    <TextField
+                                                        fullWidth
+                                                        size="small"
+                                                        placeholder="Nhập lý do..."
+                                                        defaultValue={schedule.reason || ''}
+                                                        onBlur={(e) => {
+                                                            const newVal = e.target.value
+                                                            if (newVal !== (schedule.reason || '')) {
+                                                                handleReasonChange(schedule.scheduleId, schedule.rollcallStatus, newVal)
+                                                            }
+                                                        }}
+                                                        sx={{
+                                                            '& .MuiOutlinedInput-root': {
+                                                                bgcolor: 'white',
+                                                                '& fieldset': {
+                                                                    borderColor: 'transparent',
+                                                                },
+                                                                '&:hover fieldset': {
+                                                                    borderColor: '#e0e0e0',
+                                                                },
+                                                                '&.Mui-focused fieldset': {
+                                                                    borderColor: 'primary.main',
+                                                                },
+                                                            }
+                                                        }}
+                                                        InputProps={{
+                                                            sx: { fontSize: '0.875rem', bgcolor: '#f5f5f5', borderRadius: 2 }
+                                                        }}
+                                                    />
+                                                </TableCell>
+                                            </TableRow>
+                                        )
+                                    })}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                        <TablePagination
+                            rowsPerPageOptions={[10, 25, 50, 100]}
+                            component="div"
+                            count={searchResults.total}
+                            rowsPerPage={rowsPerPage}
+                            page={page}
+                            onPageChange={handleChangePage}
+                            onRowsPerPageChange={handleChangeRowsPerPage}
+                            labelRowsPerPage="Số dòng mỗi trang:"
+                            labelDisplayedRows={({ from, to, count }) => `${from}-${to} trong ${count}`}
+                        />
+                    </>
                 )}
             </CardContent>
         </Card>
