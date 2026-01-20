@@ -726,3 +726,48 @@ export const useGetScheduleInfoByField = (query: GetScheduleInfoByFieldDto) => {
         retryDelay: (attemptIndex) => Math.min(1000 * 1 ** attemptIndex, 30000),
     })
 }
+
+export interface SearchScheduleResponseDto {
+    scheduleId: string
+    profileId: string
+    profileFullname: string
+    profileEmail: string
+    classId: string
+    className: string
+    courseId: string
+    courseName: string
+    lesson: number
+    weekId: string
+    scheduleTime: number
+    teacherId?: string
+    teacherName?: string
+    status: string
+    rollcallStatus: string
+    startTime?: string
+    endTime?: string
+    totalTime?: number
+    reason?: string
+    scheduleInfoId?: string
+    scheduleInfoNote?: string
+    scheduleInfoStartTime?: string
+    scheduleInfoEndTime?: string
+    scheduleInfoTeacherNote?: string
+}
+
+const searchSchedule = async (search?: string, weekId?: string, scheduleTime?: number): Promise<SearchScheduleResponseDto[]> => {
+    const { data } = await apiClient.get('/search-schedule', {
+        params: { search, weekId, schedule_time: scheduleTime }
+    })
+
+    return data.data
+}
+
+export const useSearchSchedule = (search?: string, weekId?: string, scheduleTime?: number) => {
+    return useQuery({
+        queryKey: ['search-schedule', search, weekId, scheduleTime],
+        queryFn: () => searchSchedule(search, weekId, scheduleTime),
+        // Enabled if search string is provided (at least 2 chars) or weekId is present
+        enabled: !!weekId && !!scheduleTime,
+        staleTime: 1 * 60 * 1000,
+    })
+}
