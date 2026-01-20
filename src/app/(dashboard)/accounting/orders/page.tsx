@@ -58,6 +58,7 @@ import { useStudentList } from '@/@core/hooks/useStudent'
 import { RegionId, RegionLabel } from '@/@core/hooks/useCourse'
 import OrderDialog from './OrderDialog'
 import ImportOrdersDialog from './ImportOrdersDialog'
+import ProfileSearchDialog from './ProfileSearchDialog'
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   fontWeight: 700,
@@ -85,6 +86,7 @@ const OrdersPage = () => {
   const [openDeleteDialog, setOpenDeleteDialog] = React.useState(false)
   const [openImportDialog, setOpenImportDialog] = React.useState(false)
   const [openExportDialog, setOpenExportDialog] = React.useState(false)
+  const [openProfileSearchDialog, setOpenProfileSearchDialog] = React.useState(false)
   const [selectedOrder, setSelectedOrder] = React.useState<Order | null>(null)
 
   // Notification state
@@ -507,6 +509,14 @@ const OrdersPage = () => {
 
               <Button
                 variant='outlined'
+                color='info'
+                startIcon={<i className='ri-user-search-line' />}
+                onClick={() => setOpenProfileSearchDialog(true)}
+              >
+                Tìm học sinh
+              </Button>
+              <Button
+                variant='outlined'
                 color='primary'
                 startIcon={<i className='ri-file-upload-line' />}
                 onClick={() => setOpenImportDialog(true)}
@@ -857,6 +867,12 @@ const OrdersPage = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Profile Search Dialog */}
+      <ProfileSearchDialog
+        open={openProfileSearchDialog}
+        onClose={() => setOpenProfileSearchDialog(false)}
+      />
     </Grid>
   )
 }

@@ -188,3 +188,61 @@ export const useDeleteUser = () => {
         }
     })
 }
+
+// Profile Search API types
+export interface ProfileCourse {
+    id: string
+    profileId: string
+    courseId: string
+    createdAt: string
+    updatedAt: string
+    course: {
+        id: string
+        name: string
+        type: string
+        teacherId: string
+        region: number
+        status: string
+        createdAt: string
+        updatedAt: string
+    }
+}
+
+export interface ProfileSearchResult {
+    id: string
+    userId: string
+    fullname: string
+    email: string
+    phone: string
+    image: string
+    ieltsPoint: string
+    currentWeekBusyScheduleArr: number[]
+    createdAt: string
+    updatedAt: string
+    profileCourses: ProfileCourse[]
+}
+
+// Profile Search API function
+const searchProfiles = async (search?: string): Promise<ProfileSearchResult[]> => {
+    const params = new URLSearchParams()
+    if (search) params.append('search', search)
+
+    const { data } = await apiClient.get('/user/profiles/search', {
+        params: search ? { search } : undefined
+    })
+
+    return data.data
+}
+
+// Hook to search profiles
+export const useProfileSearch = (search: string) => {
+    return useQuery<ProfileSearchResult[], Error>({
+        queryKey: ['profileSearch', search],
+        queryFn: () => searchProfiles(search),
+        enabled: search.length >= 1, // Only search when at least 1 character
+        staleTime: 2 * 60 * 1000,
+        gcTime: 5 * 60 * 1000,
+        retry: 1,
+        retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    })
+}
