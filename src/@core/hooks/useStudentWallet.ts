@@ -10,9 +10,10 @@ export const WALLET_TYPE_LABELS: Record<string, string> = {
     v4: 'Mock 3 kỹ năng LRW',
     v5: 'Mock S GVTT',
     v6: 'Mock S Chuyên gia',
+    v7: 'Ví dự trữ (hỗ trợ v0)',
 };
 
-export const WALLET_TYPE_KEYS = ['v0', 'v1', 'v2', 'v3', 'v4', 'v5', 'v6'] as const;
+export const WALLET_TYPE_KEYS = ['v0', 'v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7'] as const;
 export type WalletTypeKey = typeof WALLET_TYPE_KEYS[number];
 
 // Interfaces
@@ -32,6 +33,7 @@ export interface StudentWallet {
     v4: WalletDetail;
     v5: WalletDetail;
     v6: WalletDetail;
+    v7: WalletDetail;
     createdAt: string;
     updatedAt: string;
     student?: {
@@ -79,6 +81,7 @@ export interface IncreaseStudentWalletDto {
     v4?: number;
     v5?: number;
     v6?: number;
+    v7?: number;
 }
 
 // API functions
@@ -199,7 +202,8 @@ export const getTotalBalance = (wallet: StudentWallet | null): number => {
         wallet.v3.ton +
         wallet.v4.ton +
         wallet.v5.ton +
-        wallet.v6.ton
+        wallet.v6.ton +
+        wallet.v7.ton
     );
 };
 

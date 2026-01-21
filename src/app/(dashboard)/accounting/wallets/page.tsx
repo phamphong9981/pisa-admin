@@ -49,6 +49,7 @@ import {
 } from '@/@core/hooks/useStudentWallet';
 
 // Styled components
+// Styled components
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
     fontWeight: 700,
     backgroundColor: theme.palette.primary.main,
@@ -58,12 +59,31 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
     padding: '12px 16px',
 }))
 
-const WalletChip = styled(Chip)<{ walletvalue: number }>(({ theme, walletvalue }) => ({
-    fontWeight: 600,
-    minWidth: 40,
-    backgroundColor: walletvalue > 0 ? theme.palette.success.light : theme.palette.grey[200],
-    color: walletvalue > 0 ? theme.palette.success.dark : theme.palette.grey[600],
+const ReserveTableCell = styled(StyledTableCell)(({ theme }) => ({
+    backgroundColor: theme.palette.warning.dark, // Distinct color for header
+    borderBottom: `3px solid ${theme.palette.warning.main}`,
 }))
+
+const WalletChip = styled(Chip)<{ walletvalue: number; isreserve?: number }>(({ theme, walletvalue, isreserve }) => {
+    const isPositive = walletvalue > 0;
+
+    if (isreserve) {
+        return {
+            fontWeight: 700,
+            minWidth: 40,
+            backgroundColor: isPositive ? theme.palette.warning.light : theme.palette.grey[100],
+            color: isPositive ? theme.palette.warning.dark : theme.palette.grey[500],
+            border: isPositive ? `1px solid ${theme.palette.warning.main}` : '1px dashed #ccc',
+        }
+    }
+
+    return {
+        fontWeight: 600,
+        minWidth: 40,
+        backgroundColor: isPositive ? theme.palette.success.light : theme.palette.grey[200],
+        color: isPositive ? theme.palette.success.dark : theme.palette.grey[600],
+    }
+})
 
 const StudentWalletsPage = () => {
     // State
@@ -87,6 +107,7 @@ const StudentWalletsPage = () => {
         v4: 0,
         v5: 0,
         v6: 0,
+        v7: 0,
     })
 
     // Notification state
@@ -141,6 +162,7 @@ const StudentWalletsPage = () => {
             v4: 0,
             v5: 0,
             v6: 0,
+            v7: 0,
         })
         setOpenCreateDialog(true) // Reusing this state for the "Deposit/Create" dialog
     }
@@ -163,6 +185,7 @@ const StudentWalletsPage = () => {
             v4: 0,
             v5: 0,
             v6: 0,
+            v7: 0,
         })
     }
 
@@ -352,11 +375,19 @@ const StudentWalletsPage = () => {
                                             <StyledTableCell>Học sinh</StyledTableCell>
                                             <StyledTableCell align='center'>Trạng thái</StyledTableCell>
                                             {WALLET_TYPE_KEYS.map(key => (
-                                                <StyledTableCell key={key} align='center'>
-                                                    <Tooltip title={WALLET_TYPE_LABELS[key]} arrow>
-                                                        <span>{key.toUpperCase()}</span>
-                                                    </Tooltip>
-                                                </StyledTableCell>
+                                                key === 'v7' ? (
+                                                    <ReserveTableCell key={key} align='center'>
+                                                        <Tooltip title={WALLET_TYPE_LABELS[key]} arrow>
+                                                            <span>{key.toUpperCase()} <i className="ri-safe-2-fill" style={{ fontSize: '0.8em' }}></i></span>
+                                                        </Tooltip>
+                                                    </ReserveTableCell>
+                                                ) : (
+                                                    <StyledTableCell key={key} align='center'>
+                                                        <Tooltip title={WALLET_TYPE_LABELS[key]} arrow>
+                                                            <span>{key.toUpperCase()}</span>
+                                                        </Tooltip>
+                                                    </StyledTableCell>
+                                                )
                                             ))}
                                             <StyledTableCell align='center'>Tổng</StyledTableCell>
                                             <StyledTableCell align='center'>Thao tác</StyledTableCell>
@@ -407,12 +438,17 @@ const StudentWalletsPage = () => {
                                                     )}
                                                 </TableCell>
                                                 {WALLET_TYPE_KEYS.map(key => (
-                                                    <TableCell key={key} align='center'>
+                                                    <TableCell
+                                                        key={key}
+                                                        align='center'
+                                                        sx={key === 'v7' ? { bgcolor: 'rgba(237, 108, 2, 0.08)' } : {}}
+                                                    >
                                                         <Tooltip title="Nhấn để xem chi tiết">
                                                             <WalletChip
                                                                 label={profile.wallet?.[key]?.ton ?? 0}
                                                                 size='small'
                                                                 walletvalue={profile.wallet?.[key]?.ton ?? 0}
+                                                                isreserve={key === 'v7' ? 1 : 0}
                                                                 onClick={(e) => handleWalletClick(e, WALLET_TYPE_LABELS[key], profile.wallet?.[key])}
                                                                 sx={{ cursor: 'pointer', '&:hover': { opacity: 0.8 } }}
                                                             />
@@ -562,25 +598,51 @@ const StudentWalletsPage = () => {
                             {/* Wallet Form */}
                             <Grid container spacing={2}>
                                 {WALLET_TYPE_KEYS.map(key => (
-                                    <Grid item xs={12} sm={6} key={key}>
-                                        <TextField
-                                            fullWidth
-                                            type='number'
-                                            label={WALLET_TYPE_LABELS[key]}
-                                            value={walletForm[key] ?? 0}
-                                            onChange={(e) => handleFormChange(key, e.target.value)}
-                                            InputProps={{
-                                                startAdornment: (
-                                                    <InputAdornment position='start'>
-                                                        <Typography variant='caption' color='text.secondary'>
-                                                            {key.toUpperCase()}
-                                                        </Typography>
-                                                    </InputAdornment>
-                                                )
-                                            }}
-                                            size='small'
-                                        />
-                                    </Grid>
+                                    key === 'v7' ? (
+                                        <Grid item xs={12} sm={6} key={key}>
+                                            <Box sx={{ p: 1, border: '1px dashed #ed6c02', borderRadius: 1, bgcolor: '#fff3e0' }}>
+                                                <TextField
+                                                    fullWidth
+                                                    type='number'
+                                                    label={WALLET_TYPE_LABELS[key]}
+                                                    value={walletForm[key] ?? 0}
+                                                    onChange={(e) => handleFormChange(key, e.target.value)}
+                                                    InputProps={{
+                                                        startAdornment: (
+                                                            <InputAdornment position='start'>
+                                                                <Typography variant='caption' color='warning.dark' fontWeight={700}>
+                                                                    {key.toUpperCase()}
+                                                                </Typography>
+                                                            </InputAdornment>
+                                                        )
+                                                    }}
+                                                    size='small'
+                                                    color='warning'
+                                                    focused
+                                                />
+                                            </Box>
+                                        </Grid>
+                                    ) : (
+                                        <Grid item xs={12} sm={6} key={key}>
+                                            <TextField
+                                                fullWidth
+                                                type='number'
+                                                label={WALLET_TYPE_LABELS[key]}
+                                                value={walletForm[key] ?? 0}
+                                                onChange={(e) => handleFormChange(key, e.target.value)}
+                                                InputProps={{
+                                                    startAdornment: (
+                                                        <InputAdornment position='start'>
+                                                            <Typography variant='caption' color='text.secondary'>
+                                                                {key.toUpperCase()}
+                                                            </Typography>
+                                                        </InputAdornment>
+                                                    )
+                                                }}
+                                                size='small'
+                                            />
+                                        </Grid>
+                                    )
                                 ))}
                             </Grid>
 
