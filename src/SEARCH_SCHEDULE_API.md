@@ -2,10 +2,15 @@
 
 ## Tổng quan
 
-API này cho phép tìm kiếm lịch học (schedule) dựa trên:
+API này cho phép tìm kiếm lịch học (schedule) dựa trên nhiều tiêu chí:
 - **Tên khóa học** (course name)
 - **Tên học sinh** (student fullname)
 - **Email học sinh** (student email)
+- **Profile ID** (học sinh cụ thể)
+- **Khoảng thời gian** (startDate, endDate) - dựa trên ngày thực tế của schedule
+- **Trạng thái điểm danh** (rollcallStatus)
+- **Tuần học** (weekId)
+- **Khung giờ** (scheduleTime)
 
 API trả về danh sách lịch học kèm theo thông tin chi tiết về lớp học, khóa học, và lịch lớp (schedule info).
 
@@ -24,16 +29,23 @@ GET /search-schedule
 | `search`  | string | No       | Từ khóa tìm kiếm (tên khóa học, tên học sinh, hoặc email). Không phân biệt hoa thường, hỗ trợ partial match |
 | `weekId`  | string | No       | UUID của tuần học. Nếu không cung cấp, sẽ tìm kiếm trong tất cả các tuần |
 | `scheduleTime` | number | No | Mã thời gian học (1-42). Nếu không cung cấp, sẽ tìm kiếm tất cả các khung giờ |
+| `profileId` | string | No | UUID của profile (học sinh). Lọc schedules theo học sinh cụ thể |
+| `startDate` | string | No | Ngày bắt đầu (ISO 8601 format: YYYY-MM-DD). Lọc schedules có ngày thực tế >= startDate. Ngày được tính từ week.start_date + offset từ scheduleTime |
+| `endDate` | string | No | Ngày kết thúc (ISO 8601 format: YYYY-MM-DD). Lọc schedules có ngày thực tế <= endDate. Ngày được tính từ week.start_date + offset từ scheduleTime |
+| `rollcallStatus` | string | No | Trạng thái điểm danh. Lọc schedules theo trạng thái điểm danh (not_rollcall, attending, absent_without_reason, etc.) |
 | `limit` | number | No | Số lượng kết quả mỗi trang (mặc định: 50, tối đa: 100) |
 | `page` | number | No | Số trang (mặc định: 1) |
 
-**Lưu ý:**
+**Lưu ý (đã lưu cột schedule_date):**
 - Tất cả các tham số đều là optional
-- Nếu không cung cấp `search`, API sẽ trả về tất cả schedules (có thể filter theo `weekId` hoặc `scheduleTime`)
+- Nếu không cung cấp `search`, API sẽ trả về tất cả schedules (có thể filter theo các tham số khác)
 - Nếu không cung cấp `weekId`, API sẽ tìm kiếm trong tất cả các tuần
 - Nếu không cung cấp `scheduleTime`, API sẽ tìm kiếm tất cả các khung giờ
 - Search sử dụng `ILIKE` (case-insensitive) và hỗ trợ partial match (ví dụ: "ielts" sẽ match "IELTS Foundation")
 - `scheduleTime` phải là số nguyên từ 1 đến 42 (tương ứng với 42 khung giờ trong tuần)
+- `profileId` phải là UUID hợp lệ
+- `startDate` và `endDate` phải theo định dạng ISO 8601 (YYYY-MM-DD). Ngày thực tế của schedule được lưu vào cột `schedule_date` (được tính từ `week.start_date + offset` dựa trên `scheduleTime`). Bộ lọc ngày sử dụng trực tiếp cột `schedule_date`.
+- `rollcallStatus` có thể là: `not_rollcall`, `attending`, `absent_without_reason`, `absent_with_reason`, `absent_with_late_reason`, `trial`, `retake`
 - `limit` phải là số nguyên từ 1 đến 100 (mặc định: 50)
 - `page` phải là số nguyên >= 1 (mặc định: 1)
 
@@ -66,6 +78,7 @@ Trả về một object `SearchSchedulePaginationResponseDto` với pagination m
     lesson: number                         // Số buổi học (1, 2, 3, ...)
     weekId: string                         // UUID của tuần học
     scheduleTime: number                  // Mã thời gian (1-42)
+    scheduleDate?: string                  // Ngày thực tế của buổi học (YYYY-MM-DD)
     teacherId?: string                     // UUID của giáo viên (optional)
     teacherName?: string                   // Tên giáo viên (optional)
     status: string                         // Trạng thái schedule (active, cancelled, etc.)
@@ -115,6 +128,7 @@ GET /search-schedule?search=IELTS&weekId=123e4567-e89b-12d3-a456-426614174000
       "lesson": 1,
       "weekId": "123e4567-e89b-12d3-a456-426614174000",
       "scheduleTime": 1,
+      "scheduleDate": "2024-01-15",
       "teacherId": "teacher-123",
       "teacherName": "Nguyễn Thị B",
       "status": "active",
@@ -214,6 +228,59 @@ Trả về trang thứ 2 với 20 kết quả mỗi trang.
 }
 ```
 
+### 9. Filter theo profileId (học sinh cụ thể)
+
+```bash
+GET /search-schedule?profileId=123e4567-e89b-12d3-a456-426614174000
+```
+
+Tìm kiếm tất cả lịch học của học sinh có `profileId` được chỉ định.
+
+### 10. Filter theo khoảng thời gian (startDate và endDate)
+
+```bash
+GET /search-schedule?startDate=2024-01-01&endDate=2024-01-31
+```
+
+Tìm kiếm tất cả schedules có ngày thực tế nằm trong khoảng từ 2024-01-01 đến 2024-01-31. Ngày thực tế được tính từ `week.start_date + offset` dựa trên `scheduleTime`.
+
+**Lưu ý:** 
+- `startDate` và `endDate` có thể sử dụng độc lập hoặc kết hợp
+- Nếu chỉ có `startDate`: lọc schedules có ngày >= startDate
+- Nếu chỉ có `endDate`: lọc schedules có ngày <= endDate
+- Nếu có cả hai: lọc schedules có ngày trong khoảng [startDate, endDate]
+
+```bash
+GET /search-schedule?startDate=2024-01-15
+```
+
+Tìm kiếm tất cả schedules từ ngày 2024-01-15 trở đi.
+
+### 11. Filter theo rollcallStatus
+
+```bash
+GET /search-schedule?rollcallStatus=attending
+```
+
+Tìm kiếm tất cả schedules có trạng thái điểm danh là "attending".
+
+```bash
+GET /search-schedule?rollcallStatus=not_rollcall&weekId=123e4567-e89b-12d3-a456-426614174000
+```
+
+Tìm kiếm tất cả schedules chưa được điểm danh trong tuần cụ thể.
+
+### 12. Kết hợp nhiều filters nâng cao
+
+```bash
+GET /search-schedule?profileId=123e4567-e89b-12d3-a456-426614174000&startDate=2024-01-01&endDate=2024-01-31&rollcallStatus=attending
+```
+
+Tìm kiếm schedules có:
+- `profileId` được chỉ định
+- Ngày thực tế trong khoảng 2024-01-01 đến 2024-01-31
+- Trạng thái điểm danh là "attending"
+
 ## Error Handling
 
 ### Validation Errors (400 Bad Request)
@@ -258,6 +325,26 @@ Nếu `page` nhỏ hơn 1:
 }
 ```
 
+Nếu `profileId` không phải là UUID hợp lệ:
+
+```json
+{
+  "statusCode": 400,
+  "message": ["profileId must be a UUID"],
+  "error": "Bad Request"
+}
+```
+
+Nếu `startDate` hoặc `endDate` không đúng định dạng ISO 8601:
+
+```json
+{
+  "statusCode": 400,
+  "message": ["startDate must be a valid ISO 8601 date string"],
+  "error": "Bad Request"
+}
+```
+
 ### No Results
 
 Nếu không tìm thấy kết quả, API trả về object với data rỗng:
@@ -278,11 +365,14 @@ Nếu không tìm thấy kết quả, API trả về object với data rỗng:
 2. **Partial match**: Hỗ trợ tìm kiếm một phần của từ khóa
 3. **Multiple fields**: Từ khóa `search` sẽ tìm kiếm trong 3 trường: course name, student fullname, và email
 4. **Schedule Info**: Thông tin lịch lớp (schedule info) có thể null nếu chưa được tạo
-5. **Performance**: Với dữ liệu lớn, nên sử dụng `weekId` hoặc `scheduleTime` để giới hạn phạm vi tìm kiếm
+5. **Performance**: Với dữ liệu lớn, nên sử dụng `weekId`, `scheduleTime`, `profileId`, hoặc `startDate`/`endDate` để giới hạn phạm vi tìm kiếm
 6. **Ordering**: Kết quả được sắp xếp theo course name → class name → lesson → schedule time để dễ đọc
 7. **Schedule Time**: Giá trị từ 1-42, tương ứng với 42 khung giờ trong tuần (6 khung giờ/ngày × 7 ngày)
-8. **Pagination**: API hỗ trợ pagination với `page` và `limit`. Mặc định: `page=1`, `limit=50`. Tối đa `limit=100`
-9. **Total Count**: API luôn trả về `total` (tổng số records) và `totalPages` để dễ dàng implement pagination UI
+8. **Date Filtering**: `startDate` và `endDate` lọc dựa trên ngày thực tế của schedule, được tính từ `week.start_date + offset` dựa trên `scheduleTime`. Mỗi `scheduleTime` tương ứng với một ngày cụ thể trong tuần (1-6 = Monday, 7-12 = Tuesday, ..., 37-42 = Sunday)
+9. **Rollcall Status**: Có thể filter theo các trạng thái điểm danh: `not_rollcall`, `attending`, `absent_without_reason`, `absent_with_reason`, `absent_with_late_reason`, `trial`, `retake`
+10. **Pagination**: API hỗ trợ pagination với `page` và `limit`. Mặc định: `page=1`, `limit=50`. Tối đa `limit=100`
+11. **Total Count**: API luôn trả về `total` (tổng số records) và `totalPages` để dễ dàng implement pagination UI
+12. **Combined Filters**: Tất cả các filters có thể kết hợp với nhau để tạo ra các truy vấn phức tạp và chính xác
 
 ## Database Schema
 
@@ -291,6 +381,7 @@ API join các bảng sau:
 - `profiles` (p) - Thông tin học sinh
 - `class` (c) - Thông tin lớp học
 - `courses` (course) - Thông tin khóa học
+- `week` (w) - Thông tin tuần học (dùng để tính ngày thực tế từ startDate + scheduleTime offset)
 - `teachers` (t) - Thông tin giáo viên (LEFT JOIN)
 - `schedule_info` (si) - Thông tin lịch lớp (LEFT JOIN)
 

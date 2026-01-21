@@ -294,7 +294,6 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                     onSelect={handleSelect}
                     locale={vi}
                     numberOfMonths={2}
-                    disabled={{ after: new Date() }}
                 />
             </StyledPopover>
         </>

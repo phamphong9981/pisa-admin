@@ -752,6 +752,7 @@ export interface SearchScheduleResponseDto {
     scheduleInfoStartTime?: string
     scheduleInfoEndTime?: string
     scheduleInfoTeacherNote?: string
+    scheduleDate?: string
 }
 
 export interface SearchSchedulePaginationResponseDto {
@@ -762,32 +763,41 @@ export interface SearchSchedulePaginationResponseDto {
     totalPages: number
 }
 
-const searchSchedule = async (
-    search?: string,
-    weekId?: string,
-    scheduleTime?: number,
-    page: number = 1,
-    limit: number = 50
-): Promise<SearchSchedulePaginationResponseDto> => {
+export interface SearchScheduleParams {
+    search?: string
+    weekId?: string
+    scheduleTime?: number
+    profileId?: string
+    startDate?: string
+    endDate?: string
+    rollcallStatus?: string
+    page?: number
+    limit?: number
+}
+
+const searchSchedule = async (params: SearchScheduleParams): Promise<SearchSchedulePaginationResponseDto> => {
     const { data } = await apiClient.get('/search-schedule', {
-        params: { search, weekId, scheduleTime, page, limit }
+        params: {
+            search: params.search,
+            weekId: params.weekId,
+            scheduleTime: params.scheduleTime,
+            profileId: params.profileId,
+            startDate: params.startDate,
+            endDate: params.endDate,
+            rollcallStatus: params.rollcallStatus,
+            page: params.page || 1,
+            limit: params.limit || 50
+        }
     })
 
     return data.data
 }
 
-export const useSearchSchedule = (
-    search?: string,
-    weekId?: string,
-    scheduleTime?: number,
-    page: number = 1,
-    limit: number = 50
-) => {
+export const useSearchSchedule = (params: SearchScheduleParams, enabled: boolean = true) => {
     return useQuery({
-        queryKey: ['search-schedule', search, weekId, scheduleTime, page, limit],
-        queryFn: () => searchSchedule(search, weekId, scheduleTime, page, limit),
-        // Enabled if search string is provided (at least 2 chars) or weekId is present
-        enabled: !!weekId && !!scheduleTime,
+        queryKey: ['search-schedule', params],
+        queryFn: () => searchSchedule(params),
+        enabled: enabled,
         staleTime: 1 * 60 * 1000,
     })
 }
