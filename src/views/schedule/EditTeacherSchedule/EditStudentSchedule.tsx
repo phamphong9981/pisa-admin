@@ -293,11 +293,14 @@ const EditStudentSchedule = () => {
         }
 
         filteredStudents.forEach(student => {
+          const schedule = student.schedules?.find(s => s.scheduleTime === slot.slot + 1)
+
           row[`student_${student.id}`] = {
             studentId: student.id,
             studentName: student.profile.fullname,
             courseName: student.course?.name,
             isBusy: isStudentBusy(student.profile.busyScheduleArr, slot.slot),
+            schedule: schedule,
             day: slot.day,
             time: slot.time
           }
@@ -879,6 +882,11 @@ const EditStudentSchedule = () => {
             studentName: string
             courseName?: string
             isBusy: boolean
+            schedule?: {
+              className: string
+              courseName: string
+              teacherName: string
+            }
             day: string
             time: string
           }
@@ -889,6 +897,74 @@ const EditStudentSchedule = () => {
           const cellKey = `${cellData.studentId}-${slotIndex}`
           const isSelected = selectedCells.some(cell => `${cell.studentId}-${cell.slotIndex}` === cellKey)
 
+          // Determine cell appearance based on state
+          let backgroundColor = '#f1f8e9' // Default free
+          let hoverColor = '#dcedc8'
+          let tooltipContent = `${cellData.studentName} rảnh vào ${cellData.day} ${cellData.time}`
+          let content = (
+            <IconButton size="small">
+              <i className="ri-check-line" style={{ color: '#2e7d32', fontSize: '18px' }} />
+            </IconButton>
+          )
+
+          if (cellData.schedule) {
+            backgroundColor = '#FFEB3B' // Schedule exists (Yellow/Warning color for visibility, or Blue)
+            // Let's use a distinct color for scheduled classes, e.g., Light Blue
+            backgroundColor = '#e3f2fd'
+            hoverColor = '#bbdefb'
+            tooltipContent = `Lớp: ${cellData.schedule.className} | Môn: ${cellData.schedule.courseName} | GV: ${cellData.schedule.teacherName}`
+            content = (
+              <Box display="flex" flexDirection="column" alignItems="center" width="100%">
+                <Typography
+                  variant="caption"
+                  align="center"
+                  sx={{
+                    fontWeight: 'bold',
+                    color: '#1565c0',
+                    lineHeight: 1.2,
+                    fontSize: '0.75rem',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    width: '100%',
+                    px: 0.5
+                  }}
+                >
+                  {cellData.schedule.className}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  align="center"
+                  sx={{
+                    fontSize: '0.65rem',
+                    color: '#1976d2',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    width: '100%'
+                  }}
+                >
+                  {cellData.schedule.teacherName}
+                </Typography>
+              </Box>
+            )
+          } else if (cellData.isBusy) {
+            backgroundColor = '#ffebee' // Busy
+            hoverColor = '#ffcdd2'
+            tooltipContent = `${cellData.studentName} bận vào ${cellData.day} ${cellData.time}`
+            content = (
+              <IconButton size="small">
+                <i className="ri-close-line" style={{ color: '#c62828', fontSize: '18px' }} />
+              </IconButton>
+            )
+          }
+
+          // Selection overrides background color
+          if (isSelected) {
+            backgroundColor = '#fff3e0'
+            hoverColor = '#ffe0b2'
+          }
+
           return (
             <Box
               sx={{
@@ -898,11 +974,7 @@ const EditStudentSchedule = () => {
                 padding: '4px',
                 border: `2px solid ${isSelected ? '#1976d2' : 'transparent'}`,
                 borderRadius: 1,
-                backgroundColor: isSelected
-                  ? '#fff3e0'
-                  : cellData.isBusy
-                    ? '#ffebee'
-                    : '#f1f8e9',
+                backgroundColor: backgroundColor,
                 cursor: 'pointer',
                 position: 'relative',
                 display: 'flex',
@@ -910,11 +982,7 @@ const EditStudentSchedule = () => {
                 justifyContent: 'center',
                 transition: 'background-color 0.2s ease, border 0.2s ease',
                 '&:hover': {
-                  backgroundColor: isSelected
-                    ? '#ffe0b2'
-                    : cellData.isBusy
-                      ? '#ffcdd2'
-                      : '#dcedc8'
+                  backgroundColor: hoverColor
                 }
               }}
               onClick={() => handleCellClick(cellData.studentId, slotIndex, cellData.day, cellData.time)}
@@ -934,26 +1002,17 @@ const EditStudentSchedule = () => {
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontSize: '12px',
-                    fontWeight: 'bold'
+                    fontWeight: 'bold',
+                    zIndex: 1
                   }}
                 >
                   ✓
                 </Box>
               )}
-              <Tooltip
-                title={
-                  cellData.isBusy
-                    ? `${cellData.studentName} bận vào ${cellData.day} ${cellData.time}`
-                    : `${cellData.studentName} rảnh vào ${cellData.day} ${cellData.time}`
-                }
-              >
-                <IconButton size="small">
-                  {cellData.isBusy ? (
-                    <i className="ri-close-line" style={{ color: '#c62828', fontSize: '18px' }} />
-                  ) : (
-                    <i className="ri-check-line" style={{ color: '#2e7d32', fontSize: '18px' }} />
-                  )}
-                </IconButton>
+              <Tooltip title={tooltipContent} arrow>
+                <Box width="100%" display="flex" justifyContent="center">
+                  {content}
+                </Box>
               </Tooltip>
             </Box>
           )
@@ -1002,6 +1061,12 @@ const EditStudentSchedule = () => {
         groups[key].slots.push(s)
       })
 
+      // Initialize counters
+      const studentStats: Record<string, { free: number; busy: number; class: number }> = {}
+      filteredStudents.forEach(student => {
+        studentStats[student.profile.fullname] = { free: 0, busy: 0, class: 0 }
+      })
+
       Object.values(groups).forEach(group => {
         group.slots.forEach((slot, idx) => {
           const row: any = {
@@ -1011,12 +1076,57 @@ const EditStudentSchedule = () => {
 
           filteredStudents.forEach(student => {
             const isBusy = isStudentBusy(student.profile.busyScheduleArr, slot.slot)
-            row[student.profile.fullname] = isBusy ? 'x' : 'v'
+            const schedule = student.schedules?.find(s => s.scheduleTime === slot.slot + 1)
+
+            if (schedule) {
+              row[student.profile.fullname] = `${schedule.className}\n(${schedule.teacherName})`
+              studentStats[student.profile.fullname].class += 1
+            } else if (isBusy) {
+              row[student.profile.fullname] = 'x'
+              studentStats[student.profile.fullname].busy += 1
+            } else {
+              row[student.profile.fullname] = '' // Empty for free, or 'v'
+              studentStats[student.profile.fullname].free += 1
+            }
           })
 
           exportData.push(row)
         })
       })
+
+      // Add Summary Rows
+      // Empty row for spacing
+      exportData.push({})
+
+      // Total Free
+      const totalFreeRow: any = {
+        'Thứ': 'Tổng số lịch rảnh',
+        'Khung giờ': ''
+      }
+      filteredStudents.forEach(student => {
+        totalFreeRow[student.profile.fullname] = studentStats[student.profile.fullname].free
+      })
+      exportData.push(totalFreeRow)
+
+      // Total Busy
+      const totalBusyRow: any = {
+        'Thứ': 'Tổng số lịch bận',
+        'Khung giờ': ''
+      }
+      filteredStudents.forEach(student => {
+        totalBusyRow[student.profile.fullname] = studentStats[student.profile.fullname].busy
+      })
+      exportData.push(totalBusyRow)
+
+      // Total Class
+      const totalClassRow: any = {
+        'Thứ': 'Tổng số lịch học',
+        'Khung giờ': ''
+      }
+      filteredStudents.forEach(student => {
+        totalClassRow[student.profile.fullname] = studentStats[student.profile.fullname].class
+      })
+      exportData.push(totalClassRow)
 
       // Create worksheet
       const worksheet = XLSX.utils.json_to_sheet(exportData)
@@ -1029,14 +1139,29 @@ const EditStudentSchedule = () => {
       ]
       worksheet['!cols'] = colWidths
 
-      // Style header row
+      // Style all cells (center align & wrap text)
       const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1')
-      for (let C = range.s.c; C <= range.e.c; ++C) {
-        const address = XLSX.utils.encode_cell({ r: 0, c: C })
-        if (!worksheet[address]) continue
-        worksheet[address].s = {
-          font: { bold: true },
-          fill: { fgColor: { rgb: 'E3F2FD' } }
+      for (let R = range.s.r; R <= range.e.r; ++R) {
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+          const address = XLSX.utils.encode_cell({ r: R, c: C })
+          if (!worksheet[address]) continue
+
+          // Base style for all cells
+          const cellStyle: any = {
+            alignment: {
+              horizontal: 'center',
+              vertical: 'center',
+              wrapText: true
+            }
+          }
+
+          // Header row styling (keep bold & background color)
+          if (R === 0) {
+            cellStyle.font = { bold: true }
+            cellStyle.fill = { fgColor: { rgb: 'E3F2FD' } }
+          }
+
+          worksheet[address].s = cellStyle
         }
       }
 

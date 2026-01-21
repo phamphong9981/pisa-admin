@@ -40,6 +40,15 @@ interface ListUsersResponseDto {
             name: string,
             id: string
         }
+        schedules?: {
+            id: string;
+            lesson: number;
+            scheduleTime: number;
+            status: string;
+            className: string;
+            courseName: string;
+            teacherName: string;
+        }[];
     }[];
     pagination: {
         page: number;
