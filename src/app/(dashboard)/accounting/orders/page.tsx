@@ -69,6 +69,62 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
   padding: '12px 16px',
 }))
 
+// File types for showSaveFilePicker
+interface FileType {
+  description: string
+  accept: Record<string, string[]>
+}
+
+// Helper function to save file with dialog (File System Access API)
+const saveFileWithDialog = async (
+  blob: Blob,
+  suggestedName: string,
+  fileTypes: FileType[]
+): Promise<boolean> => {
+  // Check if File System Access API is supported
+  if ('showSaveFilePicker' in window) {
+    try {
+      const handle = await (window as any).showSaveFilePicker({
+        suggestedName,
+        types: fileTypes,
+      })
+      const writable = await handle.createWritable()
+      await writable.write(blob)
+      await writable.close()
+      return true
+    } catch (err: any) {
+      // User cancelled the dialog
+      if (err.name === 'AbortError') {
+        return false
+      }
+      // Fall through to legacy download if there's an error
+      console.warn('showSaveFilePicker failed, falling back to legacy download:', err)
+    }
+  }
+
+  // Fallback: legacy download method
+  const url = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = suggestedName
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.URL.revokeObjectURL(url)
+  return true
+}
+
+// Get file types for different formats
+const getFileTypes = (ext: string, isZip: boolean): FileType[] => {
+  if (isZip) {
+    return [{ description: 'ZIP Archive', accept: { 'application/zip': ['.zip'] } }]
+  }
+  if (ext === 'pdf') {
+    return [{ description: 'PDF Document', accept: { 'application/pdf': ['.pdf'] } }]
+  }
+  return [{ description: 'Excel Spreadsheet', accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] } }]
+}
+
 const OrdersPage = () => {
   // Filters state
   const [page, setPage] = React.useState(1)
@@ -137,6 +193,21 @@ const OrdersPage = () => {
   const [exportRegionId, setExportRegionId] = React.useState<number>(RegionId.HALONG)
   const [exportFormat, setExportFormat] = React.useState<ReportFormat>(ReportFormat.EXCEL)
   const { data: exportStudentsData, isLoading: isLoadingExportStudents } = useStudentList(exportSearch)
+
+  // File Preview Dialog states
+  const [previewDialog, setPreviewDialog] = React.useState<{
+    open: boolean
+    blob: Blob | null
+    filename: string
+    fileType: 'pdf' | 'xlsx' | 'zip'
+    previewUrl: string | null
+  }>({
+    open: false,
+    blob: null,
+    filename: '',
+    fileType: 'xlsx',
+    previewUrl: null
+  })
 
   // 1) Tính options từ API (không setState ở đây)
   const computedFilterOptions = React.useMemo(() => {
@@ -385,29 +456,18 @@ const OrdersPage = () => {
 
       const blob = await exportFeeReceiptMutation.mutateAsync(dto)
 
-      // Create download link with appropriate extension
+      // Create filename with appropriate extension
       const fileExtension = exportFormat === ReportFormat.PDF ? 'pdf' : 'xlsx'
       const filename = `fee_receipt_${exportMonth}_${exportYear}.${fileExtension}`
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = filename
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      window.URL.revokeObjectURL(url)
 
-      setNotification({
-        open: true,
-        message: `Xuất file ${exportFormat === ReportFormat.PDF ? 'PDF' : 'Excel'} thành công!`,
-        severity: 'success'
-      })
+      // Open preview dialog instead of saving directly
+      openPreviewDialog(blob, filename, fileExtension as 'pdf' | 'xlsx')
       handleCloseDialogs()
     } catch (error) {
       console.error('Export fee receipt error:', error)
       setNotification({
         open: true,
-        message: 'Có lỗi xảy ra khi xuất file Excel',
+        message: 'Có lỗi xảy ra khi xuất file',
         severity: 'error'
       })
     }
@@ -422,6 +482,84 @@ const OrdersPage = () => {
       email: user.profile.email,
     }))
   }, [exportStudentsData])
+
+  // Open file preview dialog
+  const openPreviewDialog = (blob: Blob, filename: string, fileType: 'pdf' | 'xlsx' | 'zip') => {
+    // Create preview URL for PDF files
+    const previewUrl = fileType === 'pdf' ? window.URL.createObjectURL(blob) : null
+
+    setPreviewDialog({
+      open: true,
+      blob,
+      filename,
+      fileType,
+      previewUrl
+    })
+  }
+
+  // Close preview dialog and cleanup
+  const closePreviewDialog = () => {
+    if (previewDialog.previewUrl) {
+      window.URL.revokeObjectURL(previewDialog.previewUrl)
+    }
+    setPreviewDialog({
+      open: false,
+      blob: null,
+      filename: '',
+      fileType: 'xlsx',
+      previewUrl: null
+    })
+  }
+
+  // Handle save file from preview
+  const handleSaveFromPreview = async () => {
+    if (!previewDialog.blob) return
+
+    const isZip = previewDialog.fileType === 'zip'
+    const saved = await saveFileWithDialog(
+      previewDialog.blob,
+      previewDialog.filename,
+      getFileTypes(previewDialog.fileType, isZip)
+    )
+
+    if (saved) {
+      setNotification({
+        open: true,
+        message: 'Đã lưu file thành công!',
+        severity: 'success'
+      })
+      closePreviewDialog()
+    }
+  }
+
+  // Open file in new tab (for PDF)
+  const handleOpenInNewTab = () => {
+    if (previewDialog.blob) {
+      const url = window.URL.createObjectURL(previewDialog.blob)
+      window.open(url, '_blank')
+    }
+  }
+
+  // Format file size
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes'
+    const k = 1024
+    const sizes = ['Bytes', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+  }
+
+  // Get file icon based on type
+  const getFileIcon = (fileType: 'pdf' | 'xlsx' | 'zip') => {
+    switch (fileType) {
+      case 'pdf':
+        return { icon: 'ri-file-pdf-2-line', color: '#f40f02' }
+      case 'xlsx':
+        return { icon: 'ri-file-excel-2-line', color: '#217346' }
+      case 'zip':
+        return { icon: 'ri-folder-zip-line', color: '#ffc107' }
+    }
+  }
 
   return (
     <Grid container spacing={6}>
@@ -864,6 +1002,129 @@ const OrdersPage = () => {
             }
           >
             Xóa
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* File Preview Dialog */}
+      <Dialog
+        open={previewDialog.open}
+        onClose={closePreviewDialog}
+        maxWidth='lg'
+        fullWidth
+        PaperProps={{
+          sx: { minHeight: previewDialog.fileType === 'pdf' ? '80vh' : 'auto' }
+        }}
+      >
+        <DialogTitle>
+          <Box display='flex' alignItems='center' justifyContent='space-between'>
+            <Box display='flex' alignItems='center' gap={1}>
+              <i
+                className={getFileIcon(previewDialog.fileType).icon}
+                style={{ fontSize: 28, color: getFileIcon(previewDialog.fileType).color }}
+              />
+              <Box>
+                <Typography variant='h6'>Xem trước file</Typography>
+                <Typography variant='caption' color='text.secondary'>
+                  Xem trước và quyết định lưu file
+                </Typography>
+              </Box>
+            </Box>
+            <Button
+              variant='text'
+              color='inherit'
+              onClick={closePreviewDialog}
+              sx={{ minWidth: 'auto', p: 1 }}
+            >
+              <i className='ri-close-line' style={{ fontSize: 24 }} />
+            </Button>
+          </Box>
+        </DialogTitle>
+        <DialogContent dividers>
+          {/* File Info */}
+          <Box sx={{ mb: 3, p: 2, backgroundColor: '#f5f5f5', borderRadius: 2 }}>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
+                <Typography variant='caption' color='text.secondary'>Tên file</Typography>
+                <Typography variant='body2' fontWeight={600}>{previewDialog.filename}</Typography>
+              </Grid>
+              <Grid item xs={12} sm={3}>
+                <Typography variant='caption' color='text.secondary'>Loại file</Typography>
+                <Typography variant='body2' fontWeight={600}>
+                  {previewDialog.fileType === 'pdf' ? 'PDF Document' :
+                    previewDialog.fileType === 'xlsx' ? 'Excel Spreadsheet' : 'ZIP Archive'}
+                </Typography>
+              </Grid>
+              <Grid item xs={12} sm={3}>
+                <Typography variant='caption' color='text.secondary'>Kích thước</Typography>
+                <Typography variant='body2' fontWeight={600}>
+                  {previewDialog.blob ? formatFileSize(previewDialog.blob.size) : '—'}
+                </Typography>
+              </Grid>
+            </Grid>
+          </Box>
+
+          {/* Preview Content */}
+          {previewDialog.fileType === 'pdf' && previewDialog.previewUrl ? (
+            <Box sx={{ height: '60vh', border: '1px solid #e0e0e0', borderRadius: 1, overflow: 'hidden' }}>
+              <iframe
+                src={previewDialog.previewUrl}
+                width='100%'
+                height='100%'
+                style={{ border: 'none' }}
+                title='PDF Preview'
+              />
+            </Box>
+          ) : (
+            <Box
+              sx={{
+                p: 4,
+                textAlign: 'center',
+                backgroundColor: '#fafafa',
+                borderRadius: 2,
+                border: '2px dashed #e0e0e0'
+              }}
+            >
+              <i
+                className={getFileIcon(previewDialog.fileType).icon}
+                style={{ fontSize: 64, color: getFileIcon(previewDialog.fileType).color, opacity: 0.7 }}
+              />
+              <Typography variant='h6' sx={{ mt: 2 }}>
+                {previewDialog.fileType === 'xlsx' ? 'File Excel' : 'File ZIP'}
+              </Typography>
+              <Typography variant='body2' color='text.secondary' sx={{ mt: 1 }}>
+                {previewDialog.fileType === 'xlsx'
+                  ? 'Không thể xem trước file Excel trong trình duyệt. Vui lòng lưu file để mở bằng Microsoft Excel hoặc ứng dụng tương tự.'
+                  : 'Không thể xem trước file ZIP trong trình duyệt. Vui lòng lưu file để giải nén và xem nội dung.'}
+              </Typography>
+              <Typography variant='caption' color='text.secondary' sx={{ mt: 2, display: 'block' }}>
+                <i className='ri-information-line' style={{ marginRight: 4 }} />
+                File đã sẵn sàng để tải xuống
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2, gap: 1 }}>
+          <Button onClick={closePreviewDialog} color='inherit'>
+            <i className='ri-close-line' style={{ marginRight: 4 }} />
+            Hủy
+          </Button>
+          {previewDialog.fileType === 'pdf' && (
+            <Button
+              variant='outlined'
+              onClick={handleOpenInNewTab}
+              startIcon={<i className='ri-external-link-line' />}
+            >
+              Mở trong tab mới
+            </Button>
+          )}
+          <Button
+            variant='contained'
+            color='primary'
+            onClick={handleSaveFromPreview}
+            startIcon={<i className='ri-download-2-line' />}
+          >
+            Lưu file
           </Button>
         </DialogActions>
       </Dialog>
