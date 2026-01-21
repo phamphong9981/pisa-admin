@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
     Card,
     CardHeader,
@@ -28,7 +28,9 @@ import {
     Autocomplete,
     RadioGroup,
     FormControlLabel,
-    Radio
+    Radio,
+    Checkbox,
+    Toolbar
 } from '@mui/material'
 import { styled } from '@mui/material/styles'
 import { format } from 'date-fns'
@@ -101,6 +103,10 @@ const AttendanceView = () => {
     const [endDate, setEndDate] = useState<string>('')
     const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
 
+    // Batch selection states
+    const [selectedSchedules, setSelectedSchedules] = useState<Set<string>>(new Set())
+    const [batchStatus, setBatchStatus] = useState<RollcallStatus | ''>('')
+
     // Debounce search
     const debouncedSearch = useDebounce(searchTerm, 500)
     const debouncedStudentSearch = useDebounce(studentSearchTerm, 300)
@@ -170,6 +176,19 @@ const AttendanceView = () => {
 
     const { data: searchResults, isLoading, refetch: refetchSearch } = useSearchSchedule(searchParams, isSearchEnabled)
 
+    // Validate and clean up selection when search results change
+    useEffect(() => {
+        if (searchResults?.data && selectedSchedules.size > 0) {
+            const currentScheduleIds = new Set(searchResults.data.map(s => s.scheduleId))
+            const validSelections = Array.from(selectedSchedules).filter(id => currentScheduleIds.has(id))
+            if (validSelections.length !== selectedSchedules.size) {
+                // Only keep valid selections
+                setSelectedSchedules(new Set(validSelections))
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchResults?.data])
+
     const handleChangePage = (event: unknown, nextPage: number) => {
         setPage(nextPage)
     }
@@ -195,6 +214,8 @@ const AttendanceView = () => {
         setDateRange(undefined)
         setSelectedRollcallStatus('')
         setPage(0)
+        setSelectedSchedules(new Set())
+        setBatchStatus('')
     }
 
     // Format schedule time display
@@ -242,6 +263,49 @@ const AttendanceView = () => {
             console.error('Error updating reason:', error)
         }
     }
+
+    // Batch selection handlers
+    const handleSelectSchedule = (scheduleId: string) => {
+        setSelectedSchedules(prev => {
+            const newSet = new Set(prev)
+            if (newSet.has(scheduleId)) {
+                newSet.delete(scheduleId)
+            } else {
+                newSet.add(scheduleId)
+            }
+            return newSet
+        })
+    }
+
+    const handleSelectAll = (checked: boolean) => {
+        if (checked && searchResults?.data) {
+            setSelectedSchedules(new Set(searchResults.data.map(s => s.scheduleId)))
+        } else {
+            setSelectedSchedules(new Set())
+        }
+    }
+
+    const handleBatchUpdate = async () => {
+        if (selectedSchedules.size === 0 || !batchStatus) {
+            return
+        }
+
+        try {
+            const updates = Array.from(selectedSchedules).map(scheduleId => ({
+                scheduleId,
+                rollcallStatus: batchStatus as RollcallStatus
+            }))
+            await updateRollcallMutation.mutateAsync(updates)
+            setSelectedSchedules(new Set())
+            setBatchStatus('')
+            refetchSearch()
+        } catch (error) {
+            console.error('Error updating batch status:', error)
+        }
+    }
+
+    const isAllSelected = searchResults?.data && searchResults.data.length > 0 && selectedSchedules.size === searchResults.data.length
+    const isIndeterminate = selectedSchedules.size > 0 && selectedSchedules.size < (searchResults?.data?.length || 0)
 
     return (
         <Card>
@@ -508,10 +572,68 @@ const AttendanceView = () => {
                     </Box>
                 ) : (
                     <>
+                        {/* Batch Action Toolbar */}
+                        {selectedSchedules.size > 0 && (
+                            <Box sx={{ mb: 2, p: 2, bgcolor: 'primary.light', borderRadius: 1, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                                <Typography variant="body2" fontWeight={600}>
+                                    Đã chọn: {selectedSchedules.size} mục
+                                </Typography>
+                                <FormControl size="small" sx={{ minWidth: 200 }}>
+                                    <InputLabel>Trạng thái điểm danh</InputLabel>
+                                    <Select
+                                        value={batchStatus}
+                                        label="Trạng thái điểm danh"
+                                        onChange={(e) => setBatchStatus(e.target.value as RollcallStatus)}
+                                    >
+                                        <MenuItem value={RollcallStatus.ATTENDING}>Có mặt</MenuItem>
+                                        <MenuItem value={RollcallStatus.ABSENT_WITHOUT_REASON}>Vắng mặt</MenuItem>
+                                        <MenuItem value={RollcallStatus.TRIAL}>Học thử</MenuItem>
+                                        <MenuItem value={RollcallStatus.RETAKE}>Học lại</MenuItem>
+                                        <MenuItem value={RollcallStatus.NOT_ROLLCALL}>Chưa điểm danh</MenuItem>
+                                    </Select>
+                                </FormControl>
+                                <Button
+                                    variant="contained"
+                                    color="primary"
+                                    size="small"
+                                    onClick={handleBatchUpdate}
+                                    disabled={!batchStatus || updateRollcallMutation.isPending}
+                                    startIcon={
+                                        updateRollcallMutation.isPending ? (
+                                            <CircularProgress size={16} color="inherit" />
+                                        ) : (
+                                            <i className="ri-check-line" />
+                                        )
+                                    }
+                                >
+                                    Áp dụng cho {selectedSchedules.size} mục đã chọn
+                                </Button>
+                                <Button
+                                    variant="outlined"
+                                    size="small"
+                                    onClick={() => {
+                                        setSelectedSchedules(new Set())
+                                        setBatchStatus('')
+                                    }}
+                                    startIcon={<i className="ri-close-line" />}
+                                >
+                                    Hủy chọn
+                                </Button>
+                            </Box>
+                        )}
+
                         <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #e0e0e0' }}>
                             <Table>
                                 <TableHead>
                                     <TableRow>
+                                        <StyledTableCell padding="checkbox">
+                                            <Checkbox
+                                                indeterminate={isIndeterminate}
+                                                checked={isAllSelected}
+                                                onChange={(e) => handleSelectAll(e.target.checked)}
+                                                color="primary"
+                                            />
+                                        </StyledTableCell>
                                         <StyledTableCell>Học sinh</StyledTableCell>
                                         <StyledTableCell>Lớp / Khóa học</StyledTableCell>
                                         <StyledTableCell>Ngày học</StyledTableCell>
@@ -523,8 +645,16 @@ const AttendanceView = () => {
                                 <TableBody>
                                     {searchResults.data.map((schedule) => {
                                         const isAttending = schedule.rollcallStatus === RollcallStatus.ATTENDING
+                                        const isSelected = selectedSchedules.has(schedule.scheduleId)
                                         return (
-                                            <TableRow key={schedule.scheduleId} hover>
+                                            <TableRow key={schedule.scheduleId} hover selected={isSelected}>
+                                                <TableCell padding="checkbox">
+                                                    <Checkbox
+                                                        checked={isSelected}
+                                                        onChange={() => handleSelectSchedule(schedule.scheduleId)}
+                                                        color="primary"
+                                                    />
+                                                </TableCell>
                                                 <TableCell>
                                                     <Box>
                                                         <Typography variant="body2" fontWeight={600}>
