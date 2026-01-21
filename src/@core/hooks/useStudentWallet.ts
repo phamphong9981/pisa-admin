@@ -16,16 +16,22 @@ export const WALLET_TYPE_KEYS = ['v0', 'v1', 'v2', 'v3', 'v4', 'v5', 'v6'] as co
 export type WalletTypeKey = typeof WALLET_TYPE_KEYS[number];
 
 // Interfaces
+export interface WalletDetail {
+    tang: number;
+    giam: number;
+    ton: number;
+}
+
 export interface StudentWallet {
     id: string;
     studentId: string;
-    v0: number;
-    v1: number;
-    v2: number;
-    v3: number;
-    v4: number;
-    v5: number;
-    v6: number;
+    v0: WalletDetail;
+    v1: WalletDetail;
+    v2: WalletDetail;
+    v3: WalletDetail;
+    v4: WalletDetail;
+    v5: WalletDetail;
+    v6: WalletDetail;
     createdAt: string;
     updatedAt: string;
     student?: {
@@ -64,18 +70,8 @@ export interface ProfilesWithWalletsQueryParams {
     limit?: number;
 }
 
-export interface CreateStudentWalletDto {
+export interface IncreaseStudentWalletDto {
     studentId: string;
-    v0?: number;
-    v1?: number;
-    v2?: number;
-    v3?: number;
-    v4?: number;
-    v5?: number;
-    v6?: number;
-}
-
-export interface UpdateStudentWalletDto {
     v0?: number;
     v1?: number;
     v2?: number;
@@ -111,21 +107,9 @@ const studentWalletApi = {
         return data?.data || data;
     },
 
-    // Create wallet
-    createWallet: async (dto: CreateStudentWalletDto): Promise<StudentWallet> => {
-        const { data } = await apiClient.post('/student-wallets', dto);
-        return data?.data || data;
-    },
-
-    // Update wallet by ID
-    updateWalletById: async ({ id, dto }: { id: string; dto: UpdateStudentWalletDto }): Promise<StudentWallet> => {
-        const { data } = await apiClient.put(`/student-wallets/${id}`, dto);
-        return data?.data || data;
-    },
-
-    // Update wallet by student ID
-    updateWalletByStudentId: async ({ studentId, dto }: { studentId: string; dto: UpdateStudentWalletDto }): Promise<StudentWallet> => {
-        const { data } = await apiClient.put(`/student-wallets/student/${studentId}`, dto);
+    // Increase wallet (create or update)
+    increaseWallet: async (dto: IncreaseStudentWalletDto): Promise<StudentWallet> => {
+        const { data } = await apiClient.post('/student-wallets/increase', dto);
         return data?.data || data;
     },
 
@@ -171,30 +155,10 @@ export const useGetWalletByStudentId = (studentId: string | undefined) => {
     });
 };
 
-export const useCreateWallet = () => {
+export const useIncreaseWallet = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: studentWalletApi.createWallet,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['student-wallets'] });
-        },
-    });
-};
-
-export const useUpdateWalletById = () => {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: studentWalletApi.updateWalletById,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['student-wallets'] });
-        },
-    });
-};
-
-export const useUpdateWalletByStudentId = () => {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: studentWalletApi.updateWalletByStudentId,
+        mutationFn: studentWalletApi.increaseWallet,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['student-wallets'] });
         },
@@ -226,8 +190,16 @@ export const getWalletTypeLabel = (key: WalletTypeKey): string => {
     return WALLET_TYPE_LABELS[key] || key;
 };
 
-export const getTotalVouchers = (wallet: StudentWallet | null): number => {
+export const getTotalBalance = (wallet: StudentWallet | null): number => {
     if (!wallet) return 0;
-    return wallet.v0 + wallet.v1 + wallet.v2 + wallet.v3 + wallet.v4 + wallet.v5 + wallet.v6;
+    return (
+        wallet.v0.ton +
+        wallet.v1.ton +
+        wallet.v2.ton +
+        wallet.v3.ton +
+        wallet.v4.ton +
+        wallet.v5.ton +
+        wallet.v6.ton
+    );
 };
 

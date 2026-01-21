@@ -23,6 +23,7 @@ import {
     InputAdornment,
     Pagination,
     Paper,
+    Popover,
     Table,
     TableBody,
     TableCell,
@@ -36,16 +37,14 @@ import {
 import { styled } from '@mui/material/styles';
 
 import {
-    getTotalVouchers,
-    useCreateWallet,
+    getTotalBalance,
     useDeleteWalletById,
     useGetAllProfilesWithWallets,
-    useUpdateWalletById,
+    useIncreaseWallet,
     WALLET_TYPE_KEYS,
     WALLET_TYPE_LABELS,
-    type CreateStudentWalletDto,
+    type IncreaseStudentWalletDto,
     type StudentProfileWithWallet,
-    type UpdateStudentWalletDto,
     type WalletTypeKey,
 } from '@/@core/hooks/useStudentWallet';
 
@@ -74,13 +73,13 @@ const StudentWalletsPage = () => {
     const [filterHasWallet, setFilterHasWallet] = React.useState<'all' | 'with' | 'without'>('all')
 
     // Dialog states
-    const [openEditDialog, setOpenEditDialog] = React.useState(false)
+
     const [openCreateDialog, setOpenCreateDialog] = React.useState(false)
     const [openDeleteDialog, setOpenDeleteDialog] = React.useState(false)
     const [selectedProfile, setSelectedProfile] = React.useState<StudentProfileWithWallet | null>(null)
 
     // Form state
-    const [walletForm, setWalletForm] = React.useState<UpdateStudentWalletDto>({
+    const [walletForm, setWalletForm] = React.useState<Omit<IncreaseStudentWalletDto, 'studentId'>>({
         v0: 0,
         v1: 0,
         v2: 0,
@@ -107,8 +106,7 @@ const StudentWalletsPage = () => {
         page,
         limit
     })
-    const createWalletMutation = useCreateWallet()
-    const updateWalletMutation = useUpdateWalletById()
+    const increaseWalletMutation = useIncreaseWallet()
     const deleteWalletMutation = useDeleteWalletById()
 
     // Filter profiles (client-side filtering only for wallet status since backend doesn't support it)
@@ -132,8 +130,9 @@ const StudentWalletsPage = () => {
     }, [profilesResponse, filterHasWallet])
 
     // Handlers
-    const handleOpenCreateDialog = (profile: StudentProfileWithWallet) => {
+    const handleOpenDialog = (profile: StudentProfileWithWallet) => {
         setSelectedProfile(profile)
+        // Reset form to 0 for "Increase" action
         setWalletForm({
             v0: 0,
             v1: 0,
@@ -143,23 +142,7 @@ const StudentWalletsPage = () => {
             v5: 0,
             v6: 0,
         })
-        setOpenCreateDialog(true)
-    }
-
-    const handleOpenEditDialog = (profile: StudentProfileWithWallet) => {
-        setSelectedProfile(profile)
-        if (profile.wallet) {
-            setWalletForm({
-                v0: profile.wallet.v0,
-                v1: profile.wallet.v1,
-                v2: profile.wallet.v2,
-                v3: profile.wallet.v3,
-                v4: profile.wallet.v4,
-                v5: profile.wallet.v5,
-                v6: profile.wallet.v6,
-            })
-        }
-        setOpenEditDialog(true)
+        setOpenCreateDialog(true) // Reusing this state for the "Deposit/Create" dialog
     }
 
     const handleOpenDeleteDialog = (profile: StudentProfileWithWallet) => {
@@ -168,7 +151,7 @@ const StudentWalletsPage = () => {
     }
 
     const handleCloseDialogs = () => {
-        setOpenEditDialog(false)
+
         setOpenCreateDialog(false)
         setOpenDeleteDialog(false)
         setSelectedProfile(null)
@@ -187,46 +170,22 @@ const StudentWalletsPage = () => {
         const numValue = parseInt(value) || 0
         setWalletForm(prev => ({
             ...prev,
-            [key]: Math.max(0, numValue)
+            [key]: numValue
         }))
     }
 
-    const handleCreateWallet = async () => {
+    const handleIncreaseWallet = async () => {
         if (!selectedProfile) return
 
         try {
-            const dto: CreateStudentWalletDto = {
+            const dto: IncreaseStudentWalletDto = {
                 studentId: selectedProfile.id,
                 ...walletForm
             }
-            await createWalletMutation.mutateAsync(dto)
+            await increaseWalletMutation.mutateAsync(dto)
             setNotification({
                 open: true,
-                message: `Tạo ví cho học sinh "${selectedProfile.fullname}" thành công!`,
-                severity: 'success'
-            })
-            handleCloseDialogs()
-            refetch()
-        } catch (error: any) {
-            setNotification({
-                open: true,
-                message: error?.response?.data?.message || 'Có lỗi xảy ra khi tạo ví',
-                severity: 'error'
-            })
-        }
-    }
-
-    const handleUpdateWallet = async () => {
-        if (!selectedProfile?.wallet) return
-
-        try {
-            await updateWalletMutation.mutateAsync({
-                id: selectedProfile.wallet.id,
-                dto: walletForm
-            })
-            setNotification({
-                open: true,
-                message: `Cập nhật ví của "${selectedProfile.fullname}" thành công!`,
+                message: `Nạp voucher cho học sinh "${selectedProfile.fullname}" thành công!`,
                 severity: 'success'
             })
             handleCloseDialogs()
@@ -261,16 +220,21 @@ const StudentWalletsPage = () => {
         }
     }
 
-    // Statistics
-    const stats = React.useMemo(() => {
-        if (!profilesResponse?.data) return { total: 0, withWallet: 0, withoutWallet: 0 }
-        const withWallet = profilesResponse.data.filter(p => p.wallet !== null).length
-        return {
-            total: profilesResponse.total || 0,
-            withWallet,
-            withoutWallet: (profilesResponse.total || 0) - withWallet
-        }
-    }, [profilesResponse])
+    // Popover state
+    const [anchorEl, setAnchorEl] = React.useState<HTMLElement | null>(null)
+    const [selectedDetail, setSelectedDetail] = React.useState<{ title: string, data: any } | null>(null)
+
+    const handleWalletClick = (event: React.MouseEvent<HTMLElement>, title: string, data: any) => {
+        setAnchorEl(event.currentTarget)
+        setSelectedDetail({ title, data })
+    }
+
+    const handleClosePopover = () => {
+        setAnchorEl(null)
+        setSelectedDetail(null)
+    }
+
+    const openPopover = Boolean(anchorEl)
 
     // Reset page when search or filter changes
     React.useEffect(() => {
@@ -301,44 +265,7 @@ const StudentWalletsPage = () => {
                 </Grid>
             )}
 
-            {/* Stats Cards */}
-            <Grid item xs={12}>
-                <Grid container spacing={3}>
-                    <Grid item xs={12} sm={4}>
-                        <Card sx={{
-                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                            color: 'white'
-                        }}>
-                            <CardContent>
-                                <Typography variant='h3' fontWeight={700}>{stats.total}</Typography>
-                                <Typography variant='body2' sx={{ opacity: 0.9 }}>Tổng số học sinh</Typography>
-                            </CardContent>
-                        </Card>
-                    </Grid>
-                    <Grid item xs={12} sm={4}>
-                        <Card sx={{
-                            background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
-                            color: 'white'
-                        }}>
-                            <CardContent>
-                                <Typography variant='h3' fontWeight={700}>{stats.withWallet}</Typography>
-                                <Typography variant='body2' sx={{ opacity: 0.9 }}>Đã có ví</Typography>
-                            </CardContent>
-                        </Card>
-                    </Grid>
-                    <Grid item xs={12} sm={4}>
-                        <Card sx={{
-                            background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-                            color: 'white'
-                        }}>
-                            <CardContent>
-                                <Typography variant='h3' fontWeight={700}>{stats.withoutWallet}</Typography>
-                                <Typography variant='body2' sx={{ opacity: 0.9 }}>Chưa có ví</Typography>
-                            </CardContent>
-                        </Card>
-                    </Grid>
-                </Grid>
-            </Grid>
+
 
             {/* Filters */}
             <Grid item xs={12}>
@@ -481,16 +408,20 @@ const StudentWalletsPage = () => {
                                                 </TableCell>
                                                 {WALLET_TYPE_KEYS.map(key => (
                                                     <TableCell key={key} align='center'>
-                                                        <WalletChip
-                                                            label={profile.wallet?.[key] ?? 0}
-                                                            size='small'
-                                                            walletvalue={profile.wallet?.[key] ?? 0}
-                                                        />
+                                                        <Tooltip title="Nhấn để xem chi tiết">
+                                                            <WalletChip
+                                                                label={profile.wallet?.[key]?.ton ?? 0}
+                                                                size='small'
+                                                                walletvalue={profile.wallet?.[key]?.ton ?? 0}
+                                                                onClick={(e) => handleWalletClick(e, WALLET_TYPE_LABELS[key], profile.wallet?.[key])}
+                                                                sx={{ cursor: 'pointer', '&:hover': { opacity: 0.8 } }}
+                                                            />
+                                                        </Tooltip>
                                                     </TableCell>
                                                 ))}
                                                 <TableCell align='center'>
                                                     <Chip
-                                                        label={getTotalVouchers(profile.wallet)}
+                                                        label={getTotalBalance(profile.wallet)}
                                                         color='primary'
                                                         size='small'
                                                         sx={{ fontWeight: 700, minWidth: 50 }}
@@ -500,13 +431,13 @@ const StudentWalletsPage = () => {
                                                     <Box display='flex' gap={0.5} justifyContent='center'>
                                                         {profile.wallet ? (
                                                             <>
-                                                                <Tooltip title='Chỉnh sửa ví'>
+                                                                <Tooltip title='Nạp thêm voucher'>
                                                                     <IconButton
                                                                         size='small'
                                                                         color='primary'
-                                                                        onClick={() => handleOpenEditDialog(profile)}
+                                                                        onClick={() => handleOpenDialog(profile)}
                                                                     >
-                                                                        <i className='ri-edit-line' />
+                                                                        <i className='ri-add-circle-line' />
                                                                     </IconButton>
                                                                 </Tooltip>
                                                                 <Tooltip title='Xóa ví'>
@@ -520,13 +451,13 @@ const StudentWalletsPage = () => {
                                                                 </Tooltip>
                                                             </>
                                                         ) : (
-                                                            <Tooltip title='Tạo ví'>
+                                                            <Tooltip title='Tạo ví (Nạp lần đầu)'>
                                                                 <IconButton
                                                                     size='small'
                                                                     color='success'
-                                                                    onClick={() => handleOpenCreateDialog(profile)}
+                                                                    onClick={() => handleOpenDialog(profile)}
                                                                 >
-                                                                    <i className='ri-add-circle-line' />
+                                                                    <i className='ri-wallet-3-line' />
                                                                 </IconButton>
                                                             </Tooltip>
                                                         )}
@@ -554,9 +485,9 @@ const StudentWalletsPage = () => {
                 </Card>
             </Grid>
 
-            {/* Create/Edit Wallet Dialog */}
+            {/* Create/Deposit Wallet Dialog */}
             <Dialog
-                open={openCreateDialog || openEditDialog}
+                open={openCreateDialog}
                 onClose={handleCloseDialogs}
                 maxWidth='sm'
                 fullWidth
@@ -564,11 +495,11 @@ const StudentWalletsPage = () => {
                 <DialogTitle>
                     <Box display='flex' alignItems='center' gap={1}>
                         <i
-                            className={openCreateDialog ? 'ri-add-circle-line' : 'ri-edit-line'}
-                            style={{ color: openCreateDialog ? '#4caf50' : '#2196f3' }}
+                            className='ri-add-circle-line'
+                            style={{ color: '#4caf50' }}
                         />
                         <Typography variant='h6'>
-                            {openCreateDialog ? 'Tạo ví mới' : 'Chỉnh sửa ví'}
+                            {selectedProfile?.wallet ? 'Nạp thêm Voucher' : 'Tạo ví mới (Nạp lần đầu)'}
                         </Typography>
                     </Box>
                 </DialogTitle>
@@ -600,13 +531,33 @@ const StudentWalletsPage = () => {
                                     <Typography variant='body2' color='text.secondary'>
                                         {selectedProfile.email}
                                     </Typography>
-                                    {selectedProfile.courseNames && selectedProfile.courseNames.length > 0 && (
-                                        <Typography variant='body2' color='text.secondary'>
-                                            {selectedProfile.courseNames.join(', ')}
-                                        </Typography>
-                                    )}
                                 </Box>
                             </Box>
+
+                            {/* Current Balance (if exists) */}
+                            {selectedProfile.wallet && (
+                                <Box mb={3}>
+                                    <Typography variant='subtitle2' fontWeight={600} mb={1}>
+                                        Số dư hiện tại:
+                                    </Typography>
+                                    <Grid container spacing={1}>
+                                        {WALLET_TYPE_KEYS.map(key => (
+                                            <Grid item xs={6} sm={4} key={key}>
+                                                <Box display='flex' justifyContent='space-between' p={1} bgcolor='grey.50' borderRadius={1}>
+                                                    <Typography variant='caption' color='text.secondary'>{key.toUpperCase()}</Typography>
+                                                    <Typography variant='caption' fontWeight={700}>
+                                                        {selectedProfile.wallet?.[key]?.ton ?? 0}
+                                                    </Typography>
+                                                </Box>
+                                            </Grid>
+                                        ))}
+                                    </Grid>
+                                </Box>
+                            )}
+
+                            <Typography variant='subtitle2' fontWeight={600} mb={2} color='primary'>
+                                Nhập số lượng muốn nạp thêm:
+                            </Typography>
 
                             {/* Wallet Form */}
                             <Grid container spacing={2}>
@@ -619,7 +570,6 @@ const StudentWalletsPage = () => {
                                             value={walletForm[key] ?? 0}
                                             onChange={(e) => handleFormChange(key, e.target.value)}
                                             InputProps={{
-                                                inputProps: { min: 0 },
                                                 startAdornment: (
                                                     <InputAdornment position='start'>
                                                         <Typography variant='caption' color='text.secondary'>
@@ -645,7 +595,7 @@ const StudentWalletsPage = () => {
                                 alignItems='center'
                             >
                                 <Typography variant='subtitle2' color='primary.dark'>
-                                    Tổng số voucher:
+                                    Tổng cộng nạp thêm:
                                 </Typography>
                                 <Typography variant='h5' fontWeight={700} color='primary.dark'>
                                     {Object.values(walletForm).reduce((sum, val) => sum + (val ?? 0), 0)}
@@ -660,16 +610,16 @@ const StudentWalletsPage = () => {
                     </Button>
                     <Button
                         variant='contained'
-                        color={openCreateDialog ? 'success' : 'primary'}
-                        onClick={openCreateDialog ? handleCreateWallet : handleUpdateWallet}
-                        disabled={createWalletMutation.isPending || updateWalletMutation.isPending}
+                        color='success'
+                        onClick={handleIncreaseWallet}
+                        disabled={increaseWalletMutation.isPending}
                         startIcon={
-                            (createWalletMutation.isPending || updateWalletMutation.isPending) && (
+                            increaseWalletMutation.isPending && (
                                 <CircularProgress size={16} color='inherit' />
                             )
                         }
                     >
-                        {openCreateDialog ? 'Tạo ví' : 'Cập nhật'}
+                        {selectedProfile?.wallet ? 'Nạp thêm' : 'Tạo và Nạp'}
                     </Button>
                 </DialogActions>
             </Dialog>
@@ -698,7 +648,7 @@ const StudentWalletsPage = () => {
                                 {WALLET_TYPE_KEYS.map(key => (
                                     <Grid item xs={6} key={key}>
                                         <Typography variant='caption'>
-                                            {WALLET_TYPE_LABELS[key]}: <strong>{selectedProfile.wallet?.[key] ?? 0}</strong>
+                                            {WALLET_TYPE_LABELS[key]}: <strong>{selectedProfile.wallet?.[key]?.ton ?? 0}</strong>
                                         </Typography>
                                     </Grid>
                                 ))}
@@ -723,6 +673,60 @@ const StudentWalletsPage = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            {/* Wallet Detail Popover */}
+            <Popover
+                open={openPopover}
+                anchorEl={anchorEl}
+                onClose={handleClosePopover}
+                anchorOrigin={{
+                    vertical: 'bottom',
+                    horizontal: 'center',
+                }}
+                transformOrigin={{
+                    vertical: 'top',
+                    horizontal: 'center',
+                }}
+            >
+                <Box p={2} sx={{ minWidth: 250 }}>
+                    <Typography variant="subtitle2" fontWeight={700} gutterBottom align="center" color="primary">
+                        {selectedDetail?.title}
+                    </Typography>
+                    <Box sx={{ my: 1, borderTop: '1px solid #eee' }} />
+                    {selectedDetail?.data ? (
+                        <Grid container spacing={2} textAlign="center">
+                            <Grid item xs={4}>
+                                <Typography variant="caption" display="block" color="success.main" fontWeight={600}>
+                                    Nạp
+                                </Typography>
+                                <Typography variant="body1" fontWeight={700} color="success.dark">
+                                    {selectedDetail.data.tang}
+                                </Typography>
+                            </Grid>
+                            <Grid item xs={4}>
+                                <Typography variant="caption" display="block" color="error.main" fontWeight={600}>
+                                    Dùng
+                                </Typography>
+                                <Typography variant="body1" fontWeight={700} color="error.dark">
+                                    {selectedDetail.data.giam}
+                                </Typography>
+                            </Grid>
+                            <Grid item xs={4}>
+                                <Typography variant="caption" display="block" color="primary.main" fontWeight={600}>
+                                    Tồn
+                                </Typography>
+                                <Typography variant="body1" fontWeight={700} color="primary.dark">
+                                    {selectedDetail.data.ton}
+                                </Typography>
+                            </Grid>
+                        </Grid>
+                    ) : (
+                        <Typography variant="body2" color="text.secondary" align="center">
+                            Chưa có thông tin ví
+                        </Typography>
+                    )}
+                </Box>
+            </Popover>
         </Grid>
     )
 }
