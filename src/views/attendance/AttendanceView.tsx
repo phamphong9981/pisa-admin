@@ -39,6 +39,7 @@ import type { DateRange } from 'react-day-picker'
 import { useSearchSchedule, SCHEDULE_TIME, RollcallStatus, useUpdateRollcallStatus, type SearchScheduleParams } from '@/@core/hooks/useSchedule'
 import { useGetWeeks } from '@/@core/hooks/useWeek'
 import { useStudentList } from '@/@core/hooks/useStudent'
+import { useTeacherList } from '@/@core/hooks/useTeacher'
 import useDebounce from '@/@core/hooks/useDebounce'
 import { DatePicker } from '@/components/ui/date-picker'
 
@@ -89,7 +90,7 @@ const AttendanceView = () => {
     // States
     const [searchTerm, setSearchTerm] = useState('')
     const [selectedWeekId, setSelectedWeekId] = useState<string>('')
-    const [selectedScheduleTime, setSelectedScheduleTime] = useState<number | undefined>(undefined)
+    const [selectedScheduleTimes, setSelectedScheduleTimes] = useState<number[]>([])
     const [selectedRollcallStatus, setSelectedRollcallStatus] = useState<string>('')
     const [page, setPage] = useState(0)
     const [rowsPerPage, setRowsPerPage] = useState(50)
@@ -97,6 +98,10 @@ const AttendanceView = () => {
     // Student search states
     const [studentSearchTerm, setStudentSearchTerm] = useState('')
     const [selectedStudent, setSelectedStudent] = useState<StudentOption | null>(null)
+
+    // Teacher search states
+    const [teacherSearchTerm, setTeacherSearchTerm] = useState('')
+    const [selectedTeacherId, setSelectedTeacherId] = useState<string | null>(null)
 
     // Date range states
     const [startDate, setStartDate] = useState<string>('')
@@ -110,12 +115,16 @@ const AttendanceView = () => {
     // Debounce search
     const debouncedSearch = useDebounce(searchTerm, 500)
     const debouncedStudentSearch = useDebounce(studentSearchTerm, 300)
+    const debouncedTeacherSearch = useDebounce(teacherSearchTerm, 300)
 
     // Hooks
     const { data: weeks } = useGetWeeks()
 
     // Fetch students for autocomplete
     const { data: studentsData, isLoading: isStudentsLoading } = useStudentList(debouncedStudentSearch)
+
+    // Fetch teachers for autocomplete
+    const { data: teachersData, isLoading: isTeachersLoading } = useTeacherList(debouncedTeacherSearch)
 
     // Student options for autocomplete
     const studentOptions = useMemo((): StudentOption[] => {
@@ -148,10 +157,12 @@ const AttendanceView = () => {
         // Add filters based on mode
         if (filterMode === 'scheduleTime') {
             if (selectedWeekId) params.weekId = selectedWeekId
-            if (selectedScheduleTime) params.scheduleTime = selectedScheduleTime
+            if (selectedScheduleTimes.length > 0) params.scheduleTimes = selectedScheduleTimes
         } else {
             if (startDate) params.startDate = startDate
             if (endDate) params.endDate = endDate
+            // Allow schedule times filter in date range mode too
+            if (selectedScheduleTimes.length > 0) params.scheduleTimes = selectedScheduleTimes
         }
 
         // Rollcall status filter
@@ -159,20 +170,25 @@ const AttendanceView = () => {
             params.rollcallStatus = selectedRollcallStatus
         }
 
+        // Teacher filter
+        if (selectedTeacherId) {
+            params.teacherId = selectedTeacherId
+        }
+
         return params
-    }, [filterMode, selectedStudent, debouncedSearch, selectedWeekId, selectedScheduleTime, startDate, endDate, selectedRollcallStatus, page, rowsPerPage])
+    }, [filterMode, selectedStudent, debouncedSearch, selectedWeekId, selectedScheduleTimes, startDate, endDate, selectedRollcallStatus, selectedTeacherId, page, rowsPerPage])
 
     // Check if search is enabled
     const isSearchEnabled = useMemo(() => {
-        // Need either search term, student selection, or date range
-        const hasSearchOrStudent = !!debouncedSearch || !!selectedStudent
+        // Need either search term, student selection, teacher selection, or date range
+        const hasSearchOrStudent = !!debouncedSearch || !!selectedStudent || !!selectedTeacherId
 
         if (filterMode === 'scheduleTime') {
-            return hasSearchOrStudent || (!!selectedWeekId && !!selectedScheduleTime)
+            return hasSearchOrStudent || (!!selectedWeekId && selectedScheduleTimes.length > 0)
         } else {
-            return hasSearchOrStudent || !!startDate || !!endDate
+            return hasSearchOrStudent || !!startDate || !!endDate || selectedScheduleTimes.length > 0
         }
-    }, [filterMode, debouncedSearch, selectedStudent, selectedWeekId, selectedScheduleTime, startDate, endDate])
+    }, [filterMode, debouncedSearch, selectedStudent, selectedTeacherId, selectedWeekId, selectedScheduleTimes, startDate, endDate])
 
     const { data: searchResults, isLoading, refetch: refetchSearch } = useSearchSchedule(searchParams, isSearchEnabled)
 
@@ -207,8 +223,10 @@ const AttendanceView = () => {
         setSearchTerm('')
         setSelectedStudent(null)
         setStudentSearchTerm('')
+        setSelectedTeacherId(null)
+        setTeacherSearchTerm('')
         setSelectedWeekId('')
-        setSelectedScheduleTime(undefined)
+        setSelectedScheduleTimes([])
         setStartDate('')
         setEndDate('')
         setDateRange(undefined)
@@ -361,7 +379,7 @@ const AttendanceView = () => {
                 {/* Filters */}
                 <Grid container spacing={3} sx={{ mb: 4 }}>
                     {/* Text Search */}
-                    <Grid item xs={12} md={4}>
+                    <Grid item xs={12} md={3}>
                         <TextField
                             fullWidth
                             label="Tìm kiếm"
@@ -384,7 +402,7 @@ const AttendanceView = () => {
                     </Grid>
 
                     {/* Student Autocomplete */}
-                    <Grid item xs={12} md={4}>
+                    <Grid item xs={12} md={3}>
                         <Autocomplete
                             fullWidth
                             options={studentOptions}
@@ -441,8 +459,65 @@ const AttendanceView = () => {
                         />
                     </Grid>
 
+                    {/* Teacher Autocomplete */}
+                    <Grid item xs={12} md={3}>
+                        <Autocomplete
+                            fullWidth
+                            options={teachersData || []}
+                            value={teachersData?.find(t => t.id === selectedTeacherId) || null}
+                            getOptionLabel={(option) => option.name || ''}
+                            isOptionEqualToValue={(option, value) => option.id === value.id}
+                            loading={isTeachersLoading}
+                            inputValue={teacherSearchTerm}
+                            onInputChange={(_, newValue, reason) => {
+                                if (reason === 'input' || reason === 'clear') {
+                                    setTeacherSearchTerm(newValue)
+                                }
+                            }}
+                            onChange={(_, value) => {
+                                setSelectedTeacherId(value?.id || null)
+                                setPage(0)
+                            }}
+                            renderInput={(params) => (
+                                <TextField
+                                    {...params}
+                                    label="Chọn giáo viên"
+                                    placeholder="Nhập tên để tìm..."
+                                    InputProps={{
+                                        ...params.InputProps,
+                                        startAdornment: (
+                                            <>
+                                                <InputAdornment position="start">
+                                                    <i className="ri-user-star-line" />
+                                                </InputAdornment>
+                                                {params.InputProps.startAdornment}
+                                            </>
+                                        ),
+                                        endAdornment: (
+                                            <>
+                                                {isTeachersLoading ? <CircularProgress color="inherit" size={16} /> : null}
+                                                {params.InputProps.endAdornment}
+                                            </>
+                                        )
+                                    }}
+                                />
+                            )}
+                            renderOption={(props, option) => (
+                                <Box component="li" {...props} key={option.id}>
+                                    <Box>
+                                        <Typography variant="body2" fontWeight={500}>{option.name}</Typography>
+                                        {option.username && (
+                                            <Typography variant="caption" color="text.secondary">{option.username}</Typography>
+                                        )}
+                                    </Box>
+                                </Box>
+                            )}
+                            noOptionsText={teacherSearchTerm ? "Không tìm thấy giáo viên" : "Nhập để tìm kiếm"}
+                        />
+                    </Grid>
+
                     {/* Rollcall Status Filter */}
-                    <Grid item xs={12} md={4}>
+                    <Grid item xs={12} md={3}>
                         <FormControl fullWidth>
                             <InputLabel>Trạng thái điểm danh</InputLabel>
                             <Select
@@ -492,25 +567,52 @@ const AttendanceView = () => {
                                     </Select>
                                 </FormControl>
                             </Grid>
-                            <Grid item xs={12} md={2}>
-                                <FormControl fullWidth>
-                                    <InputLabel>Ca học</InputLabel>
-                                    <Select
-                                        value={selectedScheduleTime ?? ''}
-                                        label="Ca học"
-                                        onChange={(e) => {
-                                            setSelectedScheduleTime(e.target.value === '' ? undefined : Number(e.target.value))
-                                            setPage(0)
-                                        }}
-                                    >
-                                        <MenuItem value="">Tất cả các ca</MenuItem>
-                                        {SCHEDULE_TIME.map((time, index) => (
-                                            <MenuItem key={index} value={index + 1}>
-                                                {time}
-                                            </MenuItem>
-                                        ))}
-                                    </Select>
-                                </FormControl>
+                            <Grid item xs={12} md={4}>
+                                <Autocomplete
+                                    multiple
+                                    fullWidth
+                                    options={SCHEDULE_TIME.map((_, index) => index + 1)}
+                                    value={selectedScheduleTimes}
+                                    getOptionLabel={(option) => SCHEDULE_TIME[option - 1]}
+                                    onChange={(_, newValue) => {
+                                        setSelectedScheduleTimes(newValue)
+                                        setPage(0)
+                                    }}
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            label="Khung giờ"
+                                            placeholder="Chọn khung giờ..."
+                                            InputProps={{
+                                                ...params.InputProps,
+                                                startAdornment: (
+                                                    <>
+                                                        <InputAdornment position="start">
+                                                            <i className="ri-time-line" />
+                                                        </InputAdornment>
+                                                        {params.InputProps.startAdornment}
+                                                    </>
+                                                )
+                                            }}
+                                        />
+                                    )}
+                                    renderTags={(value, getTagProps) =>
+                                        value.map((option, index) => (
+                                            <Chip
+                                                {...getTagProps({ index })}
+                                                key={option}
+                                                label={SCHEDULE_TIME[option - 1]}
+                                                size="small"
+                                            />
+                                        ))
+                                    }
+                                    renderOption={(props, option) => (
+                                        <Box component="li" {...props} key={option}>
+                                            <Typography variant="body2">{SCHEDULE_TIME[option - 1]}</Typography>
+                                        </Box>
+                                    )}
+                                    noOptionsText="Không có khung giờ nào"
+                                />
                             </Grid>
                         </>
                     ) : (
@@ -525,6 +627,53 @@ const AttendanceView = () => {
                                         setPage(0)
                                     }}
                                     placeholder="Chọn khoảng ngày"
+                                />
+                            </Grid>
+                            <Grid item xs={12} md={4}>
+                                <Autocomplete
+                                    multiple
+                                    fullWidth
+                                    options={SCHEDULE_TIME.map((_, index) => index + 1)}
+                                    value={selectedScheduleTimes}
+                                    getOptionLabel={(option) => SCHEDULE_TIME[option - 1]}
+                                    onChange={(_, newValue) => {
+                                        setSelectedScheduleTimes(newValue)
+                                        setPage(0)
+                                    }}
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            label="Khung giờ"
+                                            placeholder="Chọn khung giờ..."
+                                            InputProps={{
+                                                ...params.InputProps,
+                                                startAdornment: (
+                                                    <>
+                                                        <InputAdornment position="start">
+                                                            <i className="ri-time-line" />
+                                                        </InputAdornment>
+                                                        {params.InputProps.startAdornment}
+                                                    </>
+                                                )
+                                            }}
+                                        />
+                                    )}
+                                    renderTags={(value, getTagProps) =>
+                                        value.map((option, index) => (
+                                            <Chip
+                                                {...getTagProps({ index })}
+                                                key={option}
+                                                label={SCHEDULE_TIME[option - 1]}
+                                                size="small"
+                                            />
+                                        ))
+                                    }
+                                    renderOption={(props, option) => (
+                                        <Box component="li" {...props} key={option}>
+                                            <Typography variant="body2">{SCHEDULE_TIME[option - 1]}</Typography>
+                                        </Box>
+                                    )}
+                                    noOptionsText="Không có khung giờ nào"
                                 />
                             </Grid>
                         </>

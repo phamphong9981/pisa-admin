@@ -7,10 +7,11 @@ API này cho phép tìm kiếm lịch học (schedule) dựa trên nhiều tiêu
 - **Tên học sinh** (student fullname)
 - **Email học sinh** (student email)
 - **Profile ID** (học sinh cụ thể)
+- **Teacher ID** (giáo viên cụ thể)
 - **Khoảng thời gian** (startDate, endDate) - dựa trên ngày thực tế của schedule
 - **Trạng thái điểm danh** (rollcallStatus)
 - **Tuần học** (weekId)
-- **Khung giờ** (scheduleTime)
+- **Khung giờ** (scheduleTimes) - mảng các khung giờ (1-42), cho phép filter theo nhiều khung giờ cùng lúc
 
 API trả về danh sách lịch học kèm theo thông tin chi tiết về lớp học, khóa học, và lịch lớp (schedule info).
 
@@ -28,8 +29,9 @@ GET /search-schedule
 |-----------|--------|----------|-----------------------------------------------------------------------------|
 | `search`  | string | No       | Từ khóa tìm kiếm (tên khóa học, tên học sinh, hoặc email). Không phân biệt hoa thường, hỗ trợ partial match |
 | `weekId`  | string | No       | UUID của tuần học. Nếu không cung cấp, sẽ tìm kiếm trong tất cả các tuần |
-| `scheduleTime` | number | No | Mã thời gian học (1-42). Nếu không cung cấp, sẽ tìm kiếm tất cả các khung giờ |
+| `scheduleTimes` | number[] | No | Mảng các mã thời gian học (1-42). Nếu không cung cấp, sẽ tìm kiếm tất cả các khung giờ. Ví dụ: `[1, 2, 3]` để tìm schedules có schedule_time là 1, 2 hoặc 3 |
 | `profileId` | string | No | UUID của profile (học sinh). Lọc schedules theo học sinh cụ thể |
+| `teacherId` | string | No | UUID của giáo viên. Lọc schedules theo giáo viên cụ thể |
 | `startDate` | string | No | Ngày bắt đầu (ISO 8601 format: YYYY-MM-DD). Lọc schedules có ngày thực tế >= startDate. Ngày được tính từ week.start_date + offset từ scheduleTime |
 | `endDate` | string | No | Ngày kết thúc (ISO 8601 format: YYYY-MM-DD). Lọc schedules có ngày thực tế <= endDate. Ngày được tính từ week.start_date + offset từ scheduleTime |
 | `rollcallStatus` | string | No | Trạng thái điểm danh. Lọc schedules theo trạng thái điểm danh (not_rollcall, attending, absent_without_reason, etc.) |
@@ -40,10 +42,11 @@ GET /search-schedule
 - Tất cả các tham số đều là optional
 - Nếu không cung cấp `search`, API sẽ trả về tất cả schedules (có thể filter theo các tham số khác)
 - Nếu không cung cấp `weekId`, API sẽ tìm kiếm trong tất cả các tuần
-- Nếu không cung cấp `scheduleTime`, API sẽ tìm kiếm tất cả các khung giờ
+- Nếu không cung cấp `scheduleTimes`, API sẽ tìm kiếm tất cả các khung giờ
 - Search sử dụng `ILIKE` (case-insensitive) và hỗ trợ partial match (ví dụ: "ielts" sẽ match "IELTS Foundation")
-- `scheduleTime` phải là số nguyên từ 1 đến 42 (tương ứng với 42 khung giờ trong tuần)
+- `scheduleTimes` phải là mảng các số nguyên từ 1 đến 42 (tương ứng với 42 khung giờ trong tuần). Mỗi phần tử trong mảng phải nằm trong khoảng 1-42. Mảng có thể chứa từ 1 đến 42 phần tử
 - `profileId` phải là UUID hợp lệ
+- `teacherId` phải là UUID hợp lệ của giáo viên
 - `startDate` và `endDate` phải theo định dạng ISO 8601 (YYYY-MM-DD). Ngày thực tế của schedule được lưu vào cột `schedule_date` (được tính từ `week.start_date + offset` dựa trên `scheduleTime`). Bộ lọc ngày sử dụng trực tiếp cột `schedule_date`.
 - `rollcallStatus` có thể là: `not_rollcall`, `attending`, `absent_without_reason`, `absent_with_reason`, `absent_with_late_reason`, `trial`, `retake`
 - `limit` phải là số nguyên từ 1 đến 100 (mặc định: 50)
@@ -184,24 +187,37 @@ Sẽ match với:
 - "Pre-IELTS"
 - v.v.
 
-### 6. Filter theo schedule time
+### 6. Filter theo schedule time (một khung giờ)
 
 ```bash
-GET /search-schedule?scheduleTime=1&weekId=123e4567-e89b-12d3-a456-426614174000
+GET /search-schedule?scheduleTimes=1&weekId=123e4567-e89b-12d3-a456-426614174000
 ```
 
 Tìm kiếm tất cả schedules có `schedule_time = 1` (8:00-10:00 Monday) trong tuần được chỉ định.
 
+### 6a. Filter theo nhiều schedule times
+
+```bash
+GET /search-schedule?scheduleTimes=1&scheduleTimes=2&scheduleTimes=3&weekId=123e4567-e89b-12d3-a456-426614174000
+```
+
+Hoặc sử dụng query string array format:
+```bash
+GET /search-schedule?scheduleTimes[]=1&scheduleTimes[]=2&scheduleTimes[]=3&weekId=123e4567-e89b-12d3-a456-426614174000
+```
+
+Tìm kiếm tất cả schedules có `schedule_time` là 1, 2 hoặc 3 trong tuần được chỉ định.
+
 ### 7. Kết hợp nhiều filters
 
 ```bash
-GET /search-schedule?search=IELTS&weekId=123e4567-e89b-12d3-a456-426614174000&scheduleTime=1
+GET /search-schedule?search=IELTS&weekId=123e4567-e89b-12d3-a456-426614174000&scheduleTimes=1&scheduleTimes=7
 ```
 
 Tìm kiếm schedules có:
 - Tên khóa học, tên học sinh, hoặc email chứa "IELTS"
 - Trong tuần có `weekId` được chỉ định
-- Có `schedule_time = 1` (8:00-10:00 Monday)
+- Có `schedule_time` là 1 (8:00-10:00 Monday) hoặc 7 (8:00-10:00 Tuesday)
 
 ### 8. Sử dụng pagination
 
@@ -235,6 +251,20 @@ GET /search-schedule?profileId=123e4567-e89b-12d3-a456-426614174000
 ```
 
 Tìm kiếm tất cả lịch học của học sinh có `profileId` được chỉ định.
+
+### 9a. Filter theo teacherId (giáo viên cụ thể)
+
+```bash
+GET /search-schedule?teacherId=123e4567-e89b-12d3-a456-426614174000
+```
+
+Tìm kiếm tất cả lịch học của giáo viên có `teacherId` được chỉ định.
+
+```bash
+GET /search-schedule?teacherId=123e4567-e89b-12d3-a456-426614174000&weekId=456e7890-e89b-12d3-a456-426614174000
+```
+
+Tìm kiếm tất cả lịch học của giáo viên trong tuần cụ thể.
 
 ### 10. Filter theo khoảng thời gian (startDate và endDate)
 
@@ -281,6 +311,16 @@ Tìm kiếm schedules có:
 - Ngày thực tế trong khoảng 2024-01-01 đến 2024-01-31
 - Trạng thái điểm danh là "attending"
 
+```bash
+GET /search-schedule?teacherId=123e4567-e89b-12d3-a456-426614174000&weekId=456e7890-e89b-12d3-a456-426614174000&scheduleTimes=1&scheduleTimes=7&rollcallStatus=attending
+```
+
+Tìm kiếm schedules có:
+- `teacherId` được chỉ định
+- Trong tuần có `weekId` được chỉ định
+- Có `schedule_time` là 1 hoặc 7 (8:00-10:00 Monday hoặc Tuesday)
+- Trạng thái điểm danh là "attending"
+
 ## Error Handling
 
 ### Validation Errors (400 Bad Request)
@@ -295,12 +335,18 @@ Nếu `weekId` không phải là UUID hợp lệ:
 }
 ```
 
-Nếu `scheduleTime` không nằm trong khoảng 1-42:
+Nếu `scheduleTimes` không hợp lệ (không phải mảng, rỗng, hoặc có phần tử không nằm trong khoảng 1-42):
 
 ```json
 {
   "statusCode": 400,
-  "message": ["scheduleTime must be an integer number", "scheduleTime must not be less than 1", "scheduleTime must not be greater than 42"],
+  "message": [
+    "scheduleTimes must be an array",
+    "scheduleTimes must not be empty",
+    "each value in scheduleTimes must be an integer number",
+    "each value in scheduleTimes must not be less than 1",
+    "each value in scheduleTimes must not be greater than 42"
+  ],
   "error": "Bad Request"
 }
 ```
@@ -335,6 +381,16 @@ Nếu `profileId` không phải là UUID hợp lệ:
 }
 ```
 
+Nếu `teacherId` không phải là UUID hợp lệ:
+
+```json
+{
+  "statusCode": 400,
+  "message": ["teacherId must be a UUID"],
+  "error": "Bad Request"
+}
+```
+
 Nếu `startDate` hoặc `endDate` không đúng định dạng ISO 8601:
 
 ```json
@@ -365,10 +421,10 @@ Nếu không tìm thấy kết quả, API trả về object với data rỗng:
 2. **Partial match**: Hỗ trợ tìm kiếm một phần của từ khóa
 3. **Multiple fields**: Từ khóa `search` sẽ tìm kiếm trong 3 trường: course name, student fullname, và email
 4. **Schedule Info**: Thông tin lịch lớp (schedule info) có thể null nếu chưa được tạo
-5. **Performance**: Với dữ liệu lớn, nên sử dụng `weekId`, `scheduleTime`, `profileId`, hoặc `startDate`/`endDate` để giới hạn phạm vi tìm kiếm
+5. **Performance**: Với dữ liệu lớn, nên sử dụng `weekId`, `scheduleTimes`, `profileId`, `teacherId`, hoặc `startDate`/`endDate` để giới hạn phạm vi tìm kiếm
 6. **Ordering**: Kết quả được sắp xếp theo course name → class name → lesson → schedule time để dễ đọc
-7. **Schedule Time**: Giá trị từ 1-42, tương ứng với 42 khung giờ trong tuần (6 khung giờ/ngày × 7 ngày)
-8. **Date Filtering**: `startDate` và `endDate` lọc dựa trên ngày thực tế của schedule, được tính từ `week.start_date + offset` dựa trên `scheduleTime`. Mỗi `scheduleTime` tương ứng với một ngày cụ thể trong tuần (1-6 = Monday, 7-12 = Tuesday, ..., 37-42 = Sunday)
+7. **Schedule Times**: Mảng các giá trị từ 1-42, tương ứng với 42 khung giờ trong tuần (6 khung giờ/ngày × 7 ngày). Cho phép filter theo nhiều khung giờ cùng lúc. Ví dụ: `[1, 7, 13]` để tìm schedules vào 8:00-10:00 của Thứ 2, Thứ 3, và Thứ 4
+8. **Date Filtering**: `startDate` và `endDate` lọc dựa trên ngày thực tế của schedule, được lưu trong cột `schedule_date`. Mỗi `scheduleTime` tương ứng với một ngày cụ thể trong tuần (1-6 = Monday, 7-12 = Tuesday, ..., 37-42 = Sunday)
 9. **Rollcall Status**: Có thể filter theo các trạng thái điểm danh: `not_rollcall`, `attending`, `absent_without_reason`, `absent_with_reason`, `absent_with_late_reason`, `trial`, `retake`
 10. **Pagination**: API hỗ trợ pagination với `page` và `limit`. Mặc định: `page=1`, `limit=50`. Tối đa `limit=100`
 11. **Total Count**: API luôn trả về `total` (tổng số records) và `totalPages` để dễ dàng implement pagination UI

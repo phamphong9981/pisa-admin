@@ -766,8 +766,10 @@ export interface SearchSchedulePaginationResponseDto {
 export interface SearchScheduleParams {
     search?: string
     weekId?: string
-    scheduleTime?: number
+    scheduleTime?: number // Deprecated: use scheduleTimes instead
+    scheduleTimes?: number[] // Array of schedule times (1-42)
     profileId?: string
+    teacherId?: string
     startDate?: string
     endDate?: string
     rollcallStatus?: string
@@ -776,18 +778,30 @@ export interface SearchScheduleParams {
 }
 
 const searchSchedule = async (params: SearchScheduleParams): Promise<SearchSchedulePaginationResponseDto> => {
+    // Build params object
+    const requestParams: any = {
+        search: params.search,
+        weekId: params.weekId,
+        profileId: params.profileId,
+        teacherId: params.teacherId,
+        startDate: params.startDate,
+        endDate: params.endDate,
+        rollcallStatus: params.rollcallStatus,
+        page: params.page || 1,
+        limit: params.limit || 50
+    }
+
+    // Use scheduleTimes if provided, otherwise fall back to scheduleTime for backward compatibility
+    if (params.scheduleTimes && params.scheduleTimes.length > 0) {
+        // Send as array - axios will handle it correctly
+        requestParams.scheduleTimes = params.scheduleTimes
+    } else if (params.scheduleTime) {
+        // Backward compatibility: convert single scheduleTime to array
+        requestParams.scheduleTimes = [params.scheduleTime]
+    }
+
     const { data } = await apiClient.get('/search-schedule', {
-        params: {
-            search: params.search,
-            weekId: params.weekId,
-            scheduleTime: params.scheduleTime,
-            profileId: params.profileId,
-            startDate: params.startDate,
-            endDate: params.endDate,
-            rollcallStatus: params.rollcallStatus,
-            page: params.page || 1,
-            limit: params.limit || 50
-        }
+        params: requestParams
     })
 
     return data.data
