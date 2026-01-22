@@ -1482,8 +1482,7 @@ const TeachersSchedule = () => {
                   {teachingInfos.map((teachingInfo, index) => {
                     // Check if start_time or end_time doesn't match the slot time
                     const startTimeMatches = timeMatchesSlot(teachingInfo.start_time, time, false)
-                    const endTimeMatches = timeMatchesSlot(teachingInfo.end_time, time, true)
-                    const timeMismatch = !startTimeMatches || !endTimeMatches
+                    const timeMismatch = !startTimeMatches
 
                     return (
                       <TeachingInfo
