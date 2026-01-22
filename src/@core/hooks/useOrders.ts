@@ -42,6 +42,16 @@ export const RECEIPT_CATEGORIES = [
     { id: 1188, name: 'Tiền ký túc xá' },
     { id: 711, name: 'Tiền ăn (ăn cơm, ăn vặt...)' },
     { id: 1185, name: 'Phí app phát âm ELSA' },
+    { id: 464, name: 'Giảm giá hàng bán' },
+    { id: 459, name: 'Hàng bán bị trả lại' },
+    { id: 463, name: 'Khuyến mại' },
+    { id: 461, name: 'Trả lại học phí' },
+    { id: 462, name: 'Trả lại tiền cọc' },
+    { id: 326, name: 'Chi khác (Chi phát sinh)' },
+    { id: 78, name: 'Học phí tháng trước nộp thừa' },
+    { id: 1187, name: 'Lệ phí thi IELTS được hoàn' },
+    { id: 1333, name: 'Chi phí đi thi IELTS' },
+    { id: 1186, name: 'Học phí tháng trước chưa hoàn thành' },
 ];
 
 export const PAYMENT_CATEGORIES = [
@@ -55,6 +65,26 @@ export const PAYMENT_CATEGORIES = [
     { id: 1187, name: 'Lệ phí thi IELTS được hoàn' },
     { id: 1333, name: 'Chi phí đi thi IELTS' },
     { id: 1186, name: 'Học phí tháng trước chưa hoàn thành' },
+    { id: 325, name: 'Các khoản giảm trừ doanh thu' },
+    { id: 314, name: 'Doanh thu bán hàng và cung cấp dịch vụ' },
+    { id: 79, name: 'Học phí' },
+    { id: 83, name: 'Kho' },
+    { id: 84, name: 'Phí chuyển lớp' },
+    { id: 126, name: 'Ví thành viên' },
+    { id: 522, name: 'Hoàn tiền' },
+    { id: 523, name: 'Hoàn tiền học phí' },
+    { id: 524, name: 'Hoàn tiền đặt cọc' },
+    { id: 509, name: 'Hợp đồng thuê nhà' },
+    { id: 512, name: 'Dịch vụ' },
+    { id: 510, name: 'Tiền thuê nhà' },
+    { id: 511, name: 'Đặt cọc thuê nhà' },
+    { id: 318, name: 'Thu khác (Thu phát sinh)' },
+    { id: 80, name: 'Lệ phí thi IELTS' },
+    { id: 81, name: 'Giáo trình tài liệu' },
+    { id: 1332, name: 'Tiền thi thử - Mock test' },
+    { id: 1188, name: 'Tiền ký túc xá' },
+    { id: 711, name: 'Tiền ăn (ăn cơm, ăn vặt...)' },
+    { id: 1185, name: 'Phí app phát âm ELSA' },
 ];
 
 // Interfaces
