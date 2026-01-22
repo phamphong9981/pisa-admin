@@ -61,17 +61,52 @@ const getRegionColor = (region?: number): string => {
 }
 
 const TeachingInfo = styled(Box, {
-  shouldForwardProp: (prop) => prop !== 'region'
-})<{ region?: number }>(({ theme, region }) => {
+  shouldForwardProp: (prop) => prop !== 'region' && prop !== 'timeMismatch'
+})<{ region?: number; timeMismatch?: boolean }>(({ theme, region, timeMismatch }) => {
   const regionColor = getRegionColor(region)
   const isLightColor = region && REGION_COLORS[region]
+
+  // Darken color if time mismatch (reduce opacity or darken the color)
+  const getHeaderBackgroundColor = () => {
+    if (!isLightColor) return '#e3f2fd'
+    if (timeMismatch) {
+      // Darken the region color by reducing lightness or using a darker shade
+      // Convert hex to RGB and darken
+      const hex = regionColor.replace('#', '')
+      const r = parseInt(hex.substr(0, 2), 16)
+      const g = parseInt(hex.substr(2, 2), 16)
+      const b = parseInt(hex.substr(4, 2), 16)
+      // Darken by 20%
+      const darkerR = Math.max(0, Math.floor(r * 0.8))
+      const darkerG = Math.max(0, Math.floor(g * 0.8))
+      const darkerB = Math.max(0, Math.floor(b * 0.8))
+      return `rgb(${darkerR}, ${darkerG}, ${darkerB})`
+    }
+    return regionColor
+  }
+
+  const getBorderColor = () => {
+    if (!isLightColor) return timeMismatch ? '#1976d2' : '#bbdefb'
+    if (timeMismatch) {
+      // Darken border color
+      const hex = regionColor.replace('#', '')
+      const r = parseInt(hex.substr(0, 2), 16)
+      const g = parseInt(hex.substr(2, 2), 16)
+      const b = parseInt(hex.substr(4, 2), 16)
+      const darkerR = Math.max(0, Math.floor(r * 0.7))
+      const darkerG = Math.max(0, Math.floor(g * 0.7))
+      const darkerB = Math.max(0, Math.floor(b * 0.7))
+      return `rgb(${darkerR}, ${darkerG}, ${darkerB})`
+    }
+    return regionColor
+  }
 
   return {
     display: 'flex',
     flexDirection: 'column',
     borderRadius: '8px',
     overflow: 'hidden',
-    border: `1px solid ${isLightColor ? regionColor : '#e0e0e0'}`,
+    border: `1px solid ${getBorderColor()}`,
     backgroundColor: '#fff',
     marginBottom: theme.spacing(0.5),
     '&:last-child': {
@@ -82,8 +117,8 @@ const TeachingInfo = styled(Box, {
       alignItems: 'center',
       justifyContent: 'space-between',
       padding: theme.spacing(0.5, 0.75),
-      backgroundColor: isLightColor ? regionColor : '#e3f2fd',
-      borderBottom: `1px solid ${isLightColor ? regionColor : '#bbdefb'}`,
+      backgroundColor: getHeaderBackgroundColor(),
+      borderBottom: `1px solid ${getBorderColor()}`,
       '& .class-name': {
         fontSize: '0.7rem',
         fontWeight: 600,
@@ -840,6 +875,17 @@ const TeachersSchedule = () => {
     return teacherSchedule.includes(slotIndex + 1)
   }
 
+  // Helper function to check if time matches slot time (normalize to HH:mm format)
+  const timeMatchesSlot = (time: string | undefined, slotTime: string): boolean => {
+    if (!time) return false
+
+    // Normalize time to HH:mm format (remove seconds if present)
+    const normalizedTime = time.length >= 5 ? time.slice(0, 5) : time
+
+    // Compare with slot time
+    return normalizedTime === slotTime
+  }
+
   // Check if teacher is teaching at specific slot
   const isTeacherTeaching = (teacherId: string, slotIndex: number) => {
     if (!schedules) return false
@@ -1421,151 +1467,166 @@ const TeachersSchedule = () => {
               {/* Teaching Info or Schedule Cell */}
               {isTeaching && teachingInfos.length > 0 ? (
                 <TeachingInfosContainer sx={{ width: '100%', minWidth: 0 }}>
-                  {teachingInfos.map((teachingInfo, index) => (
-                    <TeachingInfo
-                      key={`${teachingInfo.class_id}-${teachingInfo.lesson}-${index}`}
-                      region={teachingInfo.region}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleTeachingCellClick(
-                          teachingInfo.class_id,
-                          teachingInfo.lesson,
-                          teacherName,
-                          teachingInfo.class_name,
-                          teachingInfo.schedule_time
-                        )
-                      }}
-                      sx={{ cursor: 'pointer', width: '100%', minWidth: 0, flexShrink: 0 }}
-                    >
-                      <Box className="lesson-header">
-                        <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
-                          <Box className="class-name" title={teachingInfo.class_name}>
-                            {teachingInfo.class_name}
-                          </Box>
-                          {(teachingInfo.start_time || teachingInfo.end_time) && (
-                            <Typography
-                              variant="caption"
-                              sx={{
-                                fontSize: '0.6rem',
-                                color: teachingInfo.region && REGION_COLORS[teachingInfo.region]
-                                  ? 'rgba(255, 255, 255, 0.8)'
-                                  : 'rgba(25, 118, 210, 0.7)',
-                                fontWeight: 400,
-                                lineHeight: 1.2,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap'
-                              }}
-                            >
-                              {teachingInfo.start_time && teachingInfo.end_time
-                                ? `${teachingInfo.start_time} - ${teachingInfo.end_time}`
-                                : teachingInfo.start_time || teachingInfo.end_time}
-                            </Typography>
-                          )}
-                        </Box>
-                        {teachingInfo.lesson && (
-                          <Box className="lesson-badge">
-                            Buổi {teachingInfo.lesson}
-                          </Box>
-                        )}
-                      </Box>
-                      {teachingInfo.note && (
-                        <Box className="lesson-note" title={teachingInfo.note}>
-                          <i className="ri-file-text-line" style={{ marginRight: 4, fontSize: '12px' }} />
-                          {teachingInfo.note}
-                        </Box>
-                      )}
-                      {teachingInfo.students && Array.isArray(teachingInfo.students) && teachingInfo.students.length > 0 && (
-                        <Box className="students-content">
-                          <Box className="students-list">
-                            {teachingInfo.students.slice(0, 15).map((student: any) => {
-                              const coursename = student.coursename ? ` - ${student.coursename}` : ''
-                              const displayLabel = student.note
-                                ? `${student.fullname}${coursename} (${student.note})`
-                                : `${student.fullname}${coursename}`
-                              const rollcallStatusConfig = getRollcallStatusConfig(student.rollcall_status as RollcallStatus | undefined)
-                              const isNotRollcall = !student.rollcall_status || student.rollcall_status === RollcallStatus.NOT_ROLLCALL
+                  {teachingInfos.map((teachingInfo, index) => {
+                    // Check if start_time or end_time doesn't match the slot time
+                    const startTimeMatches = timeMatchesSlot(teachingInfo.start_time, time)
+                    const endTimeMatches = timeMatchesSlot(teachingInfo.end_time, time)
+                    const timeMismatch = !startTimeMatches || !endTimeMatches
 
-                              const studentSx = rollcallStatusConfig && !isNotRollcall
-                                ? {
-                                  backgroundColor: `${rollcallStatusConfig.backgroundColor} !important`,
-                                  borderColor: `${rollcallStatusConfig.borderColor} !important`,
-                                  color: `${rollcallStatusConfig.textColor} !important`,
-                                  borderLeft: `4px solid ${rollcallStatusConfig.accentColor}`
-                                }
-                                : {
-                                  color: '#000000 !important'
-                                }
+                    return (
+                      <TeachingInfo
+                        key={`${teachingInfo.class_id}-${teachingInfo.lesson}-${index}`}
+                        region={teachingInfo.region}
+                        timeMismatch={timeMismatch}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleTeachingCellClick(
+                            teachingInfo.class_id,
+                            teachingInfo.lesson,
+                            teacherName,
+                            teachingInfo.class_name,
+                            teachingInfo.schedule_time
+                          )
+                        }}
+                        sx={{ cursor: 'pointer', width: '100%', minWidth: 0, flexShrink: 0 }}
+                      >
+                        <Box className="lesson-header">
+                          <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+                            <Box className="class-name" title={teachingInfo.class_name}>
+                              {teachingInfo.class_name}
+                            </Box>
+                            {(teachingInfo.start_time || teachingInfo.end_time) && (() => {
+                              // Check if start_time or end_time doesn't match the slot time
+                              const startTimeMatches = timeMatchesSlot(teachingInfo.start_time, time)
+                              const endTimeMatches = timeMatchesSlot(teachingInfo.end_time, time)
+                              const timeMismatch = !startTimeMatches || !endTimeMatches
 
                               return (
-                                <Tooltip title={displayLabel} arrow placement="top">
-                                  <Box
-                                    key={student.id}
-                                    className="student-item"
-                                    sx={studentSx}
-                                  >
-                                    <Typography
-                                      component="span"
-                                      variant="caption"
-                                      sx={{
-                                        fontWeight: 500,
-                                        display: 'block',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        whiteSpace: 'nowrap',
-                                        width: '100%',
-                                        color: '#000000 !important'
-                                      }}
+                                <Typography
+                                  variant="caption"
+                                  sx={{
+                                    fontSize: '0.6rem',
+                                    color: teachingInfo.region && REGION_COLORS[teachingInfo.region]
+                                      ? 'rgba(255, 255, 255, 0.8)'
+                                      : 'rgba(25, 118, 210, 0.7)',
+                                    fontWeight: timeMismatch ? 700 : 400,
+                                    lineHeight: 1.2,
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap'
+                                  }}
+                                >
+                                  {teachingInfo.start_time && teachingInfo.end_time
+                                    ? `${teachingInfo.start_time} - ${teachingInfo.end_time}`
+                                    : teachingInfo.start_time || teachingInfo.end_time}
+                                </Typography>
+                              )
+                            })()}
+                          </Box>
+                          {teachingInfo.lesson && (
+                            <Box className="lesson-badge">
+                              Buổi {teachingInfo.lesson}
+                            </Box>
+                          )}
+                        </Box>
+                        {teachingInfo.note && (
+                          <Box className="lesson-note" title={teachingInfo.note}>
+                            <i className="ri-file-text-line" style={{ marginRight: 4, fontSize: '12px' }} />
+                            {teachingInfo.note}
+                          </Box>
+                        )}
+                        {teachingInfo.students && Array.isArray(teachingInfo.students) && teachingInfo.students.length > 0 && (
+                          <Box className="students-content">
+                            <Box className="students-list">
+                              {teachingInfo.students.slice(0, 15).map((student: any) => {
+                                const coursename = student.coursename ? ` - ${student.coursename}` : ''
+                                const displayLabel = student.note
+                                  ? `${student.fullname}${coursename} (${student.note})`
+                                  : `${student.fullname}${coursename}`
+                                const rollcallStatusConfig = getRollcallStatusConfig(student.rollcall_status as RollcallStatus | undefined)
+                                const isNotRollcall = !student.rollcall_status || student.rollcall_status === RollcallStatus.NOT_ROLLCALL
+
+                                const studentSx = rollcallStatusConfig && !isNotRollcall
+                                  ? {
+                                    backgroundColor: `${rollcallStatusConfig.backgroundColor} !important`,
+                                    borderColor: `${rollcallStatusConfig.borderColor} !important`,
+                                    color: `${rollcallStatusConfig.textColor} !important`,
+                                    borderLeft: `4px solid ${rollcallStatusConfig.accentColor}`
+                                  }
+                                  : {
+                                    color: '#000000 !important'
+                                  }
+
+                                return (
+                                  <Tooltip title={displayLabel} arrow placement="top">
+                                    <Box
+                                      key={student.id}
+                                      className="student-item"
+                                      sx={studentSx}
                                     >
-                                      {displayLabel}
-                                    </Typography>
-                                    {student.rollcall_reason && (
                                       <Typography
                                         component="span"
                                         variant="caption"
                                         sx={{
-                                          fontSize: '0.6rem',
-                                          color: rollcallStatusConfig && !isNotRollcall
-                                            ? rollcallStatusConfig.textColor
-                                            : 'rgba(0, 0, 0, 0.6)',
-                                          fontStyle: 'italic',
+                                          fontWeight: 500,
                                           display: 'block',
                                           overflow: 'hidden',
                                           textOverflow: 'ellipsis',
                                           whiteSpace: 'nowrap',
                                           width: '100%',
-                                          lineHeight: 1.2,
-                                          opacity: 0.8
+                                          color: '#000000 !important'
                                         }}
                                       >
-                                        {student.rollcall_reason}
+                                        {displayLabel}
                                       </Typography>
-                                    )}
-                                  </Box>
-                                </Tooltip>
-                              )
-                            })}
-                            {teachingInfo.students.length > 15 && (
-                              <Box
-                                className="student-item"
-                                sx={{
-                                  backgroundColor: '#e3f2fd !important',
-                                  borderColor: '#90caf9 !important',
-                                  color: '#1976d2 !important',
-                                  fontStyle: 'italic',
-                                  textAlign: 'center'
-                                }}
-                              >
-                                <Typography component="span" variant="caption" sx={{ fontWeight: 600 }}>
-                                  ...và {teachingInfo.students.length - 15} học sinh khác
-                                </Typography>
-                              </Box>
-                            )}
+                                      {student.rollcall_reason && (
+                                        <Typography
+                                          component="span"
+                                          variant="caption"
+                                          sx={{
+                                            fontSize: '0.6rem',
+                                            color: rollcallStatusConfig && !isNotRollcall
+                                              ? rollcallStatusConfig.textColor
+                                              : 'rgba(0, 0, 0, 0.6)',
+                                            fontStyle: 'italic',
+                                            display: 'block',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            whiteSpace: 'nowrap',
+                                            width: '100%',
+                                            lineHeight: 1.2,
+                                            opacity: 0.8
+                                          }}
+                                        >
+                                          {student.rollcall_reason}
+                                        </Typography>
+                                      )}
+                                    </Box>
+                                  </Tooltip>
+                                )
+                              })}
+                              {teachingInfo.students.length > 15 && (
+                                <Box
+                                  className="student-item"
+                                  sx={{
+                                    backgroundColor: '#e3f2fd !important',
+                                    borderColor: '#90caf9 !important',
+                                    color: '#1976d2 !important',
+                                    fontStyle: 'italic',
+                                    textAlign: 'center'
+                                  }}
+                                >
+                                  <Typography component="span" variant="caption" sx={{ fontWeight: 600 }}>
+                                    ...và {teachingInfo.students.length - 15} học sinh khác
+                                  </Typography>
+                                </Box>
+                              )}
+                            </Box>
                           </Box>
-                        </Box>
-                      )}
-                    </TeachingInfo>
-                  ))}
+                        )}
+                      </TeachingInfo>
+                    )
+                  })}
                 </TeachingInfosContainer>
               ) : (
                 <ScheduleCell
