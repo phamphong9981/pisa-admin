@@ -44,6 +44,44 @@ import { RegionId, RegionLabel } from '@/@core/hooks/useCourse'
 import useDebounce from '@/@core/hooks/useDebounce'
 import { DatePicker } from '@/components/ui/date-picker'
 
+// DebouncedInput Component
+const DebouncedInput = ({
+    value: initialValue,
+    onChange,
+    debounce = 300,
+    ...props
+}: {
+    value: string;
+    onChange: (value: string) => void;
+    debounce?: number;
+} & Omit<React.ComponentProps<typeof TextField>, 'onChange' | 'value'>) => {
+    const [value, setValue] = useState(initialValue)
+
+    // Đồng bộ hóa khi giá trị từ cha thay đổi (ví dụ khi bấm nút Reset)
+    useEffect(() => {
+        setValue(initialValue)
+    }, [initialValue])
+
+    // Xử lý debounce: Chỉ gọi onChange của cha sau khi ngừng gõ
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            if (value !== initialValue) {
+                onChange(value)
+            }
+        }, debounce)
+
+        return () => clearTimeout(timeout)
+    }, [value, debounce, initialValue, onChange])
+
+    return (
+        <TextField
+            {...props}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+        />
+    )
+}
+
 // Styled Components
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
     fontWeight: 600,
@@ -116,8 +154,7 @@ const AttendanceView = () => {
     const [selectedSchedules, setSelectedSchedules] = useState<Set<string>>(new Set())
     const [batchStatus, setBatchStatus] = useState<RollcallStatus | ''>('')
 
-    // Debounce search
-    const debouncedSearch = useDebounce(searchTerm, 500)
+    // Debounce search (only for student and teacher search)
     const debouncedStudentSearch = useDebounce(studentSearchTerm, 300)
     const debouncedTeacherSearch = useDebounce(teacherSearchTerm, 300)
 
@@ -154,8 +191,8 @@ const AttendanceView = () => {
         // Add search term or profileId
         if (selectedStudent) {
             params.profileId = selectedStudent.profileId
-        } else if (debouncedSearch) {
-            params.search = debouncedSearch
+        } else if (searchTerm) {
+            params.search = searchTerm
         }
 
         // Add filters based on mode
@@ -185,19 +222,19 @@ const AttendanceView = () => {
         }
 
         return params
-    }, [filterMode, selectedStudent, debouncedSearch, selectedWeekId, selectedScheduleTimes, startDate, endDate, selectedRollcallStatus, selectedTeacherId, selectedRegion, page, rowsPerPage])
+    }, [filterMode, selectedStudent, searchTerm, selectedWeekId, selectedScheduleTimes, startDate, endDate, selectedRollcallStatus, selectedTeacherId, selectedRegion, page, rowsPerPage])
 
     // Check if search is enabled
     const isSearchEnabled = useMemo(() => {
         // Need either search term, student selection, teacher selection, region, or date range
-        const hasSearchOrStudent = !!debouncedSearch || !!selectedStudent || !!selectedTeacherId || !!selectedRegion
+        const hasSearchOrStudent = !!searchTerm || !!selectedStudent || !!selectedTeacherId || !!selectedRegion
 
         if (filterMode === 'scheduleTime') {
             return hasSearchOrStudent || (!!selectedWeekId && selectedScheduleTimes.length > 0)
         } else {
             return hasSearchOrStudent || !!startDate || !!endDate || selectedScheduleTimes.length > 0
         }
-    }, [filterMode, debouncedSearch, selectedStudent, selectedTeacherId, selectedRegion, selectedWeekId, selectedScheduleTimes, startDate, endDate])
+    }, [filterMode, searchTerm, selectedStudent, selectedTeacherId, selectedRegion, selectedWeekId, selectedScheduleTimes, startDate, endDate])
 
     const { data: searchResults, isLoading, refetch: refetchSearch } = useSearchSchedule(searchParams, isSearchEnabled)
 
@@ -390,13 +427,14 @@ const AttendanceView = () => {
                 <Grid container spacing={3} sx={{ mb: 4 }}>
                     {/* Text Search */}
                     <Grid item xs={12} md={3}>
-                        <TextField
+                        <DebouncedInput
                             fullWidth
                             label="Tìm kiếm"
                             placeholder="Nhập tên học sinh, email hoặc tên khóa học..."
                             value={searchTerm}
-                            onChange={(e) => {
-                                setSearchTerm(e.target.value)
+                            debounce={300}
+                            onChange={(value) => {
+                                setSearchTerm(value)
                                 setSelectedStudent(null) // Clear student selection when typing
                                 setPage(0)
                             }}
