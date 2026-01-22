@@ -876,14 +876,26 @@ const TeachersSchedule = () => {
   }
 
   // Helper function to check if time matches slot time (normalize to HH:mm format)
-  const timeMatchesSlot = (time: string | undefined, slotTime: string): boolean => {
+  const timeMatchesSlot = (time: string | undefined, slotTime: string, isEndTime: boolean = false): boolean => {
     if (!time) return false
 
     // Normalize time to HH:mm format (remove seconds if present)
     const normalizedTime = time.length >= 5 ? time.slice(0, 5) : time
 
+    // slotTime is in format "HH:mm-HH:mm" (e.g., "19:30-21:30")
+    // Extract start time (before "-") or end time (after "-") from slotTime
+    const slotTimeParts = slotTime.split('-')
+    if (slotTimeParts.length !== 2) {
+      // If slotTime doesn't have the expected format, try direct comparison
+      return normalizedTime === slotTime
+    }
+
+    // For start_time, compare with first part (before "-")
+    // For end_time, compare with second part (after "-")
+    const slotTimeToCompare = isEndTime ? slotTimeParts[1].trim() : slotTimeParts[0].trim()
+
     // Compare with slot time
-    return normalizedTime === slotTime
+    return normalizedTime === slotTimeToCompare
   }
 
   // Check if teacher is teaching at specific slot
@@ -1469,8 +1481,8 @@ const TeachersSchedule = () => {
                 <TeachingInfosContainer sx={{ width: '100%', minWidth: 0 }}>
                   {teachingInfos.map((teachingInfo, index) => {
                     // Check if start_time or end_time doesn't match the slot time
-                    const startTimeMatches = timeMatchesSlot(teachingInfo.start_time, time)
-                    const endTimeMatches = timeMatchesSlot(teachingInfo.end_time, time)
+                    const startTimeMatches = timeMatchesSlot(teachingInfo.start_time, time, false)
+                    const endTimeMatches = timeMatchesSlot(teachingInfo.end_time, time, true)
                     const timeMismatch = !startTimeMatches || !endTimeMatches
 
                     return (
@@ -1497,8 +1509,8 @@ const TeachersSchedule = () => {
                             </Box>
                             {(teachingInfo.start_time || teachingInfo.end_time) && (() => {
                               // Check if start_time or end_time doesn't match the slot time
-                              const startTimeMatches = timeMatchesSlot(teachingInfo.start_time, time)
-                              const endTimeMatches = timeMatchesSlot(teachingInfo.end_time, time)
+                              const startTimeMatches = timeMatchesSlot(teachingInfo.start_time, time, false)
+                              const endTimeMatches = timeMatchesSlot(teachingInfo.end_time, time, true)
                               const timeMismatch = !startTimeMatches || !endTimeMatches
 
                               return (

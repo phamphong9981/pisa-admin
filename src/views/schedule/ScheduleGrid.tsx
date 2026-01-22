@@ -560,7 +560,7 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({
                                                                     {isTransferred && (
                                                                         <Chip
                                                                             size="small"
-                                                                            label="Chuyển lớp"
+                                                                            label="Ghép lớp"
                                                                             sx={{
                                                                                 backgroundColor: 'rgba(255,255,255,0.2)',
                                                                                 color: '#fff',
