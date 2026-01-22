@@ -792,6 +792,7 @@ const searchSchedule = async (params: SearchScheduleParams): Promise<SearchSched
         startDate: params.startDate,
         endDate: params.endDate,
         rollcallStatus: params.rollcallStatus,
+        region: params.region,
         page: params.page || 1,
         limit: params.limit || 50
     }
