@@ -40,6 +40,7 @@ import { useSearchSchedule, SCHEDULE_TIME, RollcallStatus, useUpdateRollcallStat
 import { useGetWeeks } from '@/@core/hooks/useWeek'
 import { useStudentList } from '@/@core/hooks/useStudent'
 import { useTeacherList } from '@/@core/hooks/useTeacher'
+import { RegionId, RegionLabel } from '@/@core/hooks/useCourse'
 import useDebounce from '@/@core/hooks/useDebounce'
 import { DatePicker } from '@/components/ui/date-picker'
 
@@ -102,6 +103,9 @@ const AttendanceView = () => {
     // Teacher search states
     const [teacherSearchTerm, setTeacherSearchTerm] = useState('')
     const [selectedTeacherId, setSelectedTeacherId] = useState<string | null>(null)
+
+    // Region filter state
+    const [selectedRegion, setSelectedRegion] = useState<RegionId | null>(null)
 
     // Date range states
     const [startDate, setStartDate] = useState<string>('')
@@ -175,20 +179,25 @@ const AttendanceView = () => {
             params.teacherId = selectedTeacherId
         }
 
+        // Region filter
+        if (selectedRegion) {
+            params.region = selectedRegion
+        }
+
         return params
-    }, [filterMode, selectedStudent, debouncedSearch, selectedWeekId, selectedScheduleTimes, startDate, endDate, selectedRollcallStatus, selectedTeacherId, page, rowsPerPage])
+    }, [filterMode, selectedStudent, debouncedSearch, selectedWeekId, selectedScheduleTimes, startDate, endDate, selectedRollcallStatus, selectedTeacherId, selectedRegion, page, rowsPerPage])
 
     // Check if search is enabled
     const isSearchEnabled = useMemo(() => {
-        // Need either search term, student selection, teacher selection, or date range
-        const hasSearchOrStudent = !!debouncedSearch || !!selectedStudent || !!selectedTeacherId
+        // Need either search term, student selection, teacher selection, region, or date range
+        const hasSearchOrStudent = !!debouncedSearch || !!selectedStudent || !!selectedTeacherId || !!selectedRegion
 
         if (filterMode === 'scheduleTime') {
             return hasSearchOrStudent || (!!selectedWeekId && selectedScheduleTimes.length > 0)
         } else {
             return hasSearchOrStudent || !!startDate || !!endDate || selectedScheduleTimes.length > 0
         }
-    }, [filterMode, debouncedSearch, selectedStudent, selectedTeacherId, selectedWeekId, selectedScheduleTimes, startDate, endDate])
+    }, [filterMode, debouncedSearch, selectedStudent, selectedTeacherId, selectedRegion, selectedWeekId, selectedScheduleTimes, startDate, endDate])
 
     const { data: searchResults, isLoading, refetch: refetchSearch } = useSearchSchedule(searchParams, isSearchEnabled)
 
@@ -225,6 +234,7 @@ const AttendanceView = () => {
         setStudentSearchTerm('')
         setSelectedTeacherId(null)
         setTeacherSearchTerm('')
+        setSelectedRegion(null)
         setSelectedWeekId('')
         setSelectedScheduleTimes([])
         setStartDate('')
@@ -538,6 +548,47 @@ const AttendanceView = () => {
                         </FormControl>
                     </Grid>
 
+                    {/* Region Filter */}
+                    <Grid item xs={12} md={3}>
+                        <Autocomplete
+                            fullWidth
+                            options={Object.values(RegionId).filter((v): v is RegionId => typeof v === 'number')}
+                            value={selectedRegion}
+                            getOptionLabel={(option) => RegionLabel[option]}
+                            onChange={(_, value) => {
+                                setSelectedRegion(value)
+                                setPage(0)
+                            }}
+                            renderInput={(params) => (
+                                <TextField
+                                    {...params}
+                                    label="Cơ sở"
+                                    placeholder="Chọn cơ sở..."
+                                    InputProps={{
+                                        ...params.InputProps,
+                                        startAdornment: (
+                                            <>
+                                                <InputAdornment position="start">
+                                                    <i className="ri-map-pin-line" />
+                                                </InputAdornment>
+                                                {params.InputProps.startAdornment}
+                                            </>
+                                        )
+                                    }}
+                                />
+                            )}
+                            renderOption={(props, option) => (
+                                <Box component="li" {...props} key={option}>
+                                    <Box display="flex" alignItems="center" gap={1}>
+                                        <i className="ri-map-pin-fill" style={{ color: '#1976d2' }} />
+                                        <Typography variant="body2">{RegionLabel[option]}</Typography>
+                                    </Box>
+                                </Box>
+                            )}
+                            noOptionsText="Không có cơ sở nào"
+                        />
+                    </Grid>
+
                     {/* Conditional filters based on mode */}
                     {filterMode === 'scheduleTime' ? (
                         <>
@@ -698,6 +749,15 @@ const AttendanceView = () => {
                             size="small"
                         />
                     )}
+                    {selectedRegion && (
+                        <Chip
+                            label={`Cơ sở: ${RegionLabel[selectedRegion]}`}
+                            color="info"
+                            onDelete={() => setSelectedRegion(null)}
+                            size="small"
+                            icon={<i className="ri-map-pin-line" style={{ fontSize: '14px' }} />}
+                        />
+                    )}
                 </Box>
 
                 {/* Results */}
@@ -785,6 +845,7 @@ const AttendanceView = () => {
                                         </StyledTableCell>
                                         <StyledTableCell>Học sinh</StyledTableCell>
                                         <StyledTableCell>Lớp / Khóa học</StyledTableCell>
+                                        <StyledTableCell>Cơ sở</StyledTableCell>
                                         <StyledTableCell>Ngày học</StyledTableCell>
                                         <StyledTableCell>Thời gian</StyledTableCell>
                                         <StyledTableCell align="center">Điểm danh</StyledTableCell>
@@ -823,6 +884,25 @@ const AttendanceView = () => {
                                                             {schedule.courseName}
                                                         </Typography>
                                                     </Box>
+                                                </TableCell>
+                                                <TableCell>
+                                                    {schedule.courseRegion ? (
+                                                        <Chip
+                                                            label={RegionLabel[schedule.courseRegion as RegionId] || `Cơ sở ${schedule.courseRegion}`}
+                                                            size="small"
+                                                            sx={{
+                                                                backgroundColor: '#e3f2fd',
+                                                                color: '#1976d2',
+                                                                fontWeight: 500,
+                                                                fontSize: '0.75rem'
+                                                            }}
+                                                            icon={<i className="ri-map-pin-line" style={{ fontSize: '14px' }} />}
+                                                        />
+                                                    ) : (
+                                                        <Typography variant="body2" color="text.secondary">
+                                                            —
+                                                        </Typography>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell>
                                                     <Typography variant="body2">

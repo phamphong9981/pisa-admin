@@ -529,34 +529,60 @@ const TeachersSchedule = () => {
     return slots
   }, [selectedWeekInfo?.startDate])
 
-  // Check if teacher has any schedule in selected regions
+  // Get visible slot indices based on day and time range filters
+  const visibleSlotIndices = useMemo(() => {
+    const indices = new Set<number>()
+
+    allTimeSlots.forEach(slot => {
+      // Check if slot matches day filter
+      const matchesDay = selectedDay === 'all' || slot.dayKey === selectedDay
+      // Check if slot matches time range filter
+      const matchesTimeRange = selectedTimeRanges.length === 0 || selectedTimeRanges.includes(slot.time)
+
+      if (matchesDay && matchesTimeRange) {
+        indices.add(slot.slot + 1) // slot is 0-based, schedule_time is 1-based
+      }
+    })
+
+    return indices
+  }, [allTimeSlots, selectedDay, selectedTimeRanges])
+
+  // Check if teacher has any schedule in selected regions AND in the currently visible time slots
   const teacherHasScheduleInSelectedRegions = useMemo(() => {
     if (!schedules || selectedRegions.length === 0) {
       return new Set<string>() // Return empty set if no filtering needed
     }
 
+    // If no time slots are visible, return empty set
+    if (visibleSlotIndices.size === 0) {
+      return new Set<string>()
+    }
+
     const teacherIdsWithSchedules = new Set<string>()
 
     schedules.forEach(schedule => {
-      // Check if schedule belongs to selected regions
+      // Check if schedule belongs to selected regions AND is in visible time slots
       if (schedule.region !== undefined && schedule.region !== null && selectedRegions.includes(schedule.region)) {
-        // Add teacher_id if exists
-        if (schedule.teacher_id) {
-          teacherIdsWithSchedules.add(schedule.teacher_id)
-        }
-        // Also check students' teacher_id
-        if (schedule.students && Array.isArray(schedule.students)) {
-          schedule.students.forEach((student: any) => {
-            if (student.teacher_id) {
-              teacherIdsWithSchedules.add(student.teacher_id)
-            }
-          })
+        // Only add teacher if schedule is in visible time slots
+        if (schedule.schedule_time && visibleSlotIndices.has(schedule.schedule_time)) {
+          // Add teacher_id if exists
+          if (schedule.teacher_id) {
+            teacherIdsWithSchedules.add(schedule.teacher_id)
+          }
+          // Also check students' teacher_id
+          if (schedule.students && Array.isArray(schedule.students)) {
+            schedule.students.forEach((student: any) => {
+              if (student.teacher_id) {
+                teacherIdsWithSchedules.add(student.teacher_id)
+              }
+            })
+          }
         }
       }
     })
 
     return teacherIdsWithSchedules
-  }, [schedules, selectedRegions])
+  }, [schedules, selectedRegions, visibleSlotIndices])
 
   // Check if teacher is free in selected schedule times (OR logic - rảnh trong ít nhất một slot)
   const teacherIsFreeInSelectedScheduleTimes = useMemo(() => {

@@ -753,6 +753,7 @@ export interface SearchScheduleResponseDto {
     scheduleInfoEndTime?: string
     scheduleInfoTeacherNote?: string
     scheduleDate?: string
+    courseRegion?: number
 }
 
 export interface SearchSchedulePaginationResponseDto {
@@ -773,6 +774,7 @@ export interface SearchScheduleParams {
     startDate?: string
     endDate?: string
     rollcallStatus?: string
+    region?: number
     page?: number
     limit?: number
 }
