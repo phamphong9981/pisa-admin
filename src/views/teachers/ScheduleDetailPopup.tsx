@@ -249,6 +249,9 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
   const [showRollcallNoteDialog, setShowRollcallNoteDialog] = React.useState(false)
   const [rollcallNoteText, setRollcallNoteText] = React.useState('')
   const [showRollcallNoteSuccess, setShowRollcallNoteSuccess] = React.useState(false)
+  const [showTeacherNoteDialog, setShowTeacherNoteDialog] = React.useState(false)
+  const [teacherNoteText, setTeacherNoteText] = React.useState('')
+  const [showTeacherNoteSuccess, setShowTeacherNoteSuccess] = React.useState(false)
   const [editingReasonStudentId, setEditingReasonStudentId] = React.useState<string | null>(null)
   const [editingReasonText, setEditingReasonText] = React.useState('')
 
@@ -486,6 +489,36 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
     }
   }
 
+  const handleOpenTeacherNoteDialog = () => {
+    setTeacherNoteText(scheduleDetail?.scheduleInfo?.teacherNote || '')
+    setShowTeacherNoteDialog(true)
+  }
+
+  const handleCloseTeacherNoteDialog = () => {
+    setShowTeacherNoteDialog(false)
+    setTeacherNoteText('')
+  }
+
+  const handleSaveTeacherNote = async () => {
+    if (!scheduleDetail) return
+
+    try {
+      await updateLessonScheduleMutation.mutateAsync({
+        weekId: scheduleDetail.classInfo.weekId,
+        classId: classId,
+        lesson: lesson,
+        scheduleTime: scheduleTime,
+        action: 'update',
+        teacherNote: teacherNoteText.trim()
+      })
+      setShowTeacherNoteSuccess(true)
+      handleCloseTeacherNoteDialog()
+      scheduleDetailQuery.refetch()
+    } catch (e) {
+      // swallow, error UI can be added later
+    }
+  }
+
   const handleAttendingCheckboxChange = (studentId: string, checked: boolean) => {
     const student = scheduleDetail?.students.attending.find(s => s.profileId === studentId)
     if (!student) return
@@ -701,6 +734,26 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                     size="small"
                     variant="text"
                     onClick={handleOpenRollcallNoteDialog}
+                    sx={{
+                      minWidth: 'auto',
+                      padding: '4px',
+                      color: 'primary.main',
+                      '&:hover': {
+                        backgroundColor: 'rgba(25, 118, 210, 0.08)'
+                      }
+                    }}
+                  >
+                    <i className="ri-edit-line" style={{ fontSize: '16px' }} />
+                  </Button>
+                </Box>
+                <Box display="flex" alignItems="center" gap={1} mt={0.5}>
+                  <Typography variant="body2" color="text.secondary">
+                    Biến động ca học: {scheduleDetail?.scheduleInfo?.teacherNote || '—'}
+                  </Typography>
+                  <Button
+                    size="small"
+                    variant="text"
+                    onClick={handleOpenTeacherNoteDialog}
                     sx={{
                       minWidth: 'auto',
                       padding: '4px',
@@ -1448,6 +1501,66 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
       >
         <Alert onClose={() => setShowRollcallNoteSuccess(false)} severity="success" sx={{ width: '100%' }}>
           Đã cập nhật ghi chú điểm danh thành công!
+        </Alert>
+      </Snackbar>
+
+      {/* Teacher Note Edit Dialog */}
+      <Dialog
+        open={showTeacherNoteDialog}
+        onClose={handleCloseTeacherNoteDialog}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.15)'
+          }
+        }}
+      >
+        <DialogTitle>
+          <Box display="flex" alignItems="center" gap={2}>
+            <i className="ri-file-edit-line" style={{ fontSize: '24px', color: '#1976d2' }} />
+            <Typography variant="h6" fontWeight={600}>
+              Biến động ca học
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            fullWidth
+            multiline
+            minRows={4}
+            label="Biến động ca học"
+            placeholder="Nhập ghi chú về biến động ca học từ giáo viên..."
+            value={teacherNoteText}
+            onChange={(e) => setTeacherNoteText(e.target.value)}
+            sx={{ mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseTeacherNoteDialog} variant="outlined">Hủy</Button>
+          <Button
+            onClick={handleSaveTeacherNote}
+            variant="contained"
+            color="primary"
+            disabled={updateLessonScheduleMutation.isPending}
+            startIcon={updateLessonScheduleMutation.isPending ? <CircularProgress size={16} color="inherit" /> : undefined}
+          >
+            {updateLessonScheduleMutation.isPending ? 'Đang lưu...' : 'Lưu'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Teacher Note Update Success */}
+      <Snackbar
+        open={showTeacherNoteSuccess}
+        autoHideDuration={2500}
+        onClose={() => setShowTeacherNoteSuccess(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert onClose={() => setShowTeacherNoteSuccess(false)} severity="success" sx={{ width: '100%' }}>
+          Đã cập nhật biến động ca học thành công!
         </Alert>
       </Snackbar>
 
