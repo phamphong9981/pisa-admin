@@ -187,7 +187,7 @@ const OrdersPage = () => {
 
   // Export dialog state
   const [exportSearch, setExportSearch] = React.useState('')
-  const [exportSelectedStudent, setExportSelectedStudent] = React.useState<{ id: string; fullname: string; email: string } | null>(null)
+  const [exportSelectedStudents, setExportSelectedStudents] = React.useState<Array<{ id: string; fullname: string; email: string }>>([])
   const [exportMonth, setExportMonth] = React.useState<number>(new Date().getMonth() + 1)
   const [exportYear, setExportYear] = React.useState<number>(new Date().getFullYear())
   const [exportRegionId, setExportRegionId] = React.useState<number>(RegionId.HALONG)
@@ -292,7 +292,7 @@ const OrdersPage = () => {
     setDialogSearch('')
     setDialogSelectedStudent(null)
     setExportSearch('')
-    setExportSelectedStudent(null)
+    setExportSelectedStudents([])
     setExportRegionId(RegionId.HALONG)
     setExportFormat(ReportFormat.EXCEL)
   }
@@ -409,10 +409,10 @@ const OrdersPage = () => {
   }
 
   const handleExportFeeReceipt = async () => {
-    if (!exportSelectedStudent) {
+    if (exportSelectedStudents.length === 0) {
       setNotification({
         open: true,
-        message: 'Vui lòng chọn học sinh',
+        message: 'Vui lòng chọn ít nhất một học sinh',
         severity: 'error'
       })
       return
@@ -447,7 +447,7 @@ const OrdersPage = () => {
 
     try {
       const dto: ExportFeeReceiptDto = {
-        profileId: exportSelectedStudent.id,
+        profileIds: exportSelectedStudents.map(s => s.id),
         month: exportMonth,
         year: exportYear,
         regionId: exportRegionId,
@@ -457,11 +457,15 @@ const OrdersPage = () => {
       const blob = await exportFeeReceiptMutation.mutateAsync(dto)
 
       // Create filename with appropriate extension
-      const fileExtension = exportFormat === ReportFormat.PDF ? 'pdf' : 'xlsx'
-      const filename = `fee_receipt_${exportMonth}_${exportYear}.${fileExtension}`
+      // If multiple students, it's always a ZIP file from backend
+      const isMultiple = exportSelectedStudents.length > 1
+      const fileExtension = isMultiple ? 'zip' : (exportFormat === ReportFormat.PDF ? 'pdf' : 'xlsx')
+      const filename = isMultiple
+        ? `fee_receipts_${exportMonth}_${exportYear}.zip`
+        : `fee_receipt_${exportMonth}_${exportYear}.${fileExtension}`
 
       // Open preview dialog instead of saving directly
-      openPreviewDialog(blob, filename, fileExtension as 'pdf' | 'xlsx')
+      openPreviewDialog(blob, filename, fileExtension as 'pdf' | 'xlsx' | 'zip')
       handleCloseDialogs()
     } catch (error) {
       console.error('Export fee receipt error:', error)
@@ -839,6 +843,7 @@ const OrdersPage = () => {
         <DialogContent>
           <Box display='flex' flexDirection='column' gap={3} sx={{ mt: 2 }}>
             <Autocomplete
+              multiple
               size='small'
               options={exportStudentOptions}
               getOptionLabel={(option) => `${option.fullname} (${option.email})`}
@@ -846,20 +851,14 @@ const OrdersPage = () => {
               loading={isLoadingExportStudents}
               inputValue={exportSearch}
               onInputChange={(_, value, reason) => {
-                // Cho phép cập nhật khi gõ phím ('input') HOẶC khi chọn giá trị ('reset', 'clear')
-                if (reason === 'input' || reason === 'reset' || reason === 'clear') {
+                if (reason === 'input') {
                   setExportSearch(value)
                 }
               }}
-              value={exportSelectedStudent}
+              value={exportSelectedStudents}
               onChange={(_, value) => {
-                setExportSelectedStudent(value)
-                // Cập nhật inputValue để hiển thị đầy đủ tên học sinh khi chọn
-                if (value) {
-                  setExportSearch(`${value.fullname} (${value.email})`)
-                } else {
-                  setExportSearch('')
-                }
+                setExportSelectedStudents(value as Array<{ id: string; fullname: string; email: string }>)
+                setExportSearch('')
               }}
               renderInput={(params) => (
                 <TextField
@@ -960,7 +959,7 @@ const OrdersPage = () => {
               exportFeeReceiptMutation.isPending && <CircularProgress size={16} color='inherit' />
             }
           >
-            Xuất file Excel
+            Xuất phiếu thu
           </Button>
         </DialogActions>
       </Dialog>

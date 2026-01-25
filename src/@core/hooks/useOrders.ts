@@ -159,7 +159,7 @@ export interface OrdersQueryParams {
 }
 
 export interface ExportFeeReceiptDto {
-    profileId: string;
+    profileIds: string[];
     month: number;
     year: number;
     regionId: number;
