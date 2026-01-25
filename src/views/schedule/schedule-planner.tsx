@@ -298,6 +298,7 @@ const SchedulePlanner = () => {
   // State for student search and filter
   const [studentSearchTerm, setStudentSearchTerm] = useState<string>('')
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set())
+  const [selectedStudentsMap, setSelectedStudentsMap] = useState<Record<string, any>>({})
 
   // Week selection
   const { data: weeksData, isLoading: isWeeksLoading } = useGetWeeks()
@@ -632,6 +633,46 @@ const SchedulePlanner = () => {
     }))
   }, [searchProfiles, studentSearchTerm])
 
+  // Keep track of full student data for selected students
+  // This is necessary because filteredStudents or allStudents might change
+  // but we still need the busyScheduleArr of previously selected students
+  useEffect(() => {
+    setSelectedStudentsMap(prev => {
+      let changed = false
+      const newMap = { ...prev }
+
+      // Add students from allStudents if selected
+      allStudents.forEach(student => {
+        if (selectedStudentIds.has(student.id)) {
+          if (!newMap[student.id]) {
+            newMap[student.id] = student
+            changed = true
+          }
+        }
+      })
+
+      // Add students from filteredStudents if selected
+      filteredStudents.forEach(student => {
+        if (selectedStudentIds.has(student.id)) {
+          if (!newMap[student.id]) {
+            newMap[student.id] = student
+            changed = true
+          }
+        }
+      })
+
+      // Clean up students that are no longer selected
+      Object.keys(newMap).forEach(id => {
+        if (!selectedStudentIds.has(id)) {
+          delete newMap[id]
+          changed = true
+        }
+      })
+
+      return changed ? newMap : prev
+    })
+  }, [allStudents, filteredStudents, selectedStudentIds])
+
   // Calculate time slots where all selected students are free
   const studentsAvailableSlots = useMemo(() => {
     if (selectedStudentIds.size === 0) return new Set<number>()
@@ -640,14 +681,10 @@ const SchedulePlanner = () => {
 
     // Check each time slot
     for (let i = 1; i <= SCHEDULE_TIME.length; i++) {
-      const freeStudentsAtSlot = freeStudentsByIndex[i] || []
-      const freeStudentIds = new Set(freeStudentsAtSlot.map(s => s.id))
-
       // Check if all selected students are free at this slot
       const allSelectedAreFree = Array.from(selectedStudentIds).every(studentId => {
-        // Find student in course info or search results to get their busy schedule
-        const student = allStudents.find(s => s.id === studentId) ||
-          filteredStudents.find(s => s.id === studentId);
+        // Use persisted data from our map
+        const student = selectedStudentsMap[studentId]
 
         if (!student) return false;
 
@@ -667,7 +704,7 @@ const SchedulePlanner = () => {
     }
 
     return availableSlots
-  }, [selectedStudentIds, freeStudentsByIndex, scheduledStudentIdsByIndex])
+  }, [selectedStudentIds, scheduledStudentIdsByIndex, selectedStudentsMap])
 
   // Toggle student selection
   const toggleStudentSelection = useCallback((studentId: string) => {
@@ -684,8 +721,8 @@ const SchedulePlanner = () => {
 
   // Get selected students info
   const selectedStudentsInfo = useMemo(() => {
-    return allStudents.filter(s => selectedStudentIds.has(s.id))
-  }, [allStudents, selectedStudentIds])
+    return Object.values(selectedStudentsMap)
+  }, [selectedStudentsMap])
 
   // Helper function to check if teacher is busy at specific time slot
   const isTeacherBusy = (teacherId: string, slotIndex: number) => {
