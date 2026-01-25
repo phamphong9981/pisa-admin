@@ -152,10 +152,10 @@ interface ScheduleGridProps {
     // Search states
     studentSearchTerm: string
     onStudentSearchChange: (value: string) => void
-    filteredStudents: Array<{ id: string; fullname: string; email?: string; phone?: string }>
+    filteredStudents: Array<{ id: string; fullname: string; email?: string; phone?: string; courseName?: string }>
     selectedStudentIds: Set<string>
     onToggleStudentSelection: (studentId: string) => void
-    selectedStudentsInfo: Array<{ id: string; fullname: string; email?: string; phone?: string }>
+    selectedStudentsInfo: Array<{ id: string; fullname: string; email?: string; phone?: string; courseName?: string }>
 
     teacherSearchTerm: string
     onTeacherSearchChange: (value: string) => void
@@ -847,10 +847,15 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({
                                                                 <Typography variant="body2" fontWeight={500}>
                                                                     {student.fullname}
                                                                 </Typography>
-                                                                {student.phone && (
+                                                                {student.email && (
                                                                     <Typography variant="caption" color="text.secondary" display="block">
-                                                                        <i className="ri-phone-line" style={{ marginRight: 4, fontSize: '12px' }} />
-                                                                        {student.phone}
+                                                                        {student.email}
+                                                                    </Typography>
+                                                                )}
+                                                                {student.courseName && (
+                                                                    <Typography variant="caption" color="primary" display="block">
+                                                                        <i className="ri-book-line" style={{ marginRight: 4, fontSize: '12px' }} />
+                                                                        {student.courseName}
                                                                     </Typography>
                                                                 )}
                                                             </Box>

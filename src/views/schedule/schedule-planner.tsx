@@ -614,6 +614,7 @@ const SchedulePlanner = () => {
       fullname: pc.profile.fullname,
       email: pc.profile.email,
       phone: pc.profile.phone,
+      courseName: courseInfo?.name,
       busyScheduleArr: pc.profile.busyScheduleArr || []
     }))
   }, [courseInfo])
@@ -626,6 +627,7 @@ const SchedulePlanner = () => {
       fullname: p.fullname,
       email: p.email,
       phone: p.phone,
+      courseName: p.profileCourses?.[0]?.course?.name,
       busyScheduleArr: p.currentWeekBusyScheduleArr || []
     }))
   }, [searchProfiles, studentSearchTerm])
