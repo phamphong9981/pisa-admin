@@ -122,7 +122,7 @@ const TeachingInfo = styled(Box, {
       '& .class-name': {
         fontSize: '0.7rem',
         fontWeight: 600,
-        color: isLightColor ? '#fff' : '#1976d2',
+        color: '#000000',
         lineHeight: 1.2,
         flex: 1,
         marginRight: theme.spacing(0.5),
@@ -133,7 +133,7 @@ const TeachingInfo = styled(Box, {
       },
       '& .lesson-badge': {
         fontSize: '0.6rem',
-        color: isLightColor ? '#fff' : '#1976d2',
+        color: '#000000',
         backgroundColor: isLightColor ? 'rgba(255, 255, 255, 0.3)' : '#fff',
         padding: '2px 6px',
         borderRadius: '6px',
@@ -266,7 +266,7 @@ const ScheduleCell = ({
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
-                color: '#856404',
+                color: '#000000',
                 fontWeight: 600,
                 fontSize: '0.7rem',
                 flex: 1,
@@ -1339,7 +1339,7 @@ const TeachersSchedule = () => {
                   <i className="ri-pushpin-fill" style={{ fontSize: '14px', color: '#ff9800' }} />
                 </Tooltip>
               )}
-              <Typography variant="body2" fontWeight={600} sx={{ flex: 1 }}>
+              <Typography variant="body2" fontWeight={700} sx={{ flex: 1, color: '#000000' }}>
                 {teacher.name}
               </Typography>
               <Tooltip title={isPinned ? "Bỏ ghim" : "Ghim giáo viên"}>
@@ -1517,9 +1517,7 @@ const TeachersSchedule = () => {
                                   variant="caption"
                                   sx={{
                                     fontSize: '0.6rem',
-                                    color: teachingInfo.region && REGION_COLORS[teachingInfo.region]
-                                      ? 'rgba(255, 255, 255, 0.8)'
-                                      : 'rgba(25, 118, 210, 0.7)',
+                                    color: '#000000',
                                     fontWeight: timeMismatch ? 700 : 400,
                                     lineHeight: 1.2,
                                     overflow: 'hidden',
