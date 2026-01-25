@@ -35,6 +35,7 @@ import {
 
 // Hooks
 import { useCourseInfo, useCourseInfoWithReload, useCourseList, RegionId, RegionLabel } from '@/@core/hooks/useCourse'
+import { useStudentList, useProfileSearch } from '@/@core/hooks/useStudent'
 import { SCHEDULE_TIME, useAutoScheduleCourse, useGetAllSchedule } from '@/@core/hooks/useSchedule'
 import { useGetWeeks, WeekResponseDto } from '@/@core/hooks/useWeek'
 import { useTeacherList, TeacherListResponse, useTeacherScheduleNotes, useTeacherScheduleNotesByWeek } from '@/@core/hooks/useTeacher'
@@ -602,27 +603,32 @@ const SchedulePlanner = () => {
     return map
   }, [teacherScheduleNotes])
 
-  // Get all students from course info for search
+  // Use useProfileSearch for student search
+  const { data: searchProfiles, isLoading: isSearchProfilesLoading } = useProfileSearch(studentSearchTerm)
+
+  // Get all students from course info for display in the grid
   const allStudents = useMemo(() => {
     if (!courseInfo) return []
     return (courseInfo.profileCourses || []).map(pc => ({
       id: pc.profile.id,
       fullname: pc.profile.fullname,
       email: pc.profile.email,
-      phone: pc.profile.phone
+      phone: pc.profile.phone,
+      busyScheduleArr: pc.profile.busyScheduleArr || []
     }))
   }, [courseInfo])
 
-  // Filter students by search term
+  // Filtered students from profile search
   const filteredStudents = useMemo(() => {
     if (!studentSearchTerm.trim()) return []
-    const keyword = studentSearchTerm.toLowerCase()
-    return allStudents.filter(student =>
-      student.fullname.toLowerCase().includes(keyword) ||
-      student.email?.toLowerCase().includes(keyword) ||
-      student.phone?.toLowerCase().includes(keyword)
-    )
-  }, [allStudents, studentSearchTerm])
+    return (searchProfiles || []).map(p => ({
+      id: p.id,
+      fullname: p.fullname,
+      email: p.email,
+      phone: p.phone,
+      busyScheduleArr: p.currentWeekBusyScheduleArr || []
+    }))
+  }, [searchProfiles, studentSearchTerm])
 
   // Calculate time slots where all selected students are free
   const studentsAvailableSlots = useMemo(() => {
@@ -637,8 +643,15 @@ const SchedulePlanner = () => {
 
       // Check if all selected students are free at this slot
       const allSelectedAreFree = Array.from(selectedStudentIds).every(studentId => {
-        // Check if student is in free list and not scheduled
-        if (!freeStudentIds.has(studentId)) return false
+        // Find student in course info or search results to get their busy schedule
+        const student = allStudents.find(s => s.id === studentId) ||
+          filteredStudents.find(s => s.id === studentId);
+
+        if (!student) return false;
+
+        // Check if student is busy at this slot
+        const isBusy = (student.busyScheduleArr || []).includes(i);
+        if (isBusy) return false;
 
         // Also check if student is not scheduled at this time
         if (scheduledStudentIdsByIndex[i]?.has(studentId)) return false

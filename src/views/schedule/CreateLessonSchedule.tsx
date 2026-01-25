@@ -23,7 +23,7 @@ import {
 
 // Hooks
 import { useCreateLessonSchedule, useGetScheduleDetail, useUpdateUserSchedule, useUpdateLessonSchedule, ScheduleStatus } from '@/@core/hooks/useSchedule'
-import { useStudentList } from '@/@core/hooks/useStudent'
+import { useStudentList, useProfileSearch } from '@/@core/hooks/useStudent'
 import { useTeacherList, useTeacherScheduleNotes, useTeacherScheduleNotesByWeek } from '@/@core/hooks/useTeacher'
 import { useCreateClass } from '@/@core/hooks/useClass'
 
@@ -172,7 +172,7 @@ const CreateLessonSchedule = ({
   const [showTeacherSearchResults, setShowTeacherSearchResults] = useState(false)
 
   // Student search hook - use weekId to fetch student's busy schedule for that week
-  const { data: searchResults, isLoading: isSearchLoading } = useStudentList(studentSearch, weekId || undefined)
+  const { data: searchResults, isLoading: isSearchLoading } = useProfileSearch(studentSearch)
 
   // Fetch all teacher schedule notes for the week
   const { data: allTeacherNotes } = useTeacherScheduleNotesByWeek(weekId || '')
@@ -604,18 +604,18 @@ const CreateLessonSchedule = ({
 
     if (!isAlreadySelected) {
       // Find the full student data from searchResults
-      const fullStudentData = searchResults?.users?.find(u => u.id === user.id)
+      const fullStudentData = searchResults?.find(u => u.id === user.id)
 
       if (fullStudentData) {
         const studentToAdd: SelectedStudent = {
           id: fullStudentData.id,
-          fullname: fullStudentData.profile.fullname,
-          email: fullStudentData.profile.email,
-          course: fullStudentData?.course,
-          ieltsPoint: fullStudentData.profile.ieltsPoint,
-          isBusy: fullStudentData.profile.busyScheduleArr?.includes((selectedSlot?.slotIndex || 0)) || false,
+          fullname: fullStudentData.fullname,
+          email: fullStudentData.email,
+          course: fullStudentData?.profileCourses?.[0]?.course,
+          ieltsPoint: fullStudentData.ieltsPoint,
+          isBusy: fullStudentData.currentWeekBusyScheduleArr?.includes((selectedSlot?.slotIndex || 0)) || false,
           source: 'search',
-          profile_id: fullStudentData.profile.id
+          profile_id: fullStudentData.id
         }
 
         setSelectedStudents(prev => [...prev, studentToAdd])
@@ -1601,14 +1601,14 @@ const CreateLessonSchedule = ({
                           <Box display="flex" justifyContent="center" p={2}>
                             <CircularProgress size={20} />
                           </Box>
-                        ) : searchResults?.users && searchResults.users.length > 0 ? (
+                        ) : searchResults && searchResults.length > 0 ? (
                           <Box>
                             <Typography variant="caption" color="text.secondary" display="block" mb={1}>
-                              Kết quả tìm kiếm ({searchResults.users.length} học sinh):
+                              Kết quả tìm kiếm ({searchResults.length} học sinh):
                             </Typography>
-                            {searchResults.users.map((user) => {
+                            {searchResults.map((user) => {
                               // Check if student is busy at selected time slot
-                              const isBusy = user.profile.busyScheduleArr?.includes(selectedSlot!.slotIndex)
+                              const isBusy = user.currentWeekBusyScheduleArr?.includes(selectedSlot!.slotIndex)
 
                               return (
                                 <Box
@@ -1632,24 +1632,24 @@ const CreateLessonSchedule = ({
                                     if (!isBusy) {
                                       handleAddStudentFromSearch({
                                         id: user.id,
-                                        fullname: user.profile.fullname,
-                                        email: user.profile.email,
-                                        profile_id: user.profile.id
+                                        fullname: user.fullname,
+                                        email: user.email,
+                                        profile_id: user.id
                                       })
                                     }
                                   }}
                                 >
                                   <Box sx={{ flex: 1 }}>
                                     <Typography variant="body2" fontWeight={500}>
-                                      {user.profile.fullname}
+                                      {user.fullname}
                                     </Typography>
                                     <Typography variant="caption" color="text.secondary" display="block">
-                                      {user.profile.email}
+                                      {user.email}
                                     </Typography>
-                                    {user?.course && (
+                                    {user.profileCourses?.[0]?.course && (
                                       <Typography variant="caption" color="primary" display="block">
                                         <i className="ri-book-line" style={{ marginRight: 4, fontSize: '12px' }} />
-                                        {user.course.name}
+                                        {user.profileCourses[0].course.name}
                                       </Typography>
                                     )}
                                     {isBusy && (
@@ -1676,7 +1676,7 @@ const CreateLessonSchedule = ({
                                         variant="outlined"
                                         sx={{ fontSize: '0.7rem' }}
                                       />
-                                    ) : isStudentSelected(user.profile.id) ? (
+                                    ) : isStudentSelected(user.id) ? (
                                       <Chip
                                         size="small"
                                         label="Đã chọn"
