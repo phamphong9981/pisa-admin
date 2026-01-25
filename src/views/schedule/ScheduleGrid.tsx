@@ -847,10 +847,10 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({
                                                                 <Typography variant="body2" fontWeight={500}>
                                                                     {student.fullname}
                                                                 </Typography>
-                                                                {student.email && (
+                                                                {student.phone && (
                                                                     <Typography variant="caption" color="text.secondary" display="block">
-                                                                        <i className="ri-mail-line" style={{ marginRight: 4, fontSize: '12px' }} />
-                                                                        {student.email}
+                                                                        <i className="ri-phone-line" style={{ marginRight: 4, fontSize: '12px' }} />
+                                                                        {student.phone}
                                                                     </Typography>
                                                                 )}
                                                             </Box>
