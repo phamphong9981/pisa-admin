@@ -153,10 +153,10 @@ const fetchTeacherScheduleNotes = async (weekId: string, teacherId?: string, sch
 }
 
 // Hook to fetch all schedule notes for a week (for all teachers)
-export const useTeacherScheduleNotesByWeek = (weekId: string) => {
+export const useTeacherScheduleNotesByWeek = (weekId: string, teacherId?: string, scheduleTime?: number) => {
     return useQuery<TeacherScheduleNoteResponseDto[], Error>({
-        queryKey: ['teacher-schedule-notes', weekId],
-        queryFn: () => fetchTeacherScheduleNotes(weekId),
+        queryKey: ['teacher-schedule-notes', weekId, teacherId, scheduleTime],
+        queryFn: () => fetchTeacherScheduleNotes(weekId, teacherId, scheduleTime),
         enabled: !!weekId, // Only fetch when weekId is provided
         staleTime: 5 * 60 * 1000,
         gcTime: 10 * 60 * 1000,

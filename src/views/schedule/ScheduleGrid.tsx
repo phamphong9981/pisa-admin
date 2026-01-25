@@ -175,7 +175,7 @@ interface ScheduleGridProps {
 
     // Teacher availability
     teacherAvailableSlots: Set<number>
-    teacherNotesByScheduleTime: Record<number, string>
+    teacherNotesByScheduleTime: Record<string, Record<number, string>>
 
     // Student availability
     studentsAvailableSlots: Set<number>
@@ -335,7 +335,9 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({
                                     }
 
                                     const isTeacherAvailable = selectedTeacher && index > 0 && teacherAvailableSlots.has(index)
-                                    const teacherNoteForSlot = selectedTeacher && index > 0 ? teacherNotesByScheduleTime[index] : undefined
+                                    const teacherNoteForSlot = selectedTeacher && index > 0 && teacherNotesByScheduleTime[selectedTeacher.id]
+                                        ? teacherNotesByScheduleTime[selectedTeacher.id][index]
+                                        : undefined
                                     const areAllStudentsAvailable = selectedStudentIds.size > 0 && index > 0 && studentsAvailableSlots.has(index)
 
                                     let displayFree = free
@@ -575,6 +577,27 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({
                                                             <ClassBoxSubHeader>
                                                                 <Box display="flex" flexDirection="column" gap={0.5} width="100%">
                                                                     <Typography variant="caption">GV: {s.teacher_name}</Typography>
+                                                                    {/* Show teacher note if exists for this teacher and slot */}
+                                                                    {index > 0 && s.teacher_id && teacherNotesByScheduleTime[s.teacher_id]?.[index] && (
+                                                                        <Box sx={{
+                                                                            mt: 0.5,
+                                                                            p: 1,
+                                                                            backgroundColor: 'rgba(25, 118, 210, 0.08)',
+                                                                            borderRadius: 1,
+                                                                            borderLeft: '3px solid #1976d2'
+                                                                        }}>
+                                                                            <Typography variant="caption" sx={{
+                                                                                color: 'primary.dark',
+                                                                                fontWeight: 600,
+                                                                                fontSize: '0.75rem',
+                                                                                display: 'block',
+                                                                                lineHeight: 1.3
+                                                                            }}>
+                                                                                <i className="ri-file-text-line" style={{ marginRight: 4 }} />
+                                                                                {teacherNotesByScheduleTime[s.teacher_id][index]}
+                                                                            </Typography>
+                                                                        </Box>
+                                                                    )}
                                                                     {(s.start_time || s.end_time) && (
                                                                         <Typography variant="caption" sx={{
                                                                             color: isTransferred ? 'warning.main' : 'primary.main',

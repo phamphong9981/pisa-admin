@@ -37,7 +37,7 @@ import {
 import { useCourseInfo, useCourseInfoWithReload, useCourseList, RegionId, RegionLabel } from '@/@core/hooks/useCourse'
 import { SCHEDULE_TIME, useAutoScheduleCourse, useGetAllSchedule } from '@/@core/hooks/useSchedule'
 import { useGetWeeks, WeekResponseDto } from '@/@core/hooks/useWeek'
-import { useTeacherList, TeacherListResponse, useTeacherScheduleNotes } from '@/@core/hooks/useTeacher'
+import { useTeacherList, TeacherListResponse, useTeacherScheduleNotes, useTeacherScheduleNotesByWeek } from '@/@core/hooks/useTeacher'
 import useAuth from '@/@core/hooks/useAuth'
 import CreateLessonSchedule from './CreateLessonSchedule'
 import MissingScheduleTable from './MissingScheduleTable'
@@ -310,11 +310,9 @@ const SchedulePlanner = () => {
   // Teacher search - use weekId to fetch teacher's busy schedule for that week
   const { data: teachers, isLoading: isTeachersLoading } = useTeacherList(teacherSearchTerm, selectedWeekId || undefined)
 
-  // Fetch teacher schedule notes when a teacher is selected
-  const { data: teacherScheduleNotes } = useTeacherScheduleNotes(
-    selectedTeacher?.id || '',
-    selectedWeekId || '',
-    undefined // Get all notes for the week, not just one scheduleTime
+  // Fetch all teacher schedule notes for the week
+  const { data: teacherScheduleNotes } = useTeacherScheduleNotesByWeek(
+    selectedWeekId || ''
   )
 
   // Get weeks list
@@ -588,13 +586,16 @@ const SchedulePlanner = () => {
     return availableSlots
   }, [selectedTeacher])
 
-  // Create a map of teacher notes by scheduleTime for quick lookup
+  // Create a map of teacher notes by teacherId and scheduleTime for quick lookup
   const teacherNotesByScheduleTime = useMemo(() => {
-    const map: Record<number, string> = {}
+    const map: Record<string, Record<number, string>> = {}
     if (teacherScheduleNotes) {
       teacherScheduleNotes.forEach(note => {
-        if (note.scheduleTime && note.note) {
-          map[note.scheduleTime] = note.note
+        if (note.teacherId && note.scheduleTime && note.note) {
+          if (!map[note.teacherId]) {
+            map[note.teacherId] = {}
+          }
+          map[note.teacherId][note.scheduleTime] = note.note
         }
       })
     }

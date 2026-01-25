@@ -24,7 +24,7 @@ import {
 // Hooks
 import { useCreateLessonSchedule, useGetScheduleDetail, useUpdateUserSchedule, useUpdateLessonSchedule, ScheduleStatus } from '@/@core/hooks/useSchedule'
 import { useStudentList } from '@/@core/hooks/useStudent'
-import { useTeacherList } from '@/@core/hooks/useTeacher'
+import { useTeacherList, useTeacherScheduleNotes, useTeacherScheduleNotesByWeek } from '@/@core/hooks/useTeacher'
 import { useCreateClass } from '@/@core/hooks/useClass'
 
 // Components
@@ -173,6 +173,29 @@ const CreateLessonSchedule = ({
 
   // Student search hook - use weekId to fetch student's busy schedule for that week
   const { data: searchResults, isLoading: isSearchLoading } = useStudentList(studentSearch, weekId || undefined)
+
+  // Fetch all teacher schedule notes for the week
+  const { data: allTeacherNotes } = useTeacherScheduleNotesByWeek(weekId || '')
+
+  // Create a map of teacher notes by teacherId and scheduleTime for quick lookup
+  const teacherNotesMap = useMemo(() => {
+    const map: Record<string, Record<number, string>> = {}
+    if (allTeacherNotes) {
+      allTeacherNotes.forEach(note => {
+        if (note.teacherId && note.scheduleTime && note.note) {
+          if (!map[note.teacherId]) {
+            map[note.teacherId] = {}
+          }
+          map[note.teacherId][note.scheduleTime] = note.note
+        }
+      })
+    }
+    return map
+  }, [allTeacherNotes])
+
+  const teacherNote = selectedTeacherId && selectedSlot?.slotIndex
+    ? teacherNotesMap[selectedTeacherId]?.[selectedSlot.slotIndex]
+    : undefined
 
   // Teacher list hook - use weekId to fetch teacher's busy schedule for that week
   const { data: teacherList } = useTeacherList(undefined, weekId || undefined)
@@ -1168,6 +1191,22 @@ const CreateLessonSchedule = ({
                                     Giáo viên mặc định của lớp
                                   </Typography>
                                 )}
+
+                                {/* Show teacher note in search results if exists */}
+                                {selectedSlot?.slotIndex && teacherNotesMap[teacher.id]?.[selectedSlot.slotIndex] && (
+                                  <Box sx={{
+                                    mt: 0.5,
+                                    p: 0.75,
+                                    backgroundColor: '#fff9c4',
+                                    borderRadius: 0.5,
+                                    borderLeft: '3px solid #fbc02d'
+                                  }}>
+                                    <Typography variant="caption" sx={{ color: '#f57f17', fontWeight: 600, display: 'block', fontSize: '0.7rem' }}>
+                                      <i className="ri-sticky-note-line" style={{ marginRight: 4 }} />
+                                      Ghi chú: {teacherNotesMap[teacher.id][selectedSlot.slotIndex]}
+                                    </Typography>
+                                  </Box>
+                                )}
                               </Box>
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                 {isDefaultTeacher && (
@@ -1213,62 +1252,87 @@ const CreateLessonSchedule = ({
                       const isTeacherBusy = selectedTeacher.registeredBusySchedule?.includes(selectedSlot!.slotIndex)
 
                       return (
-                        <Box sx={{
-                          p: 1.5,
-                          backgroundColor: '#e8f5e8',
-                          borderRadius: 1,
-                          border: '1px solid #c8e6c9',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between'
-                        }}>
-                          <Box sx={{ flex: 1 }}>
-                            <Typography variant="body2" fontWeight={600}>
-                              {selectedTeacher.name}
-                            </Typography>
-                            {selectedTeacher.skills && selectedTeacher.skills.length > 0 && (
-                              <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.25 }}>
-                                <i className="ri-award-line" style={{ marginRight: 4, fontSize: '12px' }} />
-                                {selectedTeacher.skills.join(', ')}
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                          <Box sx={{
+                            p: 1.5,
+                            backgroundColor: '#e8f5e8',
+                            borderRadius: 1,
+                            border: '1px solid #c8e6c9',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between'
+                          }}>
+                            <Box sx={{ flex: 1 }}>
+                              <Typography variant="body2" fontWeight={600}>
+                                {selectedTeacher.name}
                               </Typography>
-                            )}
-                            {isDefaultTeacher && (
-                              <Typography variant="caption" color="primary" display="block" sx={{ mt: 0.25 }}>
-                                <i className="ri-user-star-line" style={{ marginRight: 4, fontSize: '12px' }} />
-                                Giáo viên mặc định của lớp
-                              </Typography>
-                            )}
-                          </Box>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            {isDefaultTeacher && (
+                              {selectedTeacher.skills && selectedTeacher.skills.length > 0 && (
+                                <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.25 }}>
+                                  <i className="ri-award-line" style={{ marginRight: 4, fontSize: '12px' }} />
+                                  {selectedTeacher.skills.join(', ')}
+                                </Typography>
+                              )}
+                              {isDefaultTeacher && (
+                                <Typography variant="caption" color="primary" display="block" sx={{ mt: 0.25 }}>
+                                  <i className="ri-user-star-line" style={{ marginRight: 4, fontSize: '12px' }} />
+                                  Giáo viên mặc định của lớp
+                                </Typography>
+                              )}
+                            </Box>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              {isDefaultTeacher && (
+                                <Chip
+                                  size="small"
+                                  label="Mặc định"
+                                  color="primary"
+                                  variant="outlined"
+                                  sx={{ fontSize: '0.7rem' }}
+                                />
+                              )}
                               <Chip
                                 size="small"
-                                label="Mặc định"
-                                color="primary"
+                                label={isTeacherBusy ? "Bận" : "Rảnh"}
+                                color={isTeacherBusy ? "error" : "success"}
                                 variant="outlined"
                                 sx={{ fontSize: '0.7rem' }}
                               />
-                            )}
-                            <Chip
-                              size="small"
-                              label={isTeacherBusy ? "Bận" : "Rảnh"}
-                              color={isTeacherBusy ? "error" : "success"}
-                              variant="outlined"
-                              sx={{ fontSize: '0.7rem' }}
-                            />
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              color="inherit"
-                              onClick={() => {
-                                setTeacherSearch('')
-                                setShowTeacherSearchResults(true)
-                              }}
-                              sx={{ fontSize: '0.7rem', py: 0.25, px: 1 }}
-                            >
-                              Thay đổi
-                            </Button>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                color="inherit"
+                                onClick={() => {
+                                  setTeacherSearch('')
+                                  setShowTeacherSearchResults(true)
+                                }}
+                                sx={{ fontSize: '0.7rem', py: 0.25, px: 1 }}
+                              >
+                                Thay đổi
+                              </Button>
+                            </Box>
                           </Box>
+
+                          {/* Teacher Schedule Note Display */}
+                          {teacherNote && (
+                            <Box sx={{
+                              p: 1.5,
+                              backgroundColor: '#fff9c4',
+                              borderRadius: 1,
+                              border: '1px solid #fbc02d',
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              gap: 1.5
+                            }}>
+                              <i className="ri-sticky-note-line" style={{ fontSize: '20px', color: '#f57f17', marginTop: 2 }} />
+                              <Box>
+                                <Typography variant="caption" fontWeight={700} color="#f57f17" display="block" sx={{ textTransform: 'uppercase', fontSize: '0.65rem', mb: 0.5 }}>
+                                  Ghi chú giáo viên cho khung giờ này
+                                </Typography>
+                                <Typography variant="body2" sx={{ color: '#5f4339', lineHeight: 1.4, fontWeight: 500 }}>
+                                  {teacherNote}
+                                </Typography>
+                              </Box>
+                            </Box>
+                          )}
                         </Box>
                       )
                     })()}
