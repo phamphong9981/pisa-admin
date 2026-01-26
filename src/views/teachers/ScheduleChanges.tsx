@@ -199,7 +199,7 @@ const ScheduleChanges = () => {
     const formatTimeRange = (startTime?: string, endTime?: string, scheduleTime?: number) => {
         // If scheduleTime is provided, use it to format with date
         if (scheduleTime !== undefined && selectedWeekInfo?.startDate) {
-            return formatScheduleTimeWithDate(scheduleTime, selectedWeekInfo.startDate)
+            return formatScheduleTimeWithDate(scheduleTime, selectedWeekInfo.startDate, startTime, endTime)
         }
 
         // Fallback to startTime/endTime if available

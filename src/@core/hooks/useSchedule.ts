@@ -88,21 +88,35 @@ const dayOffsetMap: Record<string, number> = {
  * @param weekStartDate - Start date of the week (Date or string)
  * @returns Formatted string like "Thứ 2, 01/01/2024 - 8:00-10:00"
  */
-export const formatScheduleTimeWithDate = (scheduleTime: number | undefined, weekStartDate: Date | string | undefined): string => {
+export const formatScheduleTimeWithDate = (
+    scheduleTime: number | undefined,
+    weekStartDate: Date | string | undefined,
+    startTime?: string,
+    endTime?: string
+): string => {
     if (scheduleTime === undefined || scheduleTime <= 0 || scheduleTime > SCHEDULE_TIME.length) {
         return '—'
     }
 
-    if (!weekStartDate) {
-        // If no week start date, just return the time and day name
-        const scheduleStr = SCHEDULE_TIME[scheduleTime - 1]
-        const [timeRange, dayName] = scheduleStr.split(' ')
-        const vietnameseDay = dayMap[dayName] || dayName
-        return `${vietnameseDay}\n${timeRange}`
+    const formatTime = (time?: string) => {
+        if (!time) return ''
+        // Split by ':' and take only the first two parts (HH:mm)
+        const parts = time.split(':')
+        if (parts.length >= 2) {
+            return `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`
+        }
+        return time
     }
 
     const scheduleStr = SCHEDULE_TIME[scheduleTime - 1]
-    const [timeRange, dayName] = scheduleStr.split(' ')
+    const [defaultTimeRange, dayName] = scheduleStr.split(' ')
+    const timeRange = (startTime && endTime) ? `${formatTime(startTime)}-${formatTime(endTime)}` : defaultTimeRange
+
+    if (!weekStartDate) {
+        // If no week start date, just return the time and day name
+        const vietnameseDay = dayMap[dayName] || dayName
+        return `${vietnameseDay}\n${timeRange}`
+    }
 
     if (!dayName || !(dayName in dayOffsetMap)) {
         return timeRange || '—'
