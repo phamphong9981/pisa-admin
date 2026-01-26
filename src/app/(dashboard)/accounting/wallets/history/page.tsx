@@ -63,6 +63,7 @@ import {
 
 import { useStudentList } from '@/@core/hooks/useStudent';
 import useDebounce from '@/@core/hooks/useDebounce';
+import WalletSummaryCard from './WalletSummaryCard';
 
 // Styled components
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
@@ -95,11 +96,6 @@ const DeltaChip = styled(Chip)<{ deltavalue: number }>(({ theme, deltavalue }) =
     }
 })
 
-const SummaryCard = styled(Card)(({ theme }) => ({
-    border: '2px solid',
-    borderColor: theme.palette.primary.main,
-    boxShadow: theme.shadows[3],
-}))
 
 interface StudentOption {
     profileId: string;
@@ -378,242 +374,13 @@ const StudentWalletHistoryPage = () => {
                 {/* Summary Statistics - Only show when student is selected */}
                 {selectedStudent && (
                     <Grid item xs={12}>
-                        <SummaryCard>
-                            <CardHeader
-                                title={
-                                    <Box display='flex' alignItems='center' gap={1}>
-                                        <i className='ri-pie-chart-line' style={{ fontSize: 24 }} />
-                                        <Typography variant='h6'>
-                                            Tổng hợp thay đổi - {selectedStudent.fullname}
-                                        </Typography>
-                                    </Box>
-                                }
-                                subheader={
-                                    startDate && endDate
-                                        ? `Từ ${format(startDate, 'dd/MM/yyyy')} đến ${format(endDate, 'dd/MM/yyyy')}`
-                                        : startDate
-                                            ? `Từ ${format(startDate, 'dd/MM/yyyy')} đến nay`
-                                            : endDate
-                                                ? `Từ đầu đến ${format(endDate, 'dd/MM/yyyy')}`
-                                                : 'Tất cả thời gian'
-                                }
-                            />
-                            <CardContent>
-                                {isLoadingSummary ? (
-                                    <Box display='flex' justifyContent='center' p={4}>
-                                        <CircularProgress />
-                                    </Box>
-                                ) : !summaryData ? (
-                                    <Box textAlign='center' p={4}>
-                                        <Typography color='text.secondary'>
-                                            Không có dữ liệu thống kê
-                                        </Typography>
-                                    </Box>
-                                ) : (
-                                    <Grid container spacing={2}>
-                                        {WALLET_TYPE_KEYS.map(key => {
-                                            const delta = summaryData[key];
-                                            if (!delta || (delta.tang === 0 && delta.giam === 0 && delta.ton === 0 && delta.tonDau === 0 && delta.tonCuoi === 0)) {
-                                                return null;
-                                            }
-
-                                            const isReserve = key === 'v7';
-
-                                            return (
-                                                <Grid item xs={12} key={key}>
-                                                    <Paper
-                                                        elevation={2}
-                                                        sx={{
-                                                            p: 3,
-                                                            background: isReserve
-                                                                ? 'linear-gradient(90deg, #FFF8E1 0%, #FFECB3 100%)'
-                                                                : 'linear-gradient(90deg, #F5F5F5 0%, #EEEEEE 100%)',
-                                                            borderRadius: 2,
-                                                            border: '2px solid',
-                                                            borderColor: isReserve ? 'warning.main' : 'grey.300',
-                                                        }}
-                                                    >
-                                                        {/* Header with icon */}
-                                                        <Box display='flex' alignItems='center' gap={1} mb={3}>
-                                                            <i className={isReserve ? 'ri-safe-2-fill' : 'ri-wallet-3-fill'} style={{ fontSize: 22, color: isReserve ? '#ED6C02' : '#424242' }} />
-                                                            <Typography variant='h6' fontWeight={700} color={isReserve ? 'warning.dark' : 'text.primary'}>
-                                                                {WALLET_TYPE_LABELS[key]}
-                                                            </Typography>
-                                                        </Box>
-
-                                                        {/* Horizontal Flow: Tồn đầu → Nạp → Dùng → Tồn cuối */}
-                                                        <Box
-                                                            display='flex'
-                                                            alignItems='center'
-                                                            justifyContent='center'
-                                                            flexWrap='wrap'
-                                                            gap={2}
-                                                        >
-                                                            {/* 1. Số dư đầu */}
-                                                            <Box
-                                                                sx={{
-                                                                    minWidth: 140,
-                                                                    p: 2.5,
-                                                                    bgcolor: '#FAFAFA',
-                                                                    borderRadius: 2,
-                                                                    border: '2px solid #9E9E9E',
-                                                                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                                                                    textAlign: 'center',
-                                                                }}
-                                                            >
-                                                                <Typography variant='caption' fontWeight={600} color='text.secondary' display='block' mb={1}>
-                                                                    Số dư đầu
-                                                                </Typography>
-                                                                <Typography variant='h4' fontWeight={700} color='#424242'>
-                                                                    {delta.tonDau}
-                                                                </Typography>
-                                                            </Box>
-
-                                                            {/* Arrow */}
-                                                            <i className='ri-arrow-right-line' style={{ fontSize: 28, color: '#9E9E9E', fontWeight: 'bold' }} />
-
-                                                            {/* 2. Tổng Nạp (+) */}
-                                                            <Box
-                                                                sx={{
-                                                                    minWidth: 140,
-                                                                    p: 2.5,
-                                                                    bgcolor: '#E8F5E9',
-                                                                    borderRadius: 2,
-                                                                    border: '2px solid #4CAF50',
-                                                                    boxShadow: '0 2px 8px rgba(76,175,80,0.2)',
-                                                                    textAlign: 'center',
-                                                                }}
-                                                            >
-                                                                <Box display='flex' alignItems='center' justifyContent='center' gap={0.5} mb={1}>
-                                                                    <i className='ri-add-circle-fill' style={{ fontSize: 16, color: '#2E7D32' }} />
-                                                                    <Typography variant='caption' fontWeight={700} color='#2E7D32' display='block'>
-                                                                        Tổng Nạp
-                                                                    </Typography>
-                                                                </Box>
-                                                                <Typography variant='h4' fontWeight={700} color='#1B5E20'>
-                                                                    +{delta.tang}
-                                                                </Typography>
-                                                            </Box>
-
-                                                            {/* Arrow */}
-                                                            <i className='ri-arrow-right-line' style={{ fontSize: 28, color: '#9E9E9E', fontWeight: 'bold' }} />
-
-                                                            {/* 3. Tổng Dùng (-) */}
-                                                            <Box
-                                                                sx={{
-                                                                    minWidth: 140,
-                                                                    p: 2.5,
-                                                                    bgcolor: '#FFEBEE',
-                                                                    borderRadius: 2,
-                                                                    border: '2px solid #F44336',
-                                                                    boxShadow: '0 2px 8px rgba(244,67,54,0.2)',
-                                                                    textAlign: 'center',
-                                                                }}
-                                                            >
-                                                                <Box display='flex' alignItems='center' justifyContent='center' gap={0.5} mb={1}>
-                                                                    <i className='ri-indeterminate-circle-fill' style={{ fontSize: 16, color: '#C62828' }} />
-                                                                    <Typography variant='caption' fontWeight={700} color='#C62828' display='block'>
-                                                                        Tổng Dùng
-                                                                    </Typography>
-                                                                </Box>
-                                                                <Typography variant='h4' fontWeight={700} color='#B71C1C'>
-                                                                    -{delta.giam}
-                                                                </Typography>
-                                                            </Box>
-
-                                                            {/* Equals */}
-                                                            <i className='ri-arrow-right-line' style={{ fontSize: 28, color: '#9E9E9E', fontWeight: 'bold' }} />
-
-                                                            {/* 4. Số dư cuối */}
-                                                            <Box
-                                                                sx={{
-                                                                    minWidth: 140,
-                                                                    p: 2.5,
-                                                                    bgcolor: '#FAFAFA',
-                                                                    borderRadius: 2,
-                                                                    border: '2px solid #616161',
-                                                                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                                                                    textAlign: 'center',
-                                                                }}
-                                                            >
-                                                                <Typography variant='caption' fontWeight={600} color='text.secondary' display='block' mb={1}>
-                                                                    Số dư cuối
-                                                                </Typography>
-                                                                <Typography variant='h4' fontWeight={700} color='#212121'>
-                                                                    {delta.tonCuoi}
-                                                                </Typography>
-                                                            </Box>
-                                                        </Box>
-
-                                                        {/* Biến động ròng (Thay đổi) - Hiển thị bên dưới */}
-                                                        <Box
-                                                            mt={3}
-                                                            display='flex'
-                                                            alignItems='center'
-                                                            justifyContent='center'
-                                                            gap={1}
-                                                        >
-                                                            <Box
-                                                                sx={{
-                                                                    px: 3,
-                                                                    py: 1.5,
-                                                                    bgcolor: delta.ton >= 0 ? '#E3F2FD' : '#FFEBEE',
-                                                                    borderRadius: 2,
-                                                                    border: '2px solid',
-                                                                    borderColor: delta.ton >= 0 ? '#1976D2' : '#D32F2F',
-                                                                    display: 'flex',
-                                                                    alignItems: 'center',
-                                                                    gap: 1.5,
-                                                                }}
-                                                            >
-                                                                <i
-                                                                    className={delta.ton >= 0 ? 'ri-trend-up-line' : 'ri-trend-down-line'}
-                                                                    style={{
-                                                                        fontSize: 24,
-                                                                        color: delta.ton >= 0 ? '#1565C0' : '#C62828',
-                                                                        fontWeight: 'bold'
-                                                                    }}
-                                                                />
-                                                                <Box>
-                                                                    <Typography variant='caption' fontWeight={600} color='text.secondary' display='block'>
-                                                                        Biến động ròng
-                                                                    </Typography>
-                                                                    <Typography
-                                                                        variant='h5'
-                                                                        fontWeight={700}
-                                                                        color={delta.ton >= 0 ? '#0D47A1' : '#B71C1C'}
-                                                                    >
-                                                                        {formatDelta(delta)}
-                                                                    </Typography>
-                                                                </Box>
-                                                                <Box mx={1}>
-                                                                    <Typography variant='body2' color='text.secondary' fontStyle='italic'>
-                                                                        ({delta.tonCuoi} = {delta.tonDau} + {delta.tang} - {delta.giam})
-                                                                    </Typography>
-                                                                </Box>
-                                                            </Box>
-                                                        </Box>
-                                                    </Paper>
-                                                </Grid>
-                                            );
-                                        })}
-                                        {/* Show message when no wallets have data */}
-                                        {WALLET_TYPE_KEYS.every(key => {
-                                            const delta = summaryData[key];
-                                            return !delta || (delta.tang === 0 && delta.giam === 0 && delta.ton === 0 && delta.tonDau === 0 && delta.tonCuoi === 0);
-                                        }) && (
-                                                <Grid item xs={12}>
-                                                    <Box textAlign='center' p={2}>
-                                                        <Typography color='text.secondary'>
-                                                            Không có thay đổi nào trong khoảng thời gian này
-                                                        </Typography>
-                                                    </Box>
-                                                </Grid>
-                                            )}
-                                    </Grid>
-                                )}
-                            </CardContent>
-                        </SummaryCard>
+                        <WalletSummaryCard
+                            studentName={selectedStudent.fullname}
+                            summaryData={summaryData}
+                            isLoading={isLoadingSummary}
+                            startDate={startDate}
+                            endDate={endDate}
+                        />
                     </Grid>
                 )}
 
