@@ -268,12 +268,24 @@ const StudentWalletsPage = () => {
         <Grid container spacing={6}>
             {/* Header */}
             <Grid item xs={12}>
-                <Typography variant='h5' fontWeight={700}>
-                    Quản lý ví học sinh
-                </Typography>
-                <Typography variant='body2' color='text.secondary'>
-                    Quản lý số dư voucher trong ví của tất cả học sinh
-                </Typography>
+                <Box display='flex' alignItems='center' justifyContent='space-between' flexWrap='wrap' gap={2}>
+                    <Box>
+                        <Typography variant='h5' fontWeight={700}>
+                            Quản lý ví học sinh
+                        </Typography>
+                        <Typography variant='body2' color='text.secondary'>
+                            Quản lý số dư voucher trong ví của tất cả học sinh
+                        </Typography>
+                    </Box>
+                    <Button
+                        variant='contained'
+                        color='primary'
+                        startIcon={<i className='ri-history-line' />}
+                        href='/accounting/wallets/history'
+                    >
+                        Xem lịch sử
+                    </Button>
+                </Box>
             </Grid>
 
             {/* Notification */}
