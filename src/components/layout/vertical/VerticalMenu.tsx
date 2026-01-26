@@ -89,7 +89,8 @@ const VerticalMenu = ({ scrollMenu }: { scrollMenu: (container: any, isPerfectSc
             <MenuItem href='/edit-schedule' icon={<i className='ri-calendar-edit-line' />}>Lịch rảnh/bận</MenuItem>
             <MenuItem href='/schedule-planner' icon={<i className='ri-calendar-event-line' />}>Xếp lịch học</MenuItem>
             <MenuItem href='/schedule-requests' icon={<i className='ri-user-forbid-line' />}>Yêu cầu đổi lịch</MenuItem>
-            <MenuItem href='/unscheduled-students' icon={<i className='ri-user-forbid-line' />}>Danh sách học sinh đang thiếu</MenuItem>
+            {/* <MenuItem href='/unscheduled-students' icon={<i className='ri-user-forbid-line' />}>Danh sách học sinh đang thiếu</MenuItem> */}
+            <MenuItem href='/users' icon={<i className='ri-user-line' />}>Quản lý người dùng</MenuItem>
           </SubMenu>
         )}
         {canAccessTeacher && (
