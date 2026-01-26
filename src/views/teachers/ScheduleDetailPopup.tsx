@@ -848,9 +848,16 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                             <StyledAvatar sx={{ width: 32, height: 32, fontSize: '0.75rem' }}>
                               {getInitials(student.fullname)}
                             </StyledAvatar>
-                            <Typography variant="body2" fontWeight={500}>
-                              {student.fullname}
-                            </Typography>
+                            <Box>
+                              <Typography variant="body2" fontWeight={500}>
+                                {student.fullname}
+                              </Typography>
+                              {student.phone && (
+                                <Typography variant="caption" color="text.secondary" display="block">
+                                  {student.phone}
+                                </Typography>
+                              )}
+                            </Box>
                           </Box>
                         </StudentTableCell>
                         <StudentTableCell align="center">
@@ -1002,7 +1009,6 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                   <TableRow>
                     <StyledTableCell>Học sinh</StyledTableCell>
                     <StyledTableCell>Email</StyledTableCell>
-                    <StyledTableCell>SĐT</StyledTableCell>
                     <StyledTableCell>Lịch bù</StyledTableCell>
                     <StyledTableCell>Thời gian</StyledTableCell>
                     <StyledTableCell>Người điểm danh</StyledTableCell>
@@ -1018,9 +1024,16 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                           <StyledAvatar sx={{ width: 32, height: 32, fontSize: '0.75rem' }}>
                             {getInitials(student.fullname)}
                           </StyledAvatar>
-                          <Typography variant="body2" fontWeight={500}>
-                            {student.fullname}
-                          </Typography>
+                          <Box>
+                            <Typography variant="body2" fontWeight={500}>
+                              {student.fullname}
+                            </Typography>
+                            {student.phone && (
+                              <Typography variant="caption" color="text.secondary" display="block">
+                                {student.phone}
+                              </Typography>
+                            )}
+                          </Box>
                         </Box>
                       </StudentTableCell>
                       <StudentTableCell>
@@ -1028,11 +1041,7 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                           {student.email}
                         </Typography>
                       </StudentTableCell>
-                      <StudentTableCell>
-                        <Typography variant="body2">
-                          {student.phone}
-                        </Typography>
-                      </StudentTableCell>
+
                       <StudentTableCell>
                         {student.scheduleTime ? (
                           <StyledChip
@@ -1094,7 +1103,6 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                   <TableRow>
                     <StyledTableCell>Học sinh</StyledTableCell>
                     <StyledTableCell>Email</StyledTableCell>
-                    <StyledTableCell>SĐT</StyledTableCell>
                     <StyledTableCell>Trạng thái</StyledTableCell>
                     <StyledTableCell>Thời gian</StyledTableCell>
                     <StyledTableCell>Lịch bận</StyledTableCell>
@@ -1110,9 +1118,16 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                           <StyledAvatar sx={{ width: 32, height: 32, fontSize: '0.75rem' }}>
                             {getInitials(student.fullname)}
                           </StyledAvatar>
-                          <Typography variant="body2" fontWeight={500}>
-                            {student.fullname}
-                          </Typography>
+                          <Box>
+                            <Typography variant="body2" fontWeight={500}>
+                              {student.fullname}
+                            </Typography>
+                            {student.phone && (
+                              <Typography variant="caption" color="text.secondary" display="block">
+                                {student.phone}
+                              </Typography>
+                            )}
+                          </Box>
                         </Box>
                       </StudentTableCell>
                       <StudentTableCell>
@@ -1120,11 +1135,7 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                           {student.email}
                         </Typography>
                       </StudentTableCell>
-                      <StudentTableCell>
-                        <Typography variant="body2">
-                          {student.phone}
-                        </Typography>
-                      </StudentTableCell>
+
                       <StudentTableCell>
                         {(() => {
                           const effectiveStatus = getEffectiveStatus(student.profileId, student.rollcallStatus)
