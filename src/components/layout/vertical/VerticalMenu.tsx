@@ -90,7 +90,6 @@ const VerticalMenu = ({ scrollMenu }: { scrollMenu: (container: any, isPerfectSc
             <MenuItem href='/schedule-planner' icon={<i className='ri-calendar-event-line' />}>Xếp lịch học</MenuItem>
             <MenuItem href='/schedule-requests' icon={<i className='ri-user-forbid-line' />}>Yêu cầu đổi lịch</MenuItem>
             {/* <MenuItem href='/unscheduled-students' icon={<i className='ri-user-forbid-line' />}>Danh sách học sinh đang thiếu</MenuItem> */}
-            <MenuItem href='/users' icon={<i className='ri-user-line' />}>Quản lý người dùng</MenuItem>
           </SubMenu>
         )}
         {canAccessTeacher && (
@@ -99,6 +98,7 @@ const VerticalMenu = ({ scrollMenu }: { scrollMenu: (container: any, isPerfectSc
             <MenuItem href='/teachers-schedule' icon={<i className='ri-calendar-time-line' />}>PISA TEACHER</MenuItem>
             <MenuItem href='/schedule-changes' icon={<i className='ri-file-list-3-line' />}>Biến động ca học</MenuItem>
             <MenuItem href='/attendance' icon={<i className='ri-checkbox-circle-line' />}>Điểm danh</MenuItem>
+            <MenuItem href='/users' icon={<i className='ri-user-line' />}>Quản lý người dùng</MenuItem>
           </SubMenu>
         )}
         {canAccessUser && (
