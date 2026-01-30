@@ -30,18 +30,25 @@ import {
     FormControlLabel,
     Radio,
     Checkbox,
-    Toolbar
+    Toolbar,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    Alert,
+    Switch
 } from '@mui/material'
 import { styled } from '@mui/material/styles'
 import { format } from 'date-fns'
 import type { DateRange } from 'react-day-picker'
 
-import { useSearchSchedule, SCHEDULE_TIME, RollcallStatus, useUpdateRollcallStatus, type SearchScheduleParams } from '@/@core/hooks/useSchedule'
+import { useSearchSchedule, SCHEDULE_TIME, RollcallStatus, useUpdateRollcallStatus, useLockScheduleByDate, type SearchScheduleParams } from '@/@core/hooks/useSchedule'
 import { useGetWeeks } from '@/@core/hooks/useWeek'
 import { useStudentList } from '@/@core/hooks/useStudent'
 import { useTeacherList } from '@/@core/hooks/useTeacher'
 import { RegionId, RegionLabel } from '@/@core/hooks/useCourse'
 import useDebounce from '@/@core/hooks/useDebounce'
+import useAuth from '@/@core/hooks/useAuth'
 import { DatePicker } from '@/components/ui/date-picker'
 
 // DebouncedInput Component
@@ -154,9 +161,18 @@ const AttendanceView = () => {
     const [selectedSchedules, setSelectedSchedules] = useState<Set<string>>(new Set())
     const [batchStatus, setBatchStatus] = useState<RollcallStatus | ''>('')
 
+    // Lock schedule dialog states
+    const [lockDialogOpen, setLockDialogOpen] = useState(false)
+    const [lockDate, setLockDate] = useState<string>('')
+    const [isLocked, setIsLocked] = useState(true)
+
     // Debounce search (only for student and teacher search)
     const debouncedStudentSearch = useDebounce(studentSearchTerm, 300)
     const debouncedTeacherSearch = useDebounce(teacherSearchTerm, 300)
+
+    // Auth hook for permission check
+    const { hasPermission } = useAuth()
+    const canAccessAccounting = hasPermission('accounting')
 
     // Hooks
     const { data: weeks } = useGetWeeks()
@@ -180,6 +196,7 @@ const AttendanceView = () => {
 
     // Handlers
     const updateRollcallMutation = useUpdateRollcallStatus()
+    const lockScheduleMutation = useLockScheduleByDate()
 
     // Build search params
     const searchParams = useMemo((): SearchScheduleParams => {
@@ -372,6 +389,35 @@ const AttendanceView = () => {
     const isAllSelected = searchResults?.data && searchResults.data.length > 0 && selectedSchedules.size === searchResults.data.length
     const isIndeterminate = selectedSchedules.size > 0 && selectedSchedules.size < (searchResults?.data?.length || 0)
 
+    // Lock schedule handlers
+    const handleOpenLockDialog = () => {
+        // Default to today's date
+        setLockDate(format(new Date(), 'yyyy-MM-dd'))
+        setIsLocked(true)
+        setLockDialogOpen(true)
+    }
+
+    const handleCloseLockDialog = () => {
+        setLockDialogOpen(false)
+        setLockDate('')
+        setIsLocked(true)
+    }
+
+    const handleLockSchedule = async () => {
+        if (!lockDate) return
+
+        try {
+            await lockScheduleMutation.mutateAsync({
+                start_date: lockDate,
+                is_locked: isLocked
+            })
+            handleCloseLockDialog()
+            refetchSearch()
+        } catch (error) {
+            console.error('Error locking schedule:', error)
+        }
+    }
+
     return (
         <Card>
             <CardHeader
@@ -388,6 +434,19 @@ const AttendanceView = () => {
                     }}>
                         <i className="ri-checkbox-circle-line" style={{ color: 'white', fontSize: 20 }} />
                     </Box>
+                }
+                action={
+                    canAccessAccounting && (
+                        <Button
+                            variant="contained"
+                            color="warning"
+                            startIcon={<i className="ri-lock-line" />}
+                            onClick={handleOpenLockDialog}
+                            sx={{ mt: 1 }}
+                        >
+                            Khóa sổ điểm danh
+                        </Button>
+                    )
                 }
             />
 
@@ -1059,6 +1118,80 @@ const AttendanceView = () => {
                     </>
                 )}
             </CardContent>
+
+            {/* Lock Schedule Dialog */}
+            <Dialog open={lockDialogOpen} onClose={handleCloseLockDialog} maxWidth="sm" fullWidth>
+                <DialogTitle>
+                    <Box display="flex" alignItems="center" gap={1}>
+                        <i className="ri-lock-line" style={{ color: '#ed6c02', fontSize: 24 }} />
+                        <Typography variant="h6">Khóa sổ điểm danh</Typography>
+                    </Box>
+                </DialogTitle>
+                <DialogContent>
+                    <Alert severity="warning" sx={{ mb: 3, mt: 1 }}>
+                        <Typography variant="body2">
+                            {isLocked
+                                ? 'Sau khi khóa sổ, các buổi điểm danh trước ngày được chọn sẽ không thể chỉnh sửa.'
+                                : 'Mở khóa sổ sẽ cho phép chỉnh sửa lại các buổi điểm danh trước ngày được chọn.'}
+                        </Typography>
+                    </Alert>
+
+                    <Grid container spacing={3}>
+                        <Grid item xs={12}>
+                            <TextField
+                                fullWidth
+                                type="date"
+                                label="Ngày khóa sổ"
+                                value={lockDate}
+                                onChange={(e) => setLockDate(e.target.value)}
+                                InputLabelProps={{ shrink: true }}
+                                helperText="Tất cả buổi điểm danh trước ngày này sẽ bị khóa/mở khóa"
+                            />
+                        </Grid>
+                        <Grid item xs={12}>
+                            <Box display="flex" alignItems="center" justifyContent="space-between" p={2} bgcolor="grey.50" borderRadius={1}>
+                                <Box>
+                                    <Typography variant="body1" fontWeight={600}>
+                                        {isLocked ? 'Khóa sổ điểm danh' : 'Mở khóa sổ điểm danh'}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                        {isLocked
+                                            ? 'Không cho phép chỉnh sửa điểm danh'
+                                            : 'Cho phép chỉnh sửa điểm danh'}
+                                    </Typography>
+                                </Box>
+                                <Switch
+                                    checked={isLocked}
+                                    onChange={(e) => setIsLocked(e.target.checked)}
+                                    color="warning"
+                                />
+                            </Box>
+                        </Grid>
+                    </Grid>
+                </DialogContent>
+                <DialogActions sx={{ px: 3, pb: 2 }}>
+                    <Button onClick={handleCloseLockDialog} color="inherit">
+                        Hủy
+                    </Button>
+                    <Button
+                        variant="contained"
+                        color={isLocked ? 'warning' : 'success'}
+                        onClick={handleLockSchedule}
+                        disabled={!lockDate || lockScheduleMutation.isPending}
+                        startIcon={
+                            lockScheduleMutation.isPending ? (
+                                <CircularProgress size={16} color="inherit" />
+                            ) : isLocked ? (
+                                <i className="ri-lock-fill" />
+                            ) : (
+                                <i className="ri-lock-unlock-fill" />
+                            )
+                        }
+                    >
+                        {isLocked ? 'Khóa sổ' : 'Mở khóa'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Card>
     )
 }

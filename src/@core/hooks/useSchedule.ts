@@ -835,3 +835,36 @@ export const useSearchSchedule = (params: SearchScheduleParams, enabled: boolean
         staleTime: 1 * 60 * 1000,
     })
 }
+
+// Lock schedule by date
+export interface LockScheduleByDateRequest {
+    start_date: string // Format: 'YYYY-MM-DD'
+    is_locked: boolean
+}
+
+export interface LockScheduleByDateResponse {
+    success: boolean
+    message?: string
+}
+
+const lockScheduleByDate = async (request: LockScheduleByDateRequest): Promise<LockScheduleByDateResponse> => {
+    const { data } = await apiClient.put('/lock-schedule-by-date', request)
+
+    return data.data || data
+}
+
+export const useLockScheduleByDate = () => {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: lockScheduleByDate,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['search-schedule'] })
+            queryClient.invalidateQueries({ queryKey: ['schedules'] })
+            queryClient.invalidateQueries({ queryKey: ['schedule-detail'] })
+        },
+        onError: (error) => {
+            console.error('Error locking schedule by date:', error)
+        }
+    })
+}
