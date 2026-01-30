@@ -42,7 +42,7 @@ import { styled } from '@mui/material/styles'
 import { format } from 'date-fns'
 import type { DateRange } from 'react-day-picker'
 
-import { useSearchSchedule, SCHEDULE_TIME, RollcallStatus, useUpdateRollcallStatus, useLockScheduleByDate, useGetLockedScheduleDates, useDeleteLockedScheduleDate, type SearchScheduleParams } from '@/@core/hooks/useSchedule'
+import { useSearchSchedule, SCHEDULE_TIME, RollcallStatus, useUpdateRollcallStatus, useLockScheduleByDate, useGetLockedScheduleDates, type SearchScheduleParams } from '@/@core/hooks/useSchedule'
 import { useGetWeeks } from '@/@core/hooks/useWeek'
 import { useStudentList } from '@/@core/hooks/useStudent'
 import { useTeacherList } from '@/@core/hooks/useTeacher'
@@ -198,7 +198,6 @@ const AttendanceView = () => {
     const updateRollcallMutation = useUpdateRollcallStatus()
     const lockScheduleMutation = useLockScheduleByDate()
     const { data: lockedDates, isLoading: isLockedDatesLoading, refetch: refetchLockedDates } = useGetLockedScheduleDates()
-    const deleteLockedDateMutation = useDeleteLockedScheduleDate()
 
     // Build search params
     const searchParams = useMemo((): SearchScheduleParams => {
@@ -436,14 +435,7 @@ const AttendanceView = () => {
         }
     }
 
-    const handleDeleteLockedDate = async (id: string) => {
-        try {
-            await deleteLockedDateMutation.mutateAsync(id)
-            refetchLockedDates()
-        } catch (error) {
-            console.error('Error deleting locked date:', error)
-        }
-    }
+
 
     return (
         <Card>
@@ -1243,16 +1235,7 @@ const AttendanceView = () => {
                                                     >
                                                         Mở khóa
                                                     </Button>
-                                                    <Button
-                                                        size="small"
-                                                        variant="text"
-                                                        color="error"
-                                                        onClick={() => handleDeleteLockedDate(item.id)}
-                                                        disabled={deleteLockedDateMutation.isPending}
-                                                        sx={{ minWidth: 40 }}
-                                                    >
-                                                        <i className="ri-delete-bin-line" />
-                                                    </Button>
+
                                                 </Box>
                                             </TableCell>
                                         </TableRow>
