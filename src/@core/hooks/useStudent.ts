@@ -225,29 +225,30 @@ export interface ProfileSearchResult {
     phone: string
     image: string
     ieltsPoint: string
-    currentWeekBusyScheduleArr: number[]
+    busyScheduleArr: number[]
     createdAt: string
     updatedAt: string
     profileCourses: ProfileCourse[]
 }
 
 // Profile Search API function
-const searchProfiles = async (search?: string): Promise<ProfileSearchResult[]> => {
-    const params = new URLSearchParams()
-    if (search) params.append('search', search)
+const searchProfiles = async (search?: string, weekId?: string): Promise<ProfileSearchResult[]> => {
+    const params: Record<string, string> = {}
+    if (search) params.search = search
+    if (weekId) params.weekId = weekId
 
     const { data } = await apiClient.get('/user/profiles/search', {
-        params: search ? { search } : undefined
+        params: Object.keys(params).length > 0 ? params : undefined
     })
 
     return data.data
 }
 
 // Hook to search profiles
-export const useProfileSearch = (search: string) => {
+export const useProfileSearch = (search: string, weekId?: string) => {
     return useQuery<ProfileSearchResult[], Error>({
-        queryKey: ['profileSearch', search],
-        queryFn: () => searchProfiles(search),
+        queryKey: ['profileSearch', search, weekId],
+        queryFn: () => searchProfiles(search, weekId),
         enabled: search.length >= 1, // Only search when at least 1 character
         staleTime: 2 * 60 * 1000,
         gcTime: 5 * 60 * 1000,

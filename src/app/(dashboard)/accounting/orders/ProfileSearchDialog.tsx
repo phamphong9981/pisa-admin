@@ -69,18 +69,20 @@ interface ProfileSearchDialogProps {
     open: boolean
     onClose: () => void
     onSelectProfile?: (profile: ProfileSearchResult) => void
+    weekId?: string // Optional weekId to fetch busy schedule for specific week
 }
 
 const ProfileSearchDialog: React.FC<ProfileSearchDialogProps> = ({
     open,
     onClose,
     onSelectProfile,
+    weekId,
 }) => {
     const [searchTerm, setSearchTerm] = React.useState('')
     const [selectedProfile, setSelectedProfile] = React.useState<ProfileSearchResult | null>(null)
 
     // Search profiles
-    const { data: profiles, isLoading, error } = useProfileSearch(searchTerm)
+    const { data: profiles, isLoading, error } = useProfileSearch(searchTerm, weekId)
 
     // Reset state when dialog closes
     React.useEffect(() => {
@@ -395,14 +397,14 @@ const ProfileSearchDialog: React.FC<ProfileSearchDialogProps> = ({
                                     )}
 
                                     {/* Busy Schedule (if any) */}
-                                    {selectedProfile.currentWeekBusyScheduleArr && selectedProfile.currentWeekBusyScheduleArr.length > 0 && (
+                                    {selectedProfile.busyScheduleArr && selectedProfile.busyScheduleArr.length > 0 && (
                                         <>
                                             <Typography variant="subtitle2" color="primary" sx={{ mt: 2, mb: 1.5, display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                                 <i className="ri-calendar-close-line" />
                                                 Lịch bận tuần này
                                             </Typography>
                                             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                                {selectedProfile.currentWeekBusyScheduleArr.map((slot) => (
+                                                {selectedProfile.busyScheduleArr.map((slot) => (
                                                     <Chip
                                                         key={slot}
                                                         label={`Ca ${slot}`}

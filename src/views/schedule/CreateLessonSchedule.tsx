@@ -172,7 +172,7 @@ const CreateLessonSchedule = ({
   const [showTeacherSearchResults, setShowTeacherSearchResults] = useState(false)
 
   // Student search hook - use weekId to fetch student's busy schedule for that week
-  const { data: searchResults, isLoading: isSearchLoading } = useProfileSearch(studentSearch)
+  const { data: searchResults, isLoading: isSearchLoading } = useProfileSearch(studentSearch, weekId || undefined)
 
   // Fetch all teacher schedule notes for the week
   const { data: allTeacherNotes } = useTeacherScheduleNotesByWeek(weekId || '')
@@ -613,7 +613,7 @@ const CreateLessonSchedule = ({
           email: fullStudentData.email,
           course: fullStudentData?.profileCourses?.[0]?.course,
           ieltsPoint: fullStudentData.ieltsPoint,
-          isBusy: fullStudentData.currentWeekBusyScheduleArr?.includes((selectedSlot?.slotIndex || 0)) || false,
+          isBusy: fullStudentData.busyScheduleArr?.includes((selectedSlot?.slotIndex || 0)) || false,
           source: 'search',
           profile_id: fullStudentData.id
         }
@@ -1608,7 +1608,7 @@ const CreateLessonSchedule = ({
                             </Typography>
                             {searchResults.map((user) => {
                               // Check if student is busy at selected time slot
-                              const isBusy = user.currentWeekBusyScheduleArr?.includes(selectedSlot!.slotIndex)
+                              const isBusy = user.busyScheduleArr?.includes(selectedSlot!.slotIndex)
 
                               return (
                                 <Box

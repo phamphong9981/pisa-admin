@@ -605,7 +605,7 @@ const SchedulePlanner = () => {
   }, [teacherScheduleNotes])
 
   // Use useProfileSearch for student search
-  const { data: searchProfiles, isLoading: isSearchProfilesLoading } = useProfileSearch(studentSearchTerm)
+  const { data: searchProfiles, isLoading: isSearchProfilesLoading } = useProfileSearch(studentSearchTerm, selectedWeekId || undefined)
 
   // Get all students from course info for display in the grid
   const allStudents = useMemo(() => {
@@ -629,7 +629,7 @@ const SchedulePlanner = () => {
       email: p.email,
       phone: p.phone,
       courseName: p.profileCourses?.[0]?.course?.name,
-      busyScheduleArr: p.currentWeekBusyScheduleArr || []
+      busyScheduleArr: p.busyScheduleArr || []
     }))
   }, [searchProfiles, studentSearchTerm])
 
