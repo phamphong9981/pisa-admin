@@ -836,6 +836,53 @@ export const useSearchSchedule = (params: SearchScheduleParams, enabled: boolean
     })
 }
 
+// Locked Schedule Date Entity
+export interface LockedScheduleDate {
+    id: string
+    lockDate: string // YYYY-MM-DD
+    createdAt: string
+    updatedAt: string
+    createdBy?: string
+    updatedBy?: string
+}
+
+// Get locked schedule dates
+const getLockedScheduleDates = async (): Promise<LockedScheduleDate[]> => {
+    const { data } = await apiClient.get('/locked-schedule-dates')
+
+    return data.data || data
+}
+
+export const useGetLockedScheduleDates = () => {
+    return useQuery({
+        queryKey: ['locked-schedule-dates'],
+        queryFn: getLockedScheduleDates,
+        staleTime: 5 * 60 * 1000,
+        retry: 1
+    })
+}
+
+// Delete locked schedule date
+const deleteLockedScheduleDate = async (id: string) => {
+    const { data } = await apiClient.delete(`/locked-schedule-dates/${id}`)
+
+    return data
+}
+
+export const useDeleteLockedScheduleDate = () => {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: deleteLockedScheduleDate,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['locked-schedule-dates'] })
+        },
+        onError: (error) => {
+            console.error('Error deleting locked schedule date:', error)
+        }
+    })
+}
+
 // Lock schedule by date
 export interface LockScheduleByDateRequest {
     start_date: string // Format: 'YYYY-MM-DD'
@@ -843,12 +890,12 @@ export interface LockScheduleByDateRequest {
 }
 
 export interface LockScheduleByDateResponse {
-    success: boolean
-    message?: string
+    message: string
+    lockedCount?: number
 }
 
 const lockScheduleByDate = async (request: LockScheduleByDateRequest): Promise<LockScheduleByDateResponse> => {
-    const { data } = await apiClient.put('/lock-schedule-by-date', request)
+    const { data } = await apiClient.put('/locked-schedule-dates/lock', request)
 
     return data.data || data
 }
@@ -862,9 +909,11 @@ export const useLockScheduleByDate = () => {
             queryClient.invalidateQueries({ queryKey: ['search-schedule'] })
             queryClient.invalidateQueries({ queryKey: ['schedules'] })
             queryClient.invalidateQueries({ queryKey: ['schedule-detail'] })
+            queryClient.invalidateQueries({ queryKey: ['locked-schedule-dates'] })
         },
         onError: (error) => {
             console.error('Error locking schedule by date:', error)
         }
     })
 }
+

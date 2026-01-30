@@ -42,7 +42,7 @@ import { styled } from '@mui/material/styles'
 import { format } from 'date-fns'
 import type { DateRange } from 'react-day-picker'
 
-import { useSearchSchedule, SCHEDULE_TIME, RollcallStatus, useUpdateRollcallStatus, useLockScheduleByDate, type SearchScheduleParams } from '@/@core/hooks/useSchedule'
+import { useSearchSchedule, SCHEDULE_TIME, RollcallStatus, useUpdateRollcallStatus, useLockScheduleByDate, useGetLockedScheduleDates, useDeleteLockedScheduleDate, type SearchScheduleParams } from '@/@core/hooks/useSchedule'
 import { useGetWeeks } from '@/@core/hooks/useWeek'
 import { useStudentList } from '@/@core/hooks/useStudent'
 import { useTeacherList } from '@/@core/hooks/useTeacher'
@@ -164,7 +164,7 @@ const AttendanceView = () => {
     // Lock schedule dialog states
     const [lockDialogOpen, setLockDialogOpen] = useState(false)
     const [lockDate, setLockDate] = useState<string>('')
-    const [isLocked, setIsLocked] = useState(true)
+
 
     // Debounce search (only for student and teacher search)
     const debouncedStudentSearch = useDebounce(studentSearchTerm, 300)
@@ -197,6 +197,8 @@ const AttendanceView = () => {
     // Handlers
     const updateRollcallMutation = useUpdateRollcallStatus()
     const lockScheduleMutation = useLockScheduleByDate()
+    const { data: lockedDates, isLoading: isLockedDatesLoading, refetch: refetchLockedDates } = useGetLockedScheduleDates()
+    const deleteLockedDateMutation = useDeleteLockedScheduleDate()
 
     // Build search params
     const searchParams = useMemo((): SearchScheduleParams => {
@@ -393,28 +395,53 @@ const AttendanceView = () => {
     const handleOpenLockDialog = () => {
         // Default to today's date
         setLockDate(format(new Date(), 'yyyy-MM-dd'))
-        setIsLocked(true)
         setLockDialogOpen(true)
+        refetchLockedDates()
     }
 
     const handleCloseLockDialog = () => {
         setLockDialogOpen(false)
         setLockDate('')
-        setIsLocked(true)
     }
 
-    const handleLockSchedule = async () => {
+    const handleLockDate = async () => {
         if (!lockDate) return
 
         try {
             await lockScheduleMutation.mutateAsync({
                 start_date: lockDate,
-                is_locked: isLocked
+                is_locked: true
             })
-            handleCloseLockDialog()
-            refetchSearch()
+            setLockDate('') // Reset date picker
+            refetchLockedDates() // Refresh list
+            refetchSearch() // Refresh schedule view
         } catch (error) {
             console.error('Error locking schedule:', error)
+        }
+    }
+
+    const handleUnlockDate = async (dateStr: string) => {
+        try {
+            await lockScheduleMutation.mutateAsync({
+                start_date: dateStr,
+                is_locked: false
+            })
+            // Do not remove from list automatically? Or maybe we should?
+            // The API says PUT false unlocks schedules but keeps the record.
+            // Users might want to explicitly delete the record if they want it gone.
+            refetchLockedDates()
+            refetchSearch()
+        } catch (error) {
+            console.error('Error unlocking schedule:', error)
+        }
+    }
+
+    const handleDeleteLockedDate = async (id: string) => {
+        try {
+            await deleteLockedDateMutation.mutateAsync(id)
+            refetchLockedDates()
+        } catch (error) {
+            console.error('Error deleting locked date:', error)
         }
     }
 
@@ -1120,75 +1147,124 @@ const AttendanceView = () => {
             </CardContent>
 
             {/* Lock Schedule Dialog */}
-            <Dialog open={lockDialogOpen} onClose={handleCloseLockDialog} maxWidth="sm" fullWidth>
+            <Dialog open={lockDialogOpen} onClose={handleCloseLockDialog} maxWidth="md" fullWidth>
                 <DialogTitle>
                     <Box display="flex" alignItems="center" gap={1}>
-                        <i className="ri-lock-line" style={{ color: '#ed6c02', fontSize: 24 }} />
-                        <Typography variant="h6">Khóa sổ điểm danh</Typography>
+                        <i className="ri-lock-2-line" style={{ color: '#ed6c02', fontSize: 24 }} />
+                        <Typography variant="h6">Quản lý khóa sổ điểm danh</Typography>
                     </Box>
                 </DialogTitle>
                 <DialogContent>
-                    <Alert severity="warning" sx={{ mb: 3, mt: 1 }}>
+                    <Alert severity="info" sx={{ mb: 3, mt: 1 }}>
                         <Typography variant="body2">
-                            {isLocked
-                                ? 'Sau khi khóa sổ, các buổi điểm danh trước ngày được chọn sẽ không thể chỉnh sửa.'
-                                : 'Mở khóa sổ sẽ cho phép chỉnh sửa lại các buổi điểm danh trước ngày được chọn.'}
+                            Khóa sổ giúp ngăn chặn việc chỉnh sửa điểm danh và lịch học trong những ngày đã chọn.
+                            Bạn có thể mở khóa lại khi cần thiết.
                         </Typography>
                     </Alert>
 
-                    <Grid container spacing={3}>
-                        <Grid item xs={12}>
-                            <TextField
-                                fullWidth
-                                type="date"
-                                label="Ngày khóa sổ"
-                                value={lockDate}
-                                onChange={(e) => setLockDate(e.target.value)}
-                                InputLabelProps={{ shrink: true }}
-                                helperText="Tất cả buổi điểm danh trước ngày này sẽ bị khóa/mở khóa"
-                            />
-                        </Grid>
-                        <Grid item xs={12}>
-                            <Box display="flex" alignItems="center" justifyContent="space-between" p={2} bgcolor="grey.50" borderRadius={1}>
-                                <Box>
-                                    <Typography variant="body1" fontWeight={600}>
-                                        {isLocked ? 'Khóa sổ điểm danh' : 'Mở khóa sổ điểm danh'}
-                                    </Typography>
-                                    <Typography variant="caption" color="text.secondary">
-                                        {isLocked
-                                            ? 'Không cho phép chỉnh sửa điểm danh'
-                                            : 'Cho phép chỉnh sửa điểm danh'}
-                                    </Typography>
-                                </Box>
-                                <Switch
-                                    checked={isLocked}
-                                    onChange={(e) => setIsLocked(e.target.checked)}
-                                    color="warning"
+                    {/* Add Lock Section */}
+                    <Box sx={{ mb: 4, p: 2, bgcolor: 'grey.50', borderRadius: 1, border: '1px solid #eee' }}>
+                        <Typography variant="subtitle2" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <i className="ri-add-circle-line" />
+                            Thêm ngày khóa sổ mới
+                        </Typography>
+                        <Grid container spacing={2} alignItems="center">
+                            <Grid item xs={12} sm={6}>
+                                <TextField
+                                    fullWidth
+                                    type="date"
+                                    size="small"
+                                    label="Chọn ngày khóa"
+                                    value={lockDate}
+                                    onChange={(e) => setLockDate(e.target.value)}
+                                    InputLabelProps={{ shrink: true }}
                                 />
-                            </Box>
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <Button
+                                    variant="contained"
+                                    color="warning"
+                                    onClick={handleLockDate}
+                                    disabled={!lockDate || lockScheduleMutation.isPending}
+                                    startIcon={lockScheduleMutation.isPending ? <CircularProgress size={16} color="inherit" /> : <i className="ri-lock-fill" />}
+                                >
+                                    Khóa sổ ngày này
+                                </Button>
+                            </Grid>
                         </Grid>
-                    </Grid>
+                    </Box>
+
+                    {/* Locked List Section */}
+                    <Typography variant="subtitle2" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <i className="ri-list-check" />
+                        Danh sách các ngày đã khóa
+                    </Typography>
+
+                    {isLockedDatesLoading ? (
+                        <Box display="flex" justifyContent="center" p={3}>
+                            <CircularProgress size={24} />
+                        </Box>
+                    ) : !lockedDates || lockedDates.length === 0 ? (
+                        <Box textAlign="center" py={4} bgcolor="grey.50" borderRadius={1} sx={{ borderStyle: 'dashed', borderWidth: 1, borderColor: 'grey.300' }}>
+                            <Typography variant="body2" color="text.secondary">Chưa có ngày nào bị khóa</Typography>
+                        </Box>
+                    ) : (
+                        <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #e0e0e0', maxHeight: 300 }}>
+                            <Table stickyHeader size="small">
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell>Ngày khóa</TableCell>
+                                        <TableCell>Thời gian tạo</TableCell>
+                                        <TableCell align="right">Thao tác</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {lockedDates.map((item) => (
+                                        <TableRow key={item.id} hover>
+                                            <TableCell>
+                                                <Typography variant="body2" fontWeight={600}>
+                                                    {format(new Date(item.lockDate), 'dd/MM/yyyy')}
+                                                </Typography>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Typography variant="caption" color="text.secondary">
+                                                    {format(new Date(item.createdAt), 'dd/MM/yyyy HH:mm')}
+                                                </Typography>
+                                            </TableCell>
+                                            <TableCell align="right">
+                                                <Box display="flex" justifyContent="flex-end" gap={1}>
+                                                    <Button
+                                                        size="small"
+                                                        variant="outlined"
+                                                        color="success"
+                                                        onClick={() => handleUnlockDate(item.lockDate)}
+                                                        disabled={lockScheduleMutation.isPending}
+                                                        startIcon={<i className="ri-lock-unlock-line" />}
+                                                    >
+                                                        Mở khóa
+                                                    </Button>
+                                                    <Button
+                                                        size="small"
+                                                        variant="text"
+                                                        color="error"
+                                                        onClick={() => handleDeleteLockedDate(item.id)}
+                                                        disabled={deleteLockedDateMutation.isPending}
+                                                        sx={{ minWidth: 40 }}
+                                                    >
+                                                        <i className="ri-delete-bin-line" />
+                                                    </Button>
+                                                </Box>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    )}
                 </DialogContent>
                 <DialogActions sx={{ px: 3, pb: 2 }}>
                     <Button onClick={handleCloseLockDialog} color="inherit">
-                        Hủy
-                    </Button>
-                    <Button
-                        variant="contained"
-                        color={isLocked ? 'warning' : 'success'}
-                        onClick={handleLockSchedule}
-                        disabled={!lockDate || lockScheduleMutation.isPending}
-                        startIcon={
-                            lockScheduleMutation.isPending ? (
-                                <CircularProgress size={16} color="inherit" />
-                            ) : isLocked ? (
-                                <i className="ri-lock-fill" />
-                            ) : (
-                                <i className="ri-lock-unlock-fill" />
-                            )
-                        }
-                    >
-                        {isLocked ? 'Khóa sổ' : 'Mở khóa'}
+                        Đóng
                     </Button>
                 </DialogActions>
             </Dialog>
