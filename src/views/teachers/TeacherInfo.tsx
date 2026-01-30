@@ -50,7 +50,7 @@ const TeachersInfoPage = () => {
   const [openEditDialog, setOpenEditDialog] = useState(false)
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false)
   const [teacherToEdit, setTeacherToEdit] = useState<{ id: string; name: string; skills: string[] } | null>(null)
-  const [teacherToDelete, setTeacherToDelete] = useState<{ id: string; name: string; userId: string } | null>(null)
+  const [teacherToDelete, setTeacherToDelete] = useState<{ id: string; name: string } | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [editTeacherForm, setEditTeacherForm] = useState<UpdateTeacherDto>({
     name: '',
@@ -156,8 +156,8 @@ const TeachersInfoPage = () => {
   }
 
   // Delete teacher handlers
-  const handleOpenDeleteDialog = (teacherId: string, teacherName: string, userId: string) => {
-    setTeacherToDelete({ id: teacherId, name: teacherName, userId })
+  const handleOpenDeleteDialog = (teacherId: string, teacherName: string) => {
+    setTeacherToDelete({ id: teacherId, name: teacherName })
     setOpenDeleteDialog(true)
   }
 
@@ -170,7 +170,7 @@ const TeachersInfoPage = () => {
     if (!teacherToDelete) return
 
     try {
-      await deleteTeacherMutation.mutateAsync(teacherToDelete.userId)
+      await deleteTeacherMutation.mutateAsync(teacherToDelete.id)
       setNotification({
         open: true,
         message: `Xóa giáo viên "${teacherToDelete.name}" thành công!`,
@@ -340,7 +340,7 @@ const TeachersInfoPage = () => {
                                 <IconButton
                                   color="error"
                                   size="small"
-                                  onClick={() => handleOpenDeleteDialog(teacher.id, teacher.name, teacher.userId)}
+                                  onClick={() => handleOpenDeleteDialog(teacher.id, teacher.name)}
                                   sx={{
                                     '&:hover': {
                                       backgroundColor: '#ffebee'

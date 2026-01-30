@@ -71,7 +71,7 @@ export const useCreateTeacherAccount = () => {
 
 
 const deleteTeacherAccount = async (teacherId: string) => {
-    const { data } = await apiClient.delete(`/user/${teacherId}`);
+    const { data } = await apiClient.delete(`/teachers/${teacherId}`);
 
     return data.data;
 }
