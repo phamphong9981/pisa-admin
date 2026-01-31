@@ -653,6 +653,27 @@ const CreateLessonSchedule = ({
     }
   }
 
+  // Handle select all available students
+  const handleSelectAllAvailable = (studentsToSelect: Array<{ id: string; fullname: string }>) => {
+    setSelectedStudents(prev => {
+      const currentIds = new Set(prev.map(s => s.profile_id || s.id))
+      const toAdd = studentsToSelect
+        .filter(s => !currentIds.has(s.id))
+        .map(s => ({
+          id: s.id,
+          fullname: s.fullname,
+          email: undefined,
+          course: undefined,
+          ieltsPoint: undefined,
+          isBusy: false,
+          source: 'available' as const,
+          profile_id: s.id
+        }))
+
+      return [...prev, ...toAdd]
+    })
+  }
+
   // Check if student is already selected
   const isStudentSelected = (studentId: string) => {
     return selectedStudents.some(s => s.id === studentId || s.profile_id === studentId)
@@ -1710,9 +1731,20 @@ const CreateLessonSchedule = ({
                 {/* Available Students from Slot - in create mode */}
                 {!editMode && availableStudents.length > 0 && (
                   <Box sx={{ mb: 2 }}>
-                    <Typography variant="subtitle2" color="text.secondary" mb={1}>
-                      Học sinh rảnh trong khung giờ này:
-                    </Typography>
+                    <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Học sinh rảnh trong khung giờ này:
+                      </Typography>
+                      <Button
+                        size="small"
+                        onClick={() => handleSelectAllAvailable(availableStudents)}
+                        disabled={availableStudents.every(s => isStudentSelected(s.id))}
+                        startIcon={<i className="ri-checkbox-multiple-line" />}
+                        sx={{ fontSize: '0.75rem' }}
+                      >
+                        Chọn tất cả
+                      </Button>
+                    </Box>
                     <Box sx={{
                       maxHeight: '200px',
                       overflowY: 'auto',
@@ -1755,10 +1787,21 @@ const CreateLessonSchedule = ({
 
                   return (
                     <Box sx={{ mb: 2 }}>
-                      <Typography variant="subtitle2" color="success.main" mb={1} fontWeight={600}>
-                        <i className="ri-user-add-line" style={{ marginRight: 4 }} />
-                        Học sinh rảnh khác có thể thêm ({otherFreeStudents.length} học sinh):
-                      </Typography>
+                      <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
+                        <Typography variant="subtitle2" color="success.main" fontWeight={600}>
+                          <i className="ri-user-add-line" style={{ marginRight: 4 }} />
+                          Học sinh rảnh khác có thể thêm ({otherFreeStudents.length} học sinh):
+                        </Typography>
+                        <Button
+                          size="small"
+                          color="success"
+                          onClick={() => handleSelectAllAvailable(otherFreeStudents)}
+                          startIcon={<i className="ri-checkbox-multiple-line" />}
+                          sx={{ fontSize: '0.75rem' }}
+                        >
+                          Chọn tất cả
+                        </Button>
+                      </Box>
                       <Box sx={{
                         maxHeight: '200px',
                         overflowY: 'auto',
@@ -1796,9 +1839,20 @@ const CreateLessonSchedule = ({
                 {/* Absent Students - only in edit mode */}
                 {editMode && scheduleDetail && scheduleDetail.students.absent.length > 0 && (
                   <Box sx={{ mb: 2 }}>
-                    <Typography variant="subtitle2" color="text.secondary" mb={1}>
-                      Học sinh thiếu lịch ({scheduleDetail.students.absent.length} học sinh):
-                    </Typography>
+                    <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Học sinh thiếu lịch ({scheduleDetail.students.absent.length} học sinh):
+                      </Typography>
+                      <Button
+                        size="small"
+                        onClick={() => handleSelectAllAvailable(scheduleDetail.students.absent.map(s => ({ id: s.profileId, fullname: s.fullname })))}
+                        disabled={scheduleDetail.students.absent.every(s => isStudentSelected(s.profileId))}
+                        startIcon={<i className="ri-checkbox-multiple-line" />}
+                        sx={{ fontSize: '0.75rem' }}
+                      >
+                        Chọn tất cả
+                      </Button>
+                    </Box>
                     <Box sx={{
                       maxHeight: '200px',
                       overflowY: 'auto',
@@ -2134,7 +2188,7 @@ const CreateLessonSchedule = ({
           </Button>
         </DialogActions>
       </Dialog>
-    </Dialog>
+    </Dialog >
   )
 }
 
