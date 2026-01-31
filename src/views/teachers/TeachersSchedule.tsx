@@ -38,6 +38,7 @@ import { RollcallStatus, SCHEDULE_TIME, useGetAllSchedule } from '@/@core/hooks/
 import { useTeacherList, useUpdateTeacher, useTeacherScheduleNotesByWeek, TeacherScheduleNoteResponseDto } from '@/@core/hooks/useTeacher'
 import { useGetWeeks, WeekResponseDto, ScheduleStatus as WeekStatus } from '@/@core/hooks/useWeek'
 import { RegionId, RegionLabel } from '@/@core/hooks/useCourse'
+import useAuth from '@/@core/hooks/useAuth'
 
 // Components
 import ScheduleDetailPopup from './ScheduleDetailPopup'
@@ -195,7 +196,8 @@ const ScheduleCell = ({
   time,
   scheduleTime,
   scheduleNote,
-  onEditNote
+  onEditNote,
+  readOnly
 }: {
   teacherId: string
   teacherName: string
@@ -205,13 +207,14 @@ const ScheduleCell = ({
   scheduleTime: number
   scheduleNote?: string
   onEditNote: (teacherId: string, teacherName: string, scheduleTime: number, dayLabel: string, time: string, currentNote?: string) => void
+  readOnly?: boolean
 }) => {
 
   return (
     <Tooltip
       title={
         scheduleNote
-          ? `Ghi chú: ${scheduleNote} - Click để chỉnh sửa`
+          ? (readOnly ? `Ghi chú: ${scheduleNote}` : `Ghi chú: ${scheduleNote} - Click để chỉnh sửa`)
           : isBusy
             ? `${teacherName} bận vào ${dayLabel} ${time} - Ghi chú của BPXL`
             : `${teacherName} rảnh vào ${dayLabel} ${time} - Ghi chú của BPXL`
@@ -220,7 +223,9 @@ const ScheduleCell = ({
       <Box
         onClick={(e) => {
           e.stopPropagation()
-          onEditNote(teacherId, teacherName, scheduleTime, dayLabel, time, scheduleNote)
+          if (!readOnly) {
+            onEditNote(teacherId, teacherName, scheduleTime, dayLabel, time, scheduleNote)
+          }
         }}
         sx={{
           width: '100%',
@@ -231,7 +236,7 @@ const ScheduleCell = ({
           alignItems: 'stretch',
           backgroundColor: isBusy ? '#ffebee' : '#f1f8e9',
           borderRadius: 1,
-          cursor: 'pointer',
+          cursor: readOnly ? 'default' : 'pointer',
           position: 'relative',
           overflow: 'hidden',
           '&:hover': {
@@ -256,7 +261,9 @@ const ScheduleCell = ({
             title={scheduleNote}
             onClick={(e) => {
               e.stopPropagation()
-              onEditNote(teacherId, teacherName, scheduleTime, dayLabel, time, scheduleNote)
+              if (!readOnly) {
+                onEditNote(teacherId, teacherName, scheduleTime, dayLabel, time, scheduleNote)
+              }
             }}
           >
             <i className="ri-file-text-line" style={{ fontSize: '12px', color: '#856404', flexShrink: 0 }} />
@@ -298,7 +305,7 @@ const ScheduleCell = ({
         </Box>
 
         {/* Edit hint when no note */}
-        {!scheduleNote && (
+        {!scheduleNote && !readOnly && (
           <Box
             sx={{
               position: 'absolute',
@@ -346,6 +353,8 @@ const dayOffsetMap: Record<string, number> = {
 const TeachersSchedule = () => {
   // Week selection
   const { data: weeksData, isLoading: isWeeksLoading } = useGetWeeks()
+  const { isTeacher } = useAuth()
+  const isTeacherUser = isTeacher()
   const [selectedWeekId, setSelectedWeekId] = useState<string>('')
 
   // Get teachers with weekId to fetch busy schedule for that week
@@ -1243,7 +1252,7 @@ const TeachersSchedule = () => {
     })
 
     return rows
-  }, [filteredTimeSlots, filteredTeachers, schedules])
+  }, [filteredTimeSlots, filteredTeachers, schedules, isTeacherUser])
 
   // Prepare columns for DataGrid
   const gridColumns = useMemo<GridColDef[]>(() => {
@@ -1360,18 +1369,20 @@ const TeachersSchedule = () => {
                   />
                 </IconButton>
               </Tooltip>
-              <Tooltip title="Chỉnh sửa ghi chú">
-                <IconButton
-                  size="small"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleOpenEditNoteDialog(teacher.id, teacher.name, teacher.skills || [], teacher.note)
-                  }}
-                  sx={{ padding: '2px' }}
-                >
-                  <i className="ri-edit-line" style={{ fontSize: '14px', color: '#1976d2' }} />
-                </IconButton>
-              </Tooltip>
+              {!isTeacherUser && (
+                <Tooltip title="Chỉnh sửa ghi chú">
+                  <IconButton
+                    size="small"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleOpenEditNoteDialog(teacher.id, teacher.name, teacher.skills || [], teacher.note)
+                    }}
+                    sx={{ padding: '2px' }}
+                  >
+                    <i className="ri-edit-line" style={{ fontSize: '14px', color: '#1976d2' }} />
+                  </IconButton>
+                </Tooltip>
+              )}
             </Box>
             <Box display="flex" alignItems="center" gap={1} width="100%" flexWrap="wrap">
               <Typography variant="caption" color="text.secondary">
@@ -1435,7 +1446,9 @@ const TeachersSchedule = () => {
                 <Box
                   onClick={(e) => {
                     e.stopPropagation()
-                    handleOpenScheduleNoteDialog(cellData.teacherId, teacherName, cellData.slot + 1, dayLabel, time, scheduleNote)
+                    if (!isTeacherUser) {
+                      handleOpenScheduleNoteDialog(cellData.teacherId, teacherName, cellData.slot + 1, dayLabel, time, scheduleNote)
+                    }
                   }}
                   sx={{
                     width: '100%',
@@ -1447,13 +1460,13 @@ const TeachersSchedule = () => {
                     gap: 0.5,
                     minHeight: scheduleNote ? '24px' : '20px',
                     flexShrink: 0,
-                    cursor: 'pointer',
+                    cursor: isTeacherUser ? 'default' : 'pointer',
                     borderRadius: '4px 4px 0 0',
                     '&:hover': {
                       backgroundColor: scheduleNote ? '#ffe69c' : '#f5f5f5'
                     }
                   }}
-                  title={scheduleNote ? `Ghi chú: ${scheduleNote} - Click để chỉnh sửa` : 'Ghi chú của BPXL'}
+                  title={scheduleNote ? (isTeacherUser ? `Ghi chú: ${scheduleNote}` : `Ghi chú: ${scheduleNote} - Click để chỉnh sửa`) : 'Ghi chú của BPXL'}
                 >
                   <i className="ri-file-text-line" style={{ fontSize: '12px', color: scheduleNote ? '#856404' : '#999', flexShrink: 0 }} />
                   <Typography
@@ -1472,7 +1485,9 @@ const TeachersSchedule = () => {
                   >
                     {scheduleNote || 'Ghi chú của BPXL...'}
                   </Typography>
-                  <i className="ri-edit-line" style={{ fontSize: '12px', color: scheduleNote ? '#856404' : '#999', flexShrink: 0, opacity: 0.6 }} />
+                  {!isTeacherUser && (
+                    <i className="ri-edit-line" style={{ fontSize: '12px', color: scheduleNote ? '#856404' : '#999', flexShrink: 0, opacity: 0.6 }} />
+                  )}
                 </Box>
               )}
 
@@ -1647,6 +1662,7 @@ const TeachersSchedule = () => {
                   scheduleTime={cellData.slot + 1}
                   scheduleNote={scheduleNote}
                   onEditNote={handleOpenScheduleNoteDialog}
+                  readOnly={isTeacherUser}
                 />
               )}
             </Box>
@@ -1656,7 +1672,7 @@ const TeachersSchedule = () => {
     })
 
     return columns
-  }, [filteredTeachers, pinnedTeacherIds, schedules, selectedWeekId, allScheduleNotes, selectedRegions, handleOpenScheduleNoteDialog, handleOpenEditNoteDialog, handleTogglePinTeacher, isTeacherPinned, getRollcallStatusConfig, getScheduleNote])
+  }, [filteredTeachers, pinnedTeacherIds, schedules, selectedWeekId, allScheduleNotes, selectedRegions, handleOpenScheduleNoteDialog, handleOpenEditNoteDialog, handleTogglePinTeacher, isTeacherPinned, getRollcallStatusConfig, getScheduleNote, isTeacherUser])
 
   // Render schedule table (reusable for both card and full screen modal)
   const renderScheduleTable = (isFullScreen: boolean = false) => {

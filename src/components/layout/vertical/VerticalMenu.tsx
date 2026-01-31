@@ -89,6 +89,7 @@ const VerticalMenu = ({ scrollMenu }: { scrollMenu: (container: any, isPerfectSc
             <MenuItem href='/edit-schedule' icon={<i className='ri-calendar-edit-line' />}>Lịch rảnh/bận</MenuItem>
             <MenuItem href='/schedule-planner' icon={<i className='ri-calendar-event-line' />}>Xếp lịch học</MenuItem>
             <MenuItem href='/schedule-requests' icon={<i className='ri-user-forbid-line' />}>Yêu cầu đổi lịch</MenuItem>
+            <MenuItem href='/schedule-history' icon={<i className='ri-history-line' />}>Lịch sử xếp lịch</MenuItem>
             {/* <MenuItem href='/unscheduled-students' icon={<i className='ri-user-forbid-line' />}>Danh sách học sinh đang thiếu</MenuItem> */}
           </SubMenu>
         )}
@@ -110,7 +111,9 @@ const VerticalMenu = ({ scrollMenu }: { scrollMenu: (container: any, isPerfectSc
         {isTeacherUser && (
           <MenuItem href='/schedule-planner' icon={<i className='ri-calendar-time-line' />}>Xem lịch lớp</MenuItem>
         )}
-        <MenuItem href='/schedule-history' icon={<i className='ri-history-line' />}>Lịch sử xếp lịch</MenuItem>
+        {isTeacherUser && !canAccessTeacher && (
+          <MenuItem href='/teachers-schedule' icon={<i className='ri-calendar-time-line' />}>PISA TEACHER</MenuItem>
+        )}
       </Menu>
     </ScrollWrapper>
   )
