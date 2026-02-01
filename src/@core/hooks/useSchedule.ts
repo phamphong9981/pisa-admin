@@ -282,7 +282,7 @@ export const useGetAllSchedule = (enable: boolean, courseId?: string, weekId?: s
         queryFn: () => getAllSchedule(courseId, weekId),
         enabled: enable || !!courseId,
         // Refetch every 2 seconds for near-real-time updates
-        refetchInterval: 2000,
+        refetchInterval: 3000,
         refetchIntervalInBackground: true,
         staleTime: 5 * 60 * 1000, // 5 phút
         gcTime: 10 * 60 * 1000, // 10 phút

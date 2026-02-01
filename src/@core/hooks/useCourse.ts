@@ -108,7 +108,7 @@ export const useCourseInfoWithReload = (courseId: string, weekId: string) => {
             return data.data;
         },
         enabled: !!courseId,
-        refetchInterval: 2000,
+        refetchInterval: 3000,
         refetchIntervalInBackground: true,
         staleTime: 5 * 60 * 1000,
         gcTime: 10 * 60 * 1000,
