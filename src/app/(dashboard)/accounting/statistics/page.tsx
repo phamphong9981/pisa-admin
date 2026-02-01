@@ -4,21 +4,37 @@ export const runtime = 'edge';
 
 import React from 'react'
 
-import { Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, Grid, IconButton, InputAdornment, InputLabel, MenuItem, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from '@mui/material'
+import { Box, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, Grid, IconButton, InputAdornment, InputLabel, MenuItem, Select, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TextField, Typography } from '@mui/material'
 
-import { useGetTotalStudyHours } from '@/@core/hooks/useAccounting'
-import { exportScheduleInfo } from '@/@core/hooks/useSchedule'
+import { useExportTotalStudyHours, useGetTotalStudyHours, TotalStudyHoursParams } from '@/@core/hooks/useAccounting'
 import { useGetWeeks, WeekResponseDto, ScheduleStatus as WeekStatus } from '@/@core/hooks/useWeek'
+import { exportScheduleInfo } from '@/@core/hooks/useSchedule'
 
 const AccountingStatisticsPage = () => {
-  const [search, setSearch] = React.useState<string | undefined>(undefined)
-  const { data, isFetching } = useGetTotalStudyHours(search)
+  const [params, setParams] = React.useState<TotalStudyHoursParams>({
+    page: 1,
+    limit: 10,
+    search: undefined,
+    weekId: undefined
+  })
+
+  const { data: studyHoursData, isFetching } = useGetTotalStudyHours(params)
   const { data: weeksData, isLoading: isWeeksLoading } = useGetWeeks()
+  const { mutate: exportReport, isPending: isExporting } = useExportTotalStudyHours()
+
+  const [weeks, setWeeks] = React.useState<WeekResponseDto[]>([])
+
+  // States for download schedule dialog
   const [openDialog, setOpenDialog] = React.useState(false)
   const [selectedWeekIdInDialog, setSelectedWeekIdInDialog] = React.useState<string>('')
   const [isDownloading, setIsDownloading] = React.useState(false)
 
-  const weeks = React.useMemo(() => weeksData || [], [weeksData])
+  React.useEffect(() => {
+    if (weeksData) {
+      setWeeks(weeksData)
+    }
+  }, [weeksData])
+
   const openWeek = React.useMemo(() => weeks.find(w => w.scheduleStatus === WeekStatus.OPEN), [weeks])
 
   // Calculate end date for a week (startDate + 6 days)
@@ -44,6 +60,43 @@ const AccountingStatisticsPage = () => {
       }
     }
   }, [openDialog, weeks, selectedWeekIdInDialog, openWeek])
+
+
+  const handleSearchChange = (value: string) => {
+    setParams(prev => ({ ...prev, search: value || undefined, page: 1 }))
+  }
+
+  const handleWeekChange = (weekId: string) => {
+    setParams(prev => ({ ...prev, weekId: weekId === 'all' ? undefined : weekId, page: 1 }))
+  }
+
+  const handlePageChange = (event: unknown, newPage: number) => {
+    setParams(prev => ({ ...prev, page: newPage + 1 }))
+  }
+
+  const handleLimitChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setParams(prev => ({ ...prev, limit: parseInt(event.target.value, 10), page: 1 }))
+  }
+
+  const handleExport = () => {
+    exportReport({
+      search: params.search,
+      weekId: params.weekId
+    }, {
+      onSuccess: (data) => {
+        const blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+        const url = window.URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        const dateStr = new Date().toISOString().split('T')[0]
+        link.download = `actual_study_hours_${dateStr}${params.weekId ? `_week` : ''}${params.search ? `_${params.search}` : ''}.xlsx`
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        window.URL.revokeObjectURL(url)
+      }
+    })
+  }
 
   const handleOpenDownloadDialog = () => {
     setOpenDialog(true)
@@ -77,45 +130,84 @@ const AccountingStatisticsPage = () => {
     }
   }
 
+
   return (
     <Grid container spacing={6}>
       <Grid item xs={12}>
         <Typography variant='h5' fontWeight={700}>Thống kê học sinh</Typography>
-        <Typography variant='body2' color='text.secondary'>Danh sách học sinh và số buổi, thời gian đã học</Typography>
+        <Typography variant='body2' color='text.secondary'>Thống kê tổng giờ học thực tế của học sinh</Typography>
       </Grid>
 
       <Grid item xs={12}>
         <Card>
           <CardContent>
-            <Box display='flex' gap={2} alignItems='center' mb={3} flexWrap='wrap'>
-              <TextField
-                value={search ?? ''}
-                onChange={e => setSearch(e.target.value || undefined)}
-                placeholder='Tìm tên, email, lớp, khóa học...'
-                sx={{ flex: 1, minWidth: 250 }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position='start'>
-                      <i className='ri-search-line' />
-                    </InputAdornment>
-                  ),
-                  endAdornment: (
-                    <InputAdornment position='end'>
-                      <IconButton edge='end' onClick={() => setSearch(undefined)} disabled={!search}>
-                        <i className='ri-close-line' />
-                      </IconButton>
-                    </InputAdornment>
-                  )
-                }}
-              />
-              <Button
-                variant='contained'
-                onClick={handleOpenDownloadDialog}
-                disabled={isWeeksLoading}
-                startIcon={<i className='ri-download-line' />}
-              >
-                Tải lịch tuần (CSV)
-              </Button>
+            <Box display='flex' gap={2} alignItems='flex-start' mb={3} flexWrap='wrap' justifyContent='space-between'>
+              <Box display='flex' gap={2} flexWrap='wrap' flex={1}>
+                <TextField
+                  size='small'
+                  value={params.search ?? ''}
+                  onChange={e => handleSearchChange(e.target.value)}
+                  placeholder='Tìm tên, email, lớp...'
+                  sx={{ minWidth: 250 }}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position='start'>
+                        <i className='ri-search-line' />
+                      </InputAdornment>
+                    ),
+                    endAdornment: (
+                      <InputAdornment position='end'>
+                        {params.search && (
+                          <IconButton size='small' onClick={() => handleSearchChange('')}>
+                            <i className='ri-close-line' />
+                          </IconButton>
+                        )}
+                      </InputAdornment>
+                    )
+                  }}
+                />
+
+                <FormControl size='small' sx={{ minWidth: 250 }}>
+                  <InputLabel>Chọn tuần</InputLabel>
+                  <Select
+                    value={params.weekId || 'all'}
+                    onChange={(e) => handleWeekChange(e.target.value)}
+                    label='Chọn tuần'
+                    disabled={isWeeksLoading}
+                  >
+                    <MenuItem value='all'>Tất cả các tuần</MenuItem>
+                    {weeks.map((week: WeekResponseDto) => {
+                      const startDate = new Date(week.startDate)
+                      const endDate = calculateEndDate(startDate)
+                      return (
+                        <MenuItem key={week.id} value={week.id}>
+                          {startDate.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })} - {endDate.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                          {week.scheduleStatus === WeekStatus.OPEN && ' (Mở)'}
+                        </MenuItem>
+                      )
+                    })}
+                  </Select>
+                </FormControl>
+              </Box>
+
+              <Box display='flex' gap={2}>
+                <Button
+                  variant='outlined'
+                  onClick={handleOpenDownloadDialog}
+                  disabled={isWeeksLoading}
+                  startIcon={<i className='ri-download-line' />}
+                >
+                  Tải lịch tuần (CSV)
+                </Button>
+                <Button
+                  variant='contained'
+                  onClick={handleExport}
+                  disabled={isExporting}
+                  startIcon={isExporting ? <i className='ri-loader-4-line' style={{ animation: 'spin 1s linear infinite' }} /> : <i className='ri-file-excel-2-line' />}
+                >
+                  Xuất Excel
+                </Button>
+              </Box>
             </Box>
 
             <TableContainer>
@@ -126,31 +218,39 @@ const AccountingStatisticsPage = () => {
                     <TableCell>Email</TableCell>
                     <TableCell>Khóa học</TableCell>
                     <TableCell>Lớp</TableCell>
+                    <TableCell>Giáo viên</TableCell>
                     <TableCell align='right'>Số buổi</TableCell>
                     <TableCell align='right'>Tổng giờ thực học</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {(data || []).map(row => (
-                    <TableRow key={`${row.email}-${row.className}-${row.courseName}`}>
-                      <TableCell>
-                        <Box display='flex' alignItems='center' gap={1}>
-                          <i className='ri-user-line' />
-                          <Box>
-                            <Typography variant='body2' fontWeight={600}>{row.fullname || row.username}</Typography>
-                          </Box>
-                        </Box>
-                      </TableCell>
-                      <TableCell>{row.email}</TableCell>
-                      <TableCell>{row.courseName}</TableCell>
-                      <TableCell>{row.className}</TableCell>
-                      <TableCell align='right'>{row.totalAttendedSessions}</TableCell>
-                      <TableCell align='right'>{row.totalActualHours}</TableCell>
-                    </TableRow>
-                  ))}
-                  {(!isFetching && (data || []).length === 0) && (
+                  {isFetching ? (
                     <TableRow>
-                      <TableCell colSpan={6}>
+                      <TableCell colSpan={7} align="center">Đang tải...</TableCell>
+                    </TableRow>
+                  ) : (studyHoursData?.data || []).length > 0 ? (
+                    (studyHoursData?.data || []).map((row, index) => (
+                      <TableRow key={`${row.username}-${row.className}-${index}`}>
+                        <TableCell>
+                          <Box display='flex' alignItems='center' gap={1}>
+                            <i className='ri-user-line' />
+                            <Box>
+                              <Typography variant='body2' fontWeight={600}>{row.fullname || row.username}</Typography>
+                              <Typography variant='caption' color='text.secondary'>{row.username}</Typography>
+                            </Box>
+                          </Box>
+                        </TableCell>
+                        <TableCell>{row.email}</TableCell>
+                        <TableCell>{row.courseName}</TableCell>
+                        <TableCell>{row.className}</TableCell>
+                        <TableCell>{row.teacherName}</TableCell>
+                        <TableCell align='right'>{row.totalAttendedSessions}</TableCell>
+                        <TableCell align='right'>{row.totalActualHours}</TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={7} align='center'>
                         <Typography variant='body2' color='text.secondary'>Không có dữ liệu</Typography>
                       </TableCell>
                     </TableRow>
@@ -158,6 +258,19 @@ const AccountingStatisticsPage = () => {
                 </TableBody>
               </Table>
             </TableContainer>
+
+            {studyHoursData?.pagination && (
+              <TablePagination
+                component="div"
+                count={studyHoursData.pagination.total}
+                page={(studyHoursData.pagination.page - 1) || 0}
+                onPageChange={handlePageChange}
+                rowsPerPage={studyHoursData.pagination.limit || 10}
+                onRowsPerPageChange={handleLimitChange}
+                labelRowsPerPage="Số hàng mỗi trang"
+                labelDisplayedRows={({ from, to, count }) => `${from}–${to} trong ${count}`}
+              />
+            )}
           </CardContent>
         </Card>
       </Grid>
@@ -265,4 +378,3 @@ const AccountingStatisticsPage = () => {
 }
 
 export default AccountingStatisticsPage
-

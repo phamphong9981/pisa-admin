@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiClient } from './apiClient';
 
+
 export interface TotalStudyHoursResponse {
     username: string,
     fullname: string,
@@ -8,7 +9,29 @@ export interface TotalStudyHoursResponse {
     courseName: string,
     className: string,
     totalActualHours: number,
+    teacherName: string,
     totalAttendedSessions: number
+}
+
+export interface PaginationMeta {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+    hasNext: boolean
+    hasPrev: boolean
+}
+
+export interface TotalStudyHoursPaginatedResponse {
+    data: TotalStudyHoursResponse[]
+    pagination: PaginationMeta
+}
+
+export interface TotalStudyHoursParams {
+    search?: string
+    weekId?: string
+    page?: number
+    limit?: number
 }
 
 export enum ReportFormat {
@@ -29,14 +52,21 @@ export interface ClassSessionReportRequest {
 }
 
 const api = {
-    getTotalStudyHours: async (search?: string): Promise<TotalStudyHoursResponse[]> => {
+    getTotalStudyHours: async (params?: TotalStudyHoursParams): Promise<TotalStudyHoursPaginatedResponse> => {
         const { data } = await apiClient.get('/total-study-hours', {
-            params: {
-                search: search
-            }
+            params: params
         })
 
         return data.data;
+    },
+
+    exportTotalStudyHours: async (params?: TotalStudyHoursParams): Promise<Blob> => {
+        const { data } = await apiClient.get('/total-study-hours/export', {
+            params: params,
+            responseType: 'blob'
+        })
+
+        return data
     },
 
     exportStudentProgressReport: async (request: StudentProgressReportRequest): Promise<Blob> => {
@@ -56,10 +86,19 @@ const api = {
     }
 }
 
-export const useGetTotalStudyHours = (search?: string) => {
+export const useGetTotalStudyHours = (params?: TotalStudyHoursParams) => {
     return useQuery({
-        queryKey: ['totalStudyHours', search],
-        queryFn: () => api.getTotalStudyHours(search),
+        queryKey: ['totalStudyHours', params],
+        queryFn: () => api.getTotalStudyHours(params),
+    })
+}
+
+export const useExportTotalStudyHours = () => {
+    return useMutation({
+        mutationFn: (params?: TotalStudyHoursParams) => api.exportTotalStudyHours(params),
+        onError: (error) => {
+            console.error('Error exporting total study hours:', error)
+        }
     })
 }
 
