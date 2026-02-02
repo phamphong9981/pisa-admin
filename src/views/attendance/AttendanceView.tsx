@@ -301,12 +301,14 @@ const AttendanceView = () => {
         setBatchStatus('')
     }
 
-    // Format schedule time display
-    const getScheduleTimeDisplay = (timeIndex: number) => {
-        if (timeIndex > 0 && timeIndex <= SCHEDULE_TIME.length) {
-            return SCHEDULE_TIME[timeIndex - 1]
+    // Format time to HH:MM
+    const formatTime = (time?: string) => {
+        if (!time) return ''
+        const parts = time.split(':')
+        if (parts.length >= 2) {
+            return `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`
         }
-        return `Ca ${timeIndex}`
+        return time
     }
 
     const handleAttendanceChange = async (scheduleId: string, isAttending: boolean) => {
@@ -1033,7 +1035,7 @@ const AttendanceView = () => {
                                                 </TableCell>
                                                 <TableCell>
                                                     <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
-                                                        {getScheduleTimeDisplay(schedule.scheduleTime)}
+                                                        {formatTime(schedule.startTime)} - {formatTime(schedule.endTime)}
                                                     </Typography>
                                                 </TableCell>
                                                 <TableCell align="center" sx={{ minWidth: 200 }}>
