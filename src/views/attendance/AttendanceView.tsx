@@ -1126,7 +1126,7 @@ const AttendanceView = () => {
                             </Table>
                         </TableContainer>
                         <TablePagination
-                            rowsPerPageOptions={[10, 25, 50, 100]}
+                            rowsPerPageOptions={[10, 25, 50, 100, 200, 400]}
                             component="div"
                             count={searchResults.total}
                             rowsPerPage={rowsPerPage}
