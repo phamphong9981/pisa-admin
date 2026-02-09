@@ -1782,7 +1782,7 @@ const TeachersSchedule = () => {
       {/* Week Selection */}
       <Box sx={{ mb: 3 }}>
         <FormControl size="small" sx={{ minWidth: 300 }}>
-          <InputLabel>Tuần học</InputLabel>
+          <InputLabel sx={{ fontWeight: 600, fontSize: '16px', color: 'text.primary' }}>Tuần học</InputLabel>
           <Select
             value={selectedWeekId}
             onChange={(e) => setSelectedWeekId(e.target.value)}
@@ -1910,7 +1910,7 @@ const TeachersSchedule = () => {
           <Grid container spacing={2} alignItems="center">
             <Grid item xs={12} md={6}>
               <FormControl fullWidth size="small">
-                <InputLabel>Lọc theo ngày</InputLabel>
+                <InputLabel sx={{ fontWeight: 600, fontSize: '16px', color: 'text.primary' }}>Lọc theo ngày</InputLabel>
                 <Select
                   value={selectedDay}
                   onChange={(e) => setSelectedDay(e.target.value)}
@@ -1950,6 +1950,8 @@ const TeachersSchedule = () => {
                       ),
                     }}
                     sx={{
+                      '& .MuiInputLabel-root': { fontWeight: 600, fontSize: '16px', color: 'text.primary' },
+                      '& .MuiOutlinedInput-input::placeholder': { fontSize: '12px' },
                       '& .MuiOutlinedInput-root': {
                         backgroundColor: 'white',
                         '&:hover fieldset': {
@@ -2029,6 +2031,8 @@ const TeachersSchedule = () => {
                       ),
                     }}
                     sx={{
+                      '& .MuiInputLabel-root': { fontWeight: 600, fontSize: '16px', color: 'text.primary' },
+                      '& .MuiOutlinedInput-input::placeholder': { fontSize: '12px' },
                       '& .MuiOutlinedInput-root': {
                         backgroundColor: 'white',
                         '&:hover fieldset': {
@@ -2099,6 +2103,8 @@ const TeachersSchedule = () => {
                       ),
                     }}
                     sx={{
+                      '& .MuiInputLabel-root': { fontWeight: 600, fontSize: '16px', color: 'text.primary' },
+                      '& .MuiOutlinedInput-input::placeholder': { fontSize: '12px' },
                       '& .MuiOutlinedInput-root': {
                         backgroundColor: 'white',
                         '&:hover fieldset': {
@@ -2165,6 +2171,8 @@ const TeachersSchedule = () => {
                       ),
                     }}
                     sx={{
+                      '& .MuiInputLabel-root': { fontWeight: 600, fontSize: '16px', color: 'text.primary' },
+                      '& .MuiOutlinedInput-input::placeholder': { fontSize: '12px' },
                       '& .MuiOutlinedInput-root': {
                         backgroundColor: 'white',
                         '&:hover fieldset': {
@@ -2231,6 +2239,8 @@ const TeachersSchedule = () => {
                       ),
                     }}
                     sx={{
+                      '& .MuiInputLabel-root': { fontWeight: 600, fontSize: '16px', color: 'text.primary' },
+                      '& .MuiOutlinedInput-input::placeholder': { fontSize: '12px' },
                       '& .MuiOutlinedInput-root': {
                         backgroundColor: 'white',
                         '&:hover fieldset': {
@@ -2297,6 +2307,8 @@ const TeachersSchedule = () => {
                       ),
                     }}
                     sx={{
+                      '& .MuiInputLabel-root': { fontWeight: 600, fontSize: '16px', color: 'text.primary' },
+                      '& .MuiOutlinedInput-input::placeholder': { fontSize: '12px' },
                       '& .MuiOutlinedInput-root': {
                         backgroundColor: 'white',
                         '&:hover fieldset': {
@@ -2756,6 +2768,10 @@ const TeachersSchedule = () => {
               fullWidth
               label="Tên group"
               placeholder="Nhập tên group (ví dụ: Giáo viên Toán, Giáo viên Anh văn...)"
+              sx={{
+                '& .MuiInputLabel-root': { fontWeight: 600, fontSize: '16px', color: 'text.primary' },
+                '& .MuiOutlinedInput-input::placeholder': { fontSize: '12px' }
+              }}
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
               autoFocus
