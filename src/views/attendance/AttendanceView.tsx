@@ -50,6 +50,9 @@ import { RegionId, RegionLabel } from '@/@core/hooks/useCourse'
 import useDebounce from '@/@core/hooks/useDebounce'
 import useAuth from '@/@core/hooks/useAuth'
 import { DatePicker } from '@/components/ui/date-picker'
+import CreateLessonSchedule from '@/views/schedule/CreateLessonSchedule'
+import { useClass } from '@/@core/hooks/useClass'
+import { useCourseInfo } from '@/@core/hooks/useCourse'
 
 // DebouncedInput Component
 const DebouncedInput = ({
@@ -198,6 +201,32 @@ const AttendanceView = () => {
     const updateRollcallMutation = useUpdateRollcallStatus()
     const lockScheduleMutation = useLockScheduleByDate()
     const { data: lockedDates, isLoading: isLockedDatesLoading, refetch: refetchLockedDates } = useGetLockedScheduleDates()
+
+    const [editModalOpen, setEditModalOpen] = useState(false)
+    const [editingSchedule, setEditingSchedule] = useState<any>(null)
+
+    const { data: classData } = useClass(editingSchedule?.classId || '')
+    const { data: courseInfo } = useCourseInfo(classData?.courseId || '', editingSchedule?.weekId || '')
+
+    const availableStudents = useMemo(() => {
+        return (courseInfo?.profileCourses || []).map(pc => ({
+            id: pc.profile.id,
+            fullname: pc.profile.fullname
+        }))
+    }, [courseInfo])
+
+    const courseClasses = useMemo(() => {
+        return (courseInfo?.classes || []).map(cls => ({
+            id: cls.id,
+            name: cls.name,
+            teacherId: cls.teacherId,
+            teacher: {
+                id: cls.teacherId,
+                name: cls.teacher.name,
+                skills: cls.teacher?.skills || []
+            }
+        }))
+    }, [courseInfo])
 
     // Build search params
     const searchParams = useMemo((): SearchScheduleParams => {
@@ -995,7 +1024,21 @@ const AttendanceView = () => {
                                                 </TableCell>
                                                 <TableCell>
                                                     <Box>
-                                                        <Typography variant="body2" fontWeight={500}>
+                                                        <Typography
+                                                            variant="body2"
+                                                            fontWeight={600}
+                                                            color={canAccessAccounting ? "primary" : "text.primary"}
+                                                            onClick={() => {
+                                                                if (canAccessAccounting) {
+                                                                    setEditingSchedule(schedule)
+                                                                    setEditModalOpen(true)
+                                                                }
+                                                            }}
+                                                            sx={canAccessAccounting ? {
+                                                                cursor: 'pointer',
+                                                                '&:hover': { textDecoration: 'underline' }
+                                                            } : {}}
+                                                        >
                                                             {schedule.className} {schedule.teacherName ? `- ${schedule.teacherName}` : ''}
                                                         </Typography>
                                                         <Typography variant="caption" color="text.secondary">
@@ -1253,6 +1296,33 @@ const AttendanceView = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            {editingSchedule && (
+                <CreateLessonSchedule
+                    open={editModalOpen}
+                    onClose={() => {
+                        setEditModalOpen(false)
+                        setEditingSchedule(null)
+                        refetchSearch()
+                    }}
+                    selectedSlot={{
+                        day: '', // Parsed in CreateLessonSchedule
+                        time: '',
+                        slotIndex: editingSchedule.scheduleTime
+                    }}
+                    availableStudents={availableStudents}
+                    courseClasses={courseClasses}
+                    weekId={editingSchedule.weekId}
+                    editMode={true}
+                    editData={{
+                        classId: editingSchedule.classId,
+                        lesson: editingSchedule.lesson,
+                        teacherName: editingSchedule.teacherName || '',
+                        className: editingSchedule.className,
+                        scheduleTime: editingSchedule.scheduleTime
+                    }}
+                />
+            )}
         </Card>
     )
 }
