@@ -767,31 +767,6 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                   </Button>
                 </Box>
               </Box>
-              <Box textAlign="right">
-                <Typography variant="h6" color="primary" fontWeight={600}>
-                  {students.total} học sinh
-                </Typography>
-                <Box display="flex" gap={1} mt={1}>
-                  <StyledChip
-                    label={`${students.attendingCount} có mặt`}
-                    size="small"
-                    color="success"
-                    variant="outlined"
-                  />
-                  <StyledChip
-                    label={`${students.makeupCount} học bù`}
-                    size="small"
-                    color="info"
-                    variant="outlined"
-                  />
-                  <StyledChip
-                    label={`${students.absentCount} vắng`}
-                    size="small"
-                    color="warning"
-                    variant="outlined"
-                  />
-                </Box>
-              </Box>
             </Box>
           </CardContent>
         </StyledCard>
