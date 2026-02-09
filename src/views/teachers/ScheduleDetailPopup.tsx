@@ -17,6 +17,7 @@ import {
   DialogContent,
   DialogTitle,
   FormControl,
+  Grid,
   IconButton,
   InputLabel,
   MenuItem,
@@ -730,74 +731,145 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
         {/* Class Information */}
         <StyledCard sx={{ mb: 3 }}>
           <CardContent>
-            <Box display="flex" justifyContent="space-between" alignItems="center">
-              <Box>
-                <Typography variant="h6" fontWeight={600} gutterBottom>
-                  {classInfo.name}
+            <Grid container spacing={4}>
+              {/* Cột 1: Thông tin cơ bản */}
+              <Grid item xs={12} md={6}>
+                <Typography variant="h6" fontWeight={700} color="primary.main" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <i className="ri-information-line" /> Thông tin lớp học
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Loại lớp: {classInfo.classType} • Buổi {classInfo.lesson}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Thời gian: {(() => {
-                    // Lấy startTime và endTime từ scheduleInfo
-                    if (scheduleDetail?.scheduleInfo?.startTime || scheduleDetail?.scheduleInfo?.endTime) {
-                      return formatTimeRange(scheduleDetail.scheduleInfo.startTime, scheduleDetail.scheduleInfo.endTime)
-                    }
-                    // Fallback về formatScheduleTime nếu không có startTime/endTime
-                    return formatScheduleTime(scheduleTime)
-                  })()}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Giáo viên dạy: {students.attending.length > 0 && students.attending[0].teacherName
-                    ? students.attending[0].teacherName
-                    : teacherName || '—'}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Ghi chú buổi học: {scheduleDetail?.scheduleInfo?.note || '—'}
-                </Typography>
-                <Box display="flex" alignItems="center" gap={1} mt={0.5}>
-                  <Typography variant="body2" color="text.secondary">
-                    Ghi chú điểm danh: {scheduleDetail?.scheduleInfo?.rollcallNote || '—'}
-                  </Typography>
-                  <Button
-                    size="small"
-                    variant="text"
-                    onClick={handleOpenRollcallNoteDialog}
-                    sx={{
-                      minWidth: 'auto',
-                      padding: '4px',
-                      color: 'primary.main',
-                      '&:hover': {
-                        backgroundColor: 'rgba(25, 118, 210, 0.08)'
-                      }
-                    }}
-                  >
-                    <i className="ri-edit-line" style={{ fontSize: '16px' }} />
-                  </Button>
+                <Box display="flex" flexDirection="column" gap={1.5}>
+                  <Box display="flex" alignItems="center" gap={1.5}>
+                    <Box sx={{ width: 32, height: 32, borderRadius: '8px', bgcolor: 'primary.light', color: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <i className="ri-bookmark-line" style={{ fontSize: '18px' }} />
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" display="block">Loại lớp & Buổi học</Typography>
+                      <Typography variant="body2" fontWeight={600}>{classInfo.classType} • Buổi {classInfo.lesson}</Typography>
+                    </Box>
+                  </Box>
+
+                  <Box display="flex" alignItems="center" gap={1.5}>
+                    <Box sx={{ width: 32, height: 32, borderRadius: '8px', bgcolor: 'success.light', color: 'success.main', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <i className="ri-time-line" style={{ fontSize: '18px' }} />
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" display="block">Thời gian học</Typography>
+                      <Typography variant="body2" fontWeight={600}>
+                        {(() => {
+                          if (scheduleDetail?.scheduleInfo?.startTime || scheduleDetail?.scheduleInfo?.endTime) {
+                            return formatTimeRange(scheduleDetail.scheduleInfo.startTime, scheduleDetail.scheduleInfo.endTime)
+                          }
+                          return formatScheduleTime(scheduleTime)
+                        })()}
+                      </Typography>
+                    </Box>
+                  </Box>
+
+                  <Box display="flex" alignItems="center" gap={1.5}>
+                    <Box sx={{ width: 32, height: 32, borderRadius: '8px', bgcolor: 'info.light', color: 'info.main', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <i className="ri-user-voice-line" style={{ fontSize: '18px' }} />
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" display="block">Giáo viên hướng dẫn</Typography>
+                      <Typography variant="body2" fontWeight={600}>
+                        {students.attending.length > 0 && students.attending[0].teacherName
+                          ? students.attending[0].teacherName
+                          : teacherName || '—'}
+                      </Typography>
+                    </Box>
+                  </Box>
                 </Box>
-                <Box display="flex" alignItems="center" gap={1} mt={0.5}>
-                  <Typography variant="body2" color="text.secondary">
-                    Biến động ca học: {scheduleDetail?.scheduleInfo?.teacherNote || '—'}
+              </Grid>
+
+              {/* Cột 2: Ghi chú buổi học */}
+              <Grid item xs={12} md={6}>
+                <Box sx={{
+                  p: 2.5,
+                  height: '100%',
+                  bgcolor: '#f8f9fa',
+                  borderRadius: '12px',
+                  border: '1px dashed #dee2e6',
+                  display: 'flex',
+                  flexDirection: 'column'
+                }}>
+                  <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1, color: 'text.primary' }}>
+                    <i className="ri-sticky-note-line" /> Ghi chú buổi học
                   </Typography>
-                  <Button
-                    size="small"
-                    variant="text"
-                    onClick={handleOpenTeacherNoteDialog}
-                    sx={{
-                      minWidth: 'auto',
-                      padding: '4px',
-                      color: 'primary.main',
-                      '&:hover': {
-                        backgroundColor: 'rgba(25, 118, 210, 0.08)'
-                      }
-                    }}
-                  >
-                    <i className="ri-edit-line" style={{ fontSize: '16px' }} />
-                  </Button>
+                  <Typography variant="body2" color="text.secondary" sx={{ flex: 1, fontStyle: scheduleDetail?.scheduleInfo?.note ? 'normal' : 'italic' }}>
+                    {scheduleDetail?.scheduleInfo?.note || 'Chưa có ghi chú cho buổi học này.'}
+                  </Typography>
                 </Box>
-              </Box>
-            </Box>
+              </Grid>
+
+              {/* Highlighted Notes Sections */}
+              <Grid item xs={12} sm={6}>
+                <Box sx={{
+                  p: 2,
+                  borderRadius: '12px',
+                  bgcolor: '#e3f2fd',
+                  border: '1px solid #bbdefb',
+                  height: '100%',
+                  position: 'relative',
+                  '&:hover .edit-btn': { opacity: 1 }
+                }}>
+                  <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
+                    <Typography variant="subtitle2" fontWeight={700} sx={{ color: '#1565c0', display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <i className="ri-chat-check-line" /> Ghi chú điểm danh
+                    </Typography>
+                    <IconButton
+                      size="small"
+                      className="edit-btn"
+                      onClick={handleOpenRollcallNoteDialog}
+                      sx={{
+                        opacity: 0.6,
+                        transition: 'opacity 0.2s',
+                        color: '#1565c0',
+                        p: 0.5
+                      }}
+                    >
+                      <i className="ri-edit-2-line" style={{ fontSize: '16px' }} />
+                    </IconButton>
+                  </Box>
+                  <Typography variant="body2" sx={{ color: '#1a237e', minHeight: '1.5rem' }}>
+                    {scheduleDetail?.scheduleInfo?.rollcallNote || 'Chưa có ghi chú điểm danh.'}
+                  </Typography>
+                </Box>
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <Box sx={{
+                  p: 2,
+                  borderRadius: '12px',
+                  bgcolor: '#fff3e0',
+                  border: '1px solid #ffe0b2',
+                  height: '100%',
+                  position: 'relative',
+                  '&:hover .edit-btn': { opacity: 1 }
+                }}>
+                  <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
+                    <Typography variant="subtitle2" fontWeight={700} sx={{ color: '#e65100', display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <i className="ri-exchange-line" /> Biến động ca học
+                    </Typography>
+                    <IconButton
+                      size="small"
+                      className="edit-btn"
+                      onClick={handleOpenTeacherNoteDialog}
+                      sx={{
+                        opacity: 0.6,
+                        transition: 'opacity 0.2s',
+                        color: '#e65100',
+                        p: 0.5
+                      }}
+                    >
+                      <i className="ri-edit-2-line" style={{ fontSize: '16px' }} />
+                    </IconButton>
+                  </Box>
+                  <Typography variant="body2" sx={{ color: '#5d4037', minHeight: '1.5rem' }}>
+                    {scheduleDetail?.scheduleInfo?.teacherNote || 'Chưa có thông tin biến động.'}
+                  </Typography>
+                </Box>
+              </Grid>
+            </Grid>
           </CardContent>
         </StyledCard>
 
