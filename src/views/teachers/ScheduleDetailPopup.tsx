@@ -37,6 +37,10 @@ import { styled } from '@mui/material/styles'
 
 import type { StudentScheduleDetailDto } from '@/@core/hooks/useSchedule';
 import { RollcallStatus, SCHEDULE_TIME, useGetScheduleDetail, useUpdateRollcallStatus, useUpdateUserSchedule, useUpdateLessonSchedule } from '@/@core/hooks/useSchedule'
+import useAuth from '@/@core/hooks/useAuth'
+import { useClass } from '@/@core/hooks/useClass'
+import { useCourseInfo } from '@/@core/hooks/useCourse'
+import CreateLessonSchedule from '@/views/schedule/CreateLessonSchedule'
 
 const StyledDialog = styled(Dialog)(() => ({
   '& .MuiDialog-paper': {
@@ -254,6 +258,9 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
   const [showTeacherNoteSuccess, setShowTeacherNoteSuccess] = React.useState(false)
   const [editingReasonStudentId, setEditingReasonStudentId] = React.useState<string | null>(null)
   const [editingReasonText, setEditingReasonText] = React.useState('')
+  const [showEditModal, setShowEditModal] = React.useState(false)
+
+  const { hasPermission } = useAuth()
 
   const scheduleDetailQuery = useGetScheduleDetail(classId, lesson, weekId, scheduleTime)
   const { data: scheduleDetail, isLoading, error } = scheduleDetailQuery
@@ -267,6 +274,29 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
   const updateRollcallMutation = useUpdateRollcallStatus()
   const updateUserScheduleMutation = useUpdateUserSchedule()
   const updateLessonScheduleMutation = useUpdateLessonSchedule()
+
+  const { data: classData } = useClass(classId)
+  const { data: courseInfo } = useCourseInfo(classData?.courseId || '', weekId)
+
+  const availableStudents = React.useMemo(() => {
+    return (courseInfo?.profileCourses || []).map(pc => ({
+      id: pc.profile.id,
+      fullname: pc.profile.fullname
+    }))
+  }, [courseInfo])
+
+  const courseClasses = React.useMemo(() => {
+    return (courseInfo?.classes || []).map(cls => ({
+      id: cls.id,
+      name: cls.name,
+      teacherId: cls.teacherId,
+      teacher: {
+        id: cls.teacherId,
+        name: cls.teacher.name,
+        skills: cls.teacher?.skills || []
+      }
+    }))
+  }, [courseInfo])
 
   const formatScheduleTime = (scheduleTimeIndex: number) => {
     return SCHEDULE_TIME[scheduleTimeIndex - 1] || 'Chưa có lịch'
@@ -1183,6 +1213,23 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
       </DialogContent>
 
       <DialogActions>
+        {hasPermission('accounting') && (
+          <Button
+            onClick={() => setShowEditModal(true)}
+            variant="contained"
+            color="primary"
+            startIcon={<i className="ri-edit-line" />}
+            sx={{
+              fontWeight: 600,
+              boxShadow: '0 4px 12px rgba(25, 118, 210, 0.3)',
+              '&:hover': {
+                boxShadow: '0 6px 16px rgba(25, 118, 210, 0.4)'
+              }
+            }}
+          >
+            Chỉnh sửa lịch học
+          </Button>
+        )}
         {pendingChanges.size > 0 && (
           <Button
             onClick={handleBatchUpdate}
@@ -1549,6 +1596,30 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
           Đã cập nhật biến động ca học thành công!
         </Alert>
       </Snackbar>
+
+      <CreateLessonSchedule
+        open={showEditModal}
+        onClose={() => {
+          setShowEditModal(false)
+          scheduleDetailQuery.refetch()
+        }}
+        selectedSlot={{
+          day: '', // Will be parsed in CreateLessonSchedule from editData/SCHEDULE_TIME
+          time: '',
+          slotIndex: scheduleTime
+        }}
+        availableStudents={availableStudents}
+        courseClasses={courseClasses}
+        weekId={weekId}
+        editMode={true}
+        editData={{
+          classId: classId,
+          lesson: lesson,
+          teacherName: teacherName,
+          className: className,
+          scheduleTime: scheduleTime
+        }}
+      />
 
     </StyledDialog>
   )
