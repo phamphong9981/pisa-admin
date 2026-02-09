@@ -251,6 +251,7 @@ const CreateLessonSchedule = ({
   }, [open, selectedSlot, editMode, editData, courseClasses, propTeacherId])
 
   // Populate form with schedule detail data when in edit mode
+  // Populate form with schedule detail data when in edit mode
   useEffect(() => {
     if (editMode && scheduleDetail && !isLoadingScheduleDetail) {
       // Get the actual start/end time from schedule detail first
@@ -292,6 +293,10 @@ const CreateLessonSchedule = ({
       setEndTime(actualEndTime)
       setNote(actualNote)
 
+      if (actualTeacherId && !selectedTeacherId) {
+        setSelectedTeacherId(actualTeacherId)
+      }
+
       // Store original values for comparison with the actual values
       const originalValuesToSet = {
         students: [...attendingStudents],
@@ -313,7 +318,7 @@ const CreateLessonSchedule = ({
       })
       setStudentNotes(notesMap)
     }
-  }, [editMode, scheduleDetail, isLoadingScheduleDetail, selectedClassId, selectedTeacherId, lessonNumber])
+  }, [editMode, scheduleDetail, isLoadingScheduleDetail])
 
   // Check if there are changes in edit mode
   const hasChanges = useMemo(() => {
