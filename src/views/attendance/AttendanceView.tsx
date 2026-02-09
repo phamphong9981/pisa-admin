@@ -228,6 +228,15 @@ const AttendanceView = () => {
         }))
     }, [courseInfo])
 
+    // Optimistic UI updates to prevent items from disappearing immediately when status changes
+    // and a status filter is active.
+    const [localUpdates, setLocalUpdates] = useState<Record<string, { rollcallStatus?: RollcallStatus, reason?: string }>>({})
+
+    // Clear local updates when search params (filters/page) change
+    useEffect(() => {
+        setLocalUpdates({})
+    }, [selectedWeekId, selectedScheduleTimes, selectedRollcallStatus, selectedTeacherId, selectedRegion, startDate, endDate, searchTerm, selectedStudent, page])
+
     // Build search params
     const searchParams = useMemo((): SearchScheduleParams => {
         const params: SearchScheduleParams = {
@@ -341,40 +350,88 @@ const AttendanceView = () => {
     }
 
     const handleAttendanceChange = async (scheduleId: string, isAttending: boolean) => {
+        const newStatus = isAttending ? RollcallStatus.ATTENDING : RollcallStatus.NOT_ROLLCALL
+
+        // Optimistic update
+        setLocalUpdates(prev => ({
+            ...prev,
+            [scheduleId]: { ...prev[scheduleId], rollcallStatus: newStatus, reason: isAttending ? '' : prev[scheduleId]?.reason }
+        }))
+
         try {
             await updateRollcallMutation.mutateAsync([{
                 scheduleId,
-                rollcallStatus: isAttending ? RollcallStatus.ATTENDING : RollcallStatus.NOT_ROLLCALL,
+                rollcallStatus: newStatus,
                 reason: isAttending ? '' : undefined // Clear reason if attending
             }])
-            refetchSearch()
+
+            // Only refetch automatically if no status filter is active to prevent item disappearing
+            if (!selectedRollcallStatus) {
+                refetchSearch()
+            }
         } catch (error) {
             console.error('Error updating status:', error)
+            // Rollback on error
+            setLocalUpdates(prev => {
+                const next = { ...prev }
+                delete next[scheduleId]
+                return next
+            })
         }
     }
 
     const handleStatusChange = async (scheduleId: string, status: RollcallStatus) => {
+        // Optimistic update
+        setLocalUpdates(prev => ({
+            ...prev,
+            [scheduleId]: { ...prev[scheduleId], rollcallStatus: status }
+        }))
+
         try {
             await updateRollcallMutation.mutateAsync([{
                 scheduleId,
                 rollcallStatus: status
             }])
-            refetchSearch()
+
+            // Only refetch automatically if no status filter is active
+            if (!selectedRollcallStatus) {
+                refetchSearch()
+            }
         } catch (error) {
             console.error('Error updating status:', error)
+            // Rollback on error
+            setLocalUpdates(prev => {
+                const next = { ...prev }
+                delete next[scheduleId]
+                return next
+            })
         }
     }
 
     const handleReasonChange = async (scheduleId: string, currentStatus: string, newReason: string) => {
+        // Optimistic update
+        setLocalUpdates(prev => ({
+            ...prev,
+            [scheduleId]: { ...prev[scheduleId], reason: newReason }
+        }))
+
         try {
             await updateRollcallMutation.mutateAsync([{
                 scheduleId,
                 rollcallStatus: currentStatus as RollcallStatus,
                 reason: newReason
             }])
+
+            // Refetch for reason change is usually safe as it won't trigger status filter
             refetchSearch()
         } catch (error) {
             console.error('Error updating reason:', error)
+            // Rollback on error
+            setLocalUpdates(prev => {
+                const next = { ...prev }
+                delete next[scheduleId]
+                return next
+            })
         }
     }
 
@@ -486,17 +543,31 @@ const AttendanceView = () => {
                     </Box>
                 }
                 action={
-                    canAccessAccounting && (
+                    <Box display="flex" gap={2}>
                         <Button
-                            variant="contained"
-                            color="warning"
-                            startIcon={<i className="ri-lock-line" />}
-                            onClick={handleOpenLockDialog}
+                            variant="outlined"
+                            color="primary"
+                            startIcon={<i className="ri-refresh-line" />}
+                            onClick={() => {
+                                setLocalUpdates({})
+                                refetchSearch()
+                            }}
                             sx={{ mt: 1 }}
                         >
-                            Khóa sổ điểm danh
+                            Tải lại danh sách
                         </Button>
-                    )
+                        {canAccessAccounting && (
+                            <Button
+                                variant="contained"
+                                color="warning"
+                                startIcon={<i className="ri-lock-line" />}
+                                onClick={handleOpenLockDialog}
+                                sx={{ mt: 1 }}
+                            >
+                                Khóa sổ điểm danh
+                            </Button>
+                        )}
+                    </Box>
                 }
             />
 
@@ -1082,65 +1153,74 @@ const AttendanceView = () => {
                                                     </Typography>
                                                 </TableCell>
                                                 <TableCell align="center" sx={{ minWidth: 200 }}>
-                                                    <Box display="flex" alignItems="center" justifyContent="center" gap={1}>
-                                                        <Box
-                                                            sx={{
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                cursor: 'pointer',
-                                                                border: isAttending ? '1px solid #2e7d32' : '1px solid #e0e0e0',
-                                                                borderRadius: '8px',
-                                                                px: 1.5,
-                                                                py: 0.5,
-                                                                bgcolor: isAttending ? '#e8f5e8' : 'transparent',
-                                                                transition: 'all 0.2s',
-                                                                '&:hover': { bgcolor: isAttending ? '#c8e6c9' : '#f5f5f5' }
-                                                            }}
-                                                            onClick={() => handleAttendanceChange(schedule.scheduleId, !isAttending)}
-                                                        >
-                                                            <i
-                                                                className={isAttending ? 'ri-checkbox-circle-fill' : 'ri-checkbox-blank-circle-line'}
-                                                                style={{
-                                                                    fontSize: 20,
-                                                                    color: isAttending ? '#2e7d32' : '#757575',
-                                                                    marginRight: 8
-                                                                }}
-                                                            />
-                                                            <Typography
-                                                                variant="body2"
-                                                                color={isAttending ? 'success.main' : 'text.primary'}
-                                                                fontWeight={isAttending ? 600 : 400}
-                                                            >
-                                                                Có mặt
-                                                            </Typography>
-                                                        </Box>
+                                                    {(() => {
+                                                        const currentStatus = localUpdates[schedule.scheduleId]?.rollcallStatus || schedule.rollcallStatus
+                                                        const isItemAttending = currentStatus === RollcallStatus.ATTENDING
 
-                                                        {!isAttending && (
-                                                            <Select
-                                                                size="small"
-                                                                value={schedule.rollcallStatus}
-                                                                onChange={(e) => handleStatusChange(schedule.scheduleId, e.target.value as RollcallStatus)}
-                                                                sx={{ minWidth: 150, '.MuiSelect-select': { py: 0.75, fontSize: '0.875rem' } }}
-                                                                displayEmpty
-                                                            >
-                                                                <MenuItem value={RollcallStatus.NOT_ROLLCALL}>Chưa điểm danh</MenuItem>
-                                                                <MenuItem value={RollcallStatus.ABSENT_WITHOUT_REASON}>Vắng mặt</MenuItem>
-                                                                <MenuItem value={RollcallStatus.TRIAL}>Học thử</MenuItem>
-                                                                <MenuItem value={RollcallStatus.RETAKE}>Học lại</MenuItem>
-                                                            </Select>
-                                                        )}
-                                                    </Box>
+                                                        return (
+                                                            <Box display="flex" alignItems="center" justifyContent="center" gap={1}>
+                                                                <Box
+                                                                    sx={{
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        cursor: 'pointer',
+                                                                        border: isItemAttending ? '1px solid #2e7d32' : '1px solid #e0e0e0',
+                                                                        borderRadius: '8px',
+                                                                        px: 1.5,
+                                                                        py: 0.5,
+                                                                        bgcolor: isItemAttending ? '#e8f5e8' : 'transparent',
+                                                                        transition: 'all 0.2s',
+                                                                        '&:hover': { bgcolor: isItemAttending ? '#c8e6c9' : '#f5f5f5' }
+                                                                    }}
+                                                                    onClick={() => handleAttendanceChange(schedule.scheduleId, !isItemAttending)}
+                                                                >
+                                                                    <i
+                                                                        className={isItemAttending ? 'ri-checkbox-circle-fill' : 'ri-checkbox-blank-circle-line'}
+                                                                        style={{
+                                                                            fontSize: 20,
+                                                                            color: isItemAttending ? '#2e7d32' : '#757575',
+                                                                            marginRight: 8
+                                                                        }}
+                                                                    />
+                                                                    <Typography
+                                                                        variant="body2"
+                                                                        color={isItemAttending ? 'success.main' : 'text.primary'}
+                                                                        fontWeight={isItemAttending ? 600 : 400}
+                                                                    >
+                                                                        Có mặt
+                                                                    </Typography>
+                                                                </Box>
+
+                                                                {!isItemAttending && (
+                                                                    <Select
+                                                                        size="small"
+                                                                        value={currentStatus}
+                                                                        onChange={(e) => handleStatusChange(schedule.scheduleId, e.target.value as RollcallStatus)}
+                                                                        sx={{ minWidth: 150, '.MuiSelect-select': { py: 0.75, fontSize: '0.875rem' } }}
+                                                                        displayEmpty
+                                                                    >
+                                                                        <MenuItem value={RollcallStatus.NOT_ROLLCALL}>Chưa điểm danh</MenuItem>
+                                                                        <MenuItem value={RollcallStatus.ABSENT_WITHOUT_REASON}>Vắng mặt</MenuItem>
+                                                                        <MenuItem value={RollcallStatus.TRIAL}>Học thử</MenuItem>
+                                                                        <MenuItem value={RollcallStatus.RETAKE}>Học lại</MenuItem>
+                                                                    </Select>
+                                                                )}
+                                                            </Box>
+                                                        )
+                                                    })()}
                                                 </TableCell>
                                                 <TableCell sx={{ minWidth: 200 }}>
                                                     <TextField
                                                         fullWidth
                                                         size="small"
                                                         placeholder="Nhập lý do..."
-                                                        defaultValue={schedule.reason || ''}
+                                                        defaultValue={localUpdates[schedule.scheduleId]?.reason ?? (schedule.reason || '')}
                                                         onBlur={(e) => {
                                                             const newVal = e.target.value
-                                                            if (newVal !== (schedule.reason || '')) {
-                                                                handleReasonChange(schedule.scheduleId, schedule.rollcallStatus, newVal)
+                                                            const currentLocalReason = localUpdates[schedule.scheduleId]?.reason
+                                                            const effectiveCurrentReason = currentLocalReason ?? (schedule.reason || '')
+                                                            if (newVal !== effectiveCurrentReason) {
+                                                                handleReasonChange(schedule.scheduleId, localUpdates[schedule.scheduleId]?.rollcallStatus || schedule.rollcallStatus, newVal)
                                                             }
                                                         }}
                                                         sx={{
