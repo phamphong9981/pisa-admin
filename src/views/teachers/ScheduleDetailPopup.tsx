@@ -293,7 +293,7 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
       teacherId: cls.teacherId,
       teacher: {
         id: cls.teacherId,
-        name: cls.teacher.name,
+        name: cls.teacher?.name || '',
         skills: cls.teacher?.skills || []
       }
     }))
