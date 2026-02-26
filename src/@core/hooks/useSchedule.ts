@@ -836,6 +836,56 @@ export const useSearchSchedule = (params: SearchScheduleParams, enabled: boolean
     })
 }
 
+export const useExportSearchSchedule = () => {
+    return useMutation({
+        mutationFn: (params: SearchScheduleParams) => {
+            // Build params object
+            const requestParams: any = {
+                search: params.search,
+                weekId: params.weekId,
+                profileId: params.profileId,
+                teacherId: params.teacherId,
+                startDate: params.startDate,
+                endDate: params.endDate,
+                rollcallStatus: params.rollcallStatus,
+                region: params.region,
+                // No pagination for export
+            }
+
+            if (params.scheduleTimes && params.scheduleTimes.length > 0) {
+                requestParams.scheduleTimes = params.scheduleTimes
+            } else if (params.scheduleTime) {
+                requestParams.scheduleTimes = [params.scheduleTime]
+            }
+
+            return apiClient.get('/search-schedule/export', {
+                params: requestParams,
+                responseType: 'blob'
+            }).then(response => {
+                const url = window.URL.createObjectURL(new Blob([response.data]))
+                const link = document.createElement('a')
+                link.href = url
+
+                let filename = `search_schedule_${new Date().toISOString().split('T')[0]}.xlsx`
+                const disposition = response.headers['content-disposition']
+                if (disposition && disposition.indexOf('attachment') !== -1) {
+                    const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/
+                    const matches = filenameRegex.exec(disposition)
+                    if (matches != null && matches[1]) {
+                        filename = matches[1].replace(/['"]/g, '')
+                    }
+                }
+
+                link.setAttribute('download', filename)
+                document.body.appendChild(link)
+                link.click()
+                link.remove()
+                window.URL.revokeObjectURL(url)
+            })
+        }
+    })
+}
+
 // Locked Schedule Date Entity
 export interface LockedScheduleDate {
     id: string

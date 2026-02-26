@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiClient } from './apiClient';
 
 // Types based on API documentation
@@ -67,6 +67,21 @@ export interface WalletDeltaSummary {
     v7: WalletDeltaSummaryItem;
 }
 
+export interface StudentAuditSummaryItem {
+    studentId: string;
+    studentFullName: string;
+    courseName?: string;
+    summary: WalletDeltaSummary;
+}
+
+export interface AuditSummarySearchResponse {
+    data: StudentAuditSummaryItem[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+}
+
 // Operation labels in Vietnamese
 export const OPERATION_LABELS: Record<AuditOperation, string> = {
     INSERT: 'Tạo mới',
@@ -110,6 +125,41 @@ const studentWalletAuditApi = {
         const { data } = await apiClient.get(`/student-wallet-audit/student/${studentId}/summary`, { params });
         return data?.data || data;
     },
+
+    // Get delta summary list
+    getSummaryList: async (params?: { startDate?: string; endDate?: string; regionId?: number; studentId?: string; limit?: number; page?: number }): Promise<AuditSummarySearchResponse> => {
+        const { data } = await apiClient.get(`/student-wallet-audit/summary`, { params });
+        return data?.data || data;
+    },
+
+    // Export delta summary to Excel
+    exportSummary: async (params?: { startDate?: string; endDate?: string; regionId?: number; studentId?: string }): Promise<void> => {
+        const response = await apiClient.get(`/student-wallet-audit/summary/export`, {
+            params,
+            responseType: 'blob'
+        });
+
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+
+        // Try to get filename from content-disposition header if available
+        let filename = `delta_summary_${new Date().getTime()}.xlsx`;
+        const disposition = response.headers['content-disposition'];
+        if (disposition && disposition.indexOf('attachment') !== -1) {
+            const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+            const matches = filenameRegex.exec(disposition);
+            if (matches != null && matches[1]) {
+                filename = matches[1].replace(/['"]/g, '');
+            }
+        }
+
+        link.setAttribute('download', filename);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+    },
 };
 
 // Hooks
@@ -141,6 +191,19 @@ export const useGetStudentAuditSummary = (studentId: string | undefined, params?
         queryKey: ['student-wallet-audit', 'student', studentId, 'summary', params],
         queryFn: () => studentWalletAuditApi.getStudentSummary(studentId!, params),
         enabled: !!studentId,
+    });
+};
+
+export const useGetAuditSummaryList = (params?: { startDate?: string; endDate?: string; regionId?: number; studentId?: string; limit?: number; page?: number }) => {
+    return useQuery({
+        queryKey: ['student-wallet-audit', 'summary-list', params],
+        queryFn: () => studentWalletAuditApi.getSummaryList(params),
+    });
+};
+
+export const useExportAuditSummary = () => {
+    return useMutation({
+        mutationFn: (params?: { startDate?: string; endDate?: string; regionId?: number; studentId?: string }) => studentWalletAuditApi.exportSummary(params),
     });
 };
 

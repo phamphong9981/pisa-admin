@@ -42,7 +42,7 @@ import { styled } from '@mui/material/styles'
 import { format } from 'date-fns'
 import type { DateRange } from 'react-day-picker'
 
-import { useSearchSchedule, SCHEDULE_TIME, RollcallStatus, useUpdateRollcallStatus, useLockScheduleByDate, useGetLockedScheduleDates, type SearchScheduleParams } from '@/@core/hooks/useSchedule'
+import { useSearchSchedule, SCHEDULE_TIME, RollcallStatus, useUpdateRollcallStatus, useLockScheduleByDate, useGetLockedScheduleDates, useExportSearchSchedule, type SearchScheduleParams } from '@/@core/hooks/useSchedule'
 import { useGetWeeks } from '@/@core/hooks/useWeek'
 import { useStudentList } from '@/@core/hooks/useStudent'
 import { useTeacherList } from '@/@core/hooks/useTeacher'
@@ -200,6 +200,7 @@ const AttendanceView = () => {
     // Handlers
     const updateRollcallMutation = useUpdateRollcallStatus()
     const lockScheduleMutation = useLockScheduleByDate()
+    const { mutate: exportSchedule, isPending: isExporting } = useExportSearchSchedule()
     const { data: lockedDates, isLoading: isLockedDatesLoading, refetch: refetchLockedDates } = useGetLockedScheduleDates()
 
     const [editModalOpen, setEditModalOpen] = useState(false)
@@ -543,7 +544,17 @@ const AttendanceView = () => {
                     </Box>
                 }
                 action={
-                    <Box display="flex" gap={2}>
+                    <Box display="flex" gap={2} flexWrap="wrap" justifyContent="flex-end">
+                        <Button
+                            variant="outlined"
+                            color="success"
+                            startIcon={isExporting ? <CircularProgress size={16} color="inherit" /> : <i className="ri-file-excel-2-line" />}
+                            onClick={() => exportSchedule(searchParams)}
+                            disabled={isExporting || (searchResults?.data?.length === 0)}
+                            sx={{ mt: 1 }}
+                        >
+                            {isExporting ? 'Đang xuất...' : 'Xuất Excel'}
+                        </Button>
                         <Button
                             variant="outlined"
                             color="primary"

@@ -316,101 +316,66 @@ Tương tự như response của endpoint `/search`, nhưng đã được filter
 
 ### 4. Lấy tổng hợp delta changes (Delta Summary)
 
-Tính tổng tất cả các thay đổi (delta) cho tất cả các ví của một học sinh trong một khoảng thời gian, bao gồm tồn đầu kỳ và tồn cuối kỳ.
+Tính tổng tất cả các thay đổi (delta) cho tất cả các ví của học sinh trong một khoảng thời gian, bao gồm tồn đầu kỳ và tồn cuối kỳ, hỗ trợ tìm kiếm mảng nhiều học sinh bằng regionId. Chỉ tính các học sinh đang học (course có `status = 'active'`) và hồ sơ khóa học chưa xóa (`is_deleted = false`).
 
-**Endpoint:** `GET /student-wallet-audit/student/:studentId/summary`
-
-**Path Parameters:**
-- `studentId` (UUID, required): UUID của học sinh
+**Endpoint:** `GET /student-wallet-audit/summary`
 
 **Query Parameters:**
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
+| `studentId` | string (UUID) | No | UUID của học sinh. |
+| `regionId` | number | No | ID của cơ sở (region). Nếu truyền `regionId`, sẽ lấy tất cả học sinh thuộc cơ sở đó. |
 | `startDate` | string (ISO 8601) | No | Ngày bắt đầu (YYYY-MM-DD hoặc YYYY-MM-DDTHH:mm:ss.sssZ). Nếu không có, sẽ tính từ bản ghi đầu tiên |
 | `endDate` | string (ISO 8601) | No | Ngày kết thúc (YYYY-MM-DD hoặc YYYY-MM-DDTHH:mm:ss.sssZ). Nếu không có, sẽ tính đến bản ghi cuối cùng |
+| `page` | number | No | Phân trang: số trang (mặc định 1) |
+| `limit` | number | No | Phân trang: số bản ghi mỗi trang (mặc định 100) |
 
 **Example Request:**
 
 ```bash
-# Tổng hợp tất cả thay đổi từ trước đến nay
-GET /student-wallet-audit/student/550e8400-e29b-41d4-a716-446655440000/summary
+# Tổng hợp tất cả thay đổi của 1 học sinh
+GET /student-wallet-audit/summary?studentId=550e8400-e29b-41d4-a716-446655440000
 
-# Tổng hợp trong khoảng thời gian cụ thể
-GET /student-wallet-audit/student/550e8400-e29b-41d4-a716-446655440000/summary?startDate=2024-01-01&endDate=2024-01-31
+# Tổng hợp tất cả thay đổi của các học sinh thuộc 1 cơ sở (region)
+GET /student-wallet-audit/summary?regionId=1
 
-# Tổng hợp từ một ngày cụ thể đến hiện tại
-GET /student-wallet-audit/student/550e8400-e29b-41d4-a716-446655440000/summary?startDate=2024-01-01
-
-# Tổng hợp từ đầu đến một ngày cụ thể
-GET /student-wallet-audit/student/550e8400-e29b-41d4-a716-446655440000/summary?endDate=2024-01-31
+# Tổng hợp theo cơ sở trong khoảng thời gian cụ thể (kết hợp phân trang)
+GET /student-wallet-audit/summary?regionId=1&startDate=2024-01-01&endDate=2024-01-31&page=1&limit=50
 ```
 
 **Response:** `200 OK`
 
 ```json
 {
-  "v0": {
-    "tang": 15,
-    "giam": 8,
-    "ton": 7,
-    "tonDau": 10,
-    "tonCuoi": 17
-  },
-  "v1": {
-    "tang": 5,
-    "giam": 2,
-    "ton": 3,
-    "tonDau": 5,
-    "tonCuoi": 8
-  },
-  "v2": {
-    "tang": 0,
-    "giam": 0,
-    "ton": 0,
-    "tonDau": 0,
-    "tonCuoi": 0
-  },
-  "v3": {
-    "tang": 0,
-    "giam": 0,
-    "ton": 0,
-    "tonDau": 0,
-    "tonCuoi": 0
-  },
-  "v4": {
-    "tang": 0,
-    "giam": 0,
-    "ton": 0,
-    "tonDau": 0,
-    "tonCuoi": 0
-  },
-  "v5": {
-    "tang": 0,
-    "giam": 0,
-    "ton": 0,
-    "tonDau": 0,
-    "tonCuoi": 0
-  },
-  "v6": {
-    "tang": 0,
-    "giam": 0,
-    "ton": 0,
-    "tonDau": 0,
-    "tonCuoi": 0
-  },
-  "v7": {
-    "tang": 0,
-    "giam": 0,
-    "ton": 0,
-    "tonDau": 0,
-    "tonCuoi": 0
-  }
+  "data": [
+    {
+      "studentId": "550e8400-e29b-41d4-a716-446655440000",
+      "studentFullName": "Nguyen Van A",
+      "courseName": "IELTS Foundation, IELTS Intermediate",
+      "summary": {
+        "v0": { "tang": 15, "giam": 8, "ton": 7, "tonDau": 10, "tonCuoi": 17 },
+        "v1": { "tang": 5, "giam": 2, "ton": 3, "tonDau": 5, "tonCuoi": 8 },
+        "v2": { "tang": 0, "giam": 0, "ton": 0, "tonDau": 0, "tonCuoi": 0 },
+        "v3": { "tang": 0, "giam": 0, "ton": 0, "tonDau": 0, "tonCuoi": 0 },
+        "v4": { "tang": 0, "giam": 0, "ton": 0, "tonDau": 0, "tonCuoi": 0 },
+        "v5": { "tang": 0, "giam": 0, "ton": 0, "tonDau": 0, "tonCuoi": 0 },
+        "v6": { "tang": 0, "giam": 0, "ton": 0, "tonDau": 0, "tonCuoi": 0 },
+        "v7": { "tang": 0, "giam": 0, "ton": 0, "tonDau": 0, "tonCuoi": 0 }
+      }
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "limit": 100,
+  "totalPages": 1
 }
 ```
 
 **Response Fields:**
-- Mỗi ví (v0-v7) có 5 trường:
+- `data`: Mảng kết quả tổng hợp của từng học sinh (studentId, fullname, các course đang học, và block summary tương tự trên).
+- `total`, `page`, `limit`, `totalPages`: Thông tin phân trang.
+- Mỗi ví (v0-v7) trong block `summary` có 5 trường:
   - `tang`: Tổng số lượng tăng trong kỳ (tổng của tất cả `tang` delta từ các bản ghi trong kỳ)
   - `giam`: Tổng số lượng giảm trong kỳ (tổng của tất cả `giam` delta từ các bản ghi trong kỳ)
   - `ton`: Tổng thay đổi tồn trong kỳ (tổng của tất cả `ton` delta từ các bản ghi trong kỳ)
@@ -466,6 +431,33 @@ Trong đó:
 
 ---
 
+### 5. Xuất dữ liệu tổng hợp delta ra file Excel
+
+Tương tự như API lấy tổng hợp delta changes nhưng sẽ xuất kết quả ra định dạng Excel (`.xlsx`). Chú ý API này **không giới hạn phân trang** (không áp dụng `page` và `limit`), dữ liệu truy xuất sẽ tự động lấy toàn bộ kết quả dựa trên các bộ lọc.
+
+**Endpoint:** `GET /student-wallet-audit/summary/export`
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `studentId` | string (UUID) | No | UUID của học sinh. |
+| `regionId` | number | No | ID của cơ sở (region). Nếu truyền `regionId`, sẽ lấy tất cả học sinh thuộc cơ sở đó. |
+| `startDate` | string (ISO 8601) | No | Ngày bắt đầu |
+| `endDate` | string (ISO 8601) | No | Ngày kết thúc |
+
+**Example Request:**
+
+```bash
+# Xuất toàn bộ học sinh thuộc 1 cơ sở ra file Excel
+GET /student-wallet-audit/summary/export?regionId=1&startDate=2024-01-01&endDate=2024-01-31
+```
+
+**Response:**
+File download với header `Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` và tên file có định dạng `delta_summary_<timestamp>.xlsx`.
+
+---
+
 ## Use Cases
 
 ### 1. Xem lịch sử thay đổi của một học sinh
@@ -489,27 +481,27 @@ GET /student-wallet-audit/search?startDate=2024-01-01&endDate=2024-01-31
 GET /student-wallet-audit/search?operation=INCREASE
 ```
 
-### 4. Kiểm tra các thao tác điểm danh (ROLLCALL)
+### 5. Kiểm tra các thao tác điểm danh (ROLLCALL)
 
 ```bash
 # Xem tất cả thao tác điểm danh ảnh hưởng đến ví
 GET /student-wallet-audit/search?operation=ROLLCALL
 ```
 
-### 5. Xem tổng hợp thay đổi của học sinh
+### 6. Xem tổng hợp thay đổi của học sinh / cơ sở
 
 ```bash
 # Xem tổng hợp tất cả thay đổi từ trước đến nay
-GET /student-wallet-audit/student/550e8400-e29b-41d4-a716-446655440000/summary
+GET /student-wallet-audit/summary?studentId=550e8400-e29b-41d4-a716-446655440000
 
-# Xem tổng hợp trong tháng (bao gồm tồn đầu và tồn cuối)
-GET /student-wallet-audit/student/550e8400-e29b-41d4-a716-446655440000/summary?startDate=2024-01-01&endDate=2024-01-31
+# Xem tổng hợp trong tháng của cả 1 cơ sở
+GET /student-wallet-audit/summary?regionId=1&startDate=2024-01-01&endDate=2024-01-31
 
 # Xem tổng hợp từ đầu tháng đến hiện tại
-GET /student-wallet-audit/student/550e8400-e29b-41d4-a716-446655440000/summary?startDate=2024-01-01
+GET /student-wallet-audit/summary?studentId=550e8400-e29b-41d4-a716-446655440000&startDate=2024-01-01
 
 # Xem tổng hợp từ trước đến cuối tháng
-GET /student-wallet-audit/student/550e8400-e29b-41d4-a716-446655440000/summary?endDate=2024-01-31
+GET /student-wallet-audit/summary?studentId=550e8400-e29b-41d4-a716-446655440000&endDate=2024-01-31
 ```
 
 **Ví dụ sử dụng:**
@@ -517,7 +509,7 @@ GET /student-wallet-audit/student/550e8400-e29b-41d4-a716-446655440000/summary?e
 - Xem tổng số buổi đã tăng/giảm trong kỳ
 - Đối chiếu: `tonCuoi = tonDau + ton`
 
-### 6. So sánh trạng thái trước và sau
+### 7. So sánh trạng thái trước và sau
 
 ```typescript
 // Ví dụ: Kiểm tra thay đổi v0
@@ -534,7 +526,7 @@ if (audit.operation === 'UPDATE') {
 }
 ```
 
-### 7. Theo dõi thay đổi của một người dùng cụ thể
+### 8. Theo dõi thay đổi của một người dùng cụ thể
 
 ```bash
 # Xem tất cả thay đổi do một user thực hiện
@@ -706,8 +698,8 @@ GET /student-wallet-audit/search?operation=ROLLCALL&startDate=2024-01-01&endDate
 ### Example 3: Xem tổng hợp delta của học sinh
 
 ```bash
-GET /student-wallet-audit/student/550e8400-e29b-41d4-a716-446655440000/summary?startDate=2024-01-01&endDate=2024-01-31
+GET /student-wallet-audit/summary?studentId=550e8400-e29b-41d4-a716-446655440000&startDate=2024-01-01&endDate=2024-01-31
 ```
 
-Response sẽ cho biết tổng số lượng tăng/giảm/tồn thay đổi cho từng ví trong khoảng thời gian đó.
+Response sẽ trả về mảng kết quả trong đó chứa thông tin học sinh và thông tin tổng số lượng tăng/giảm/tồn thay đổi cho từng ví trong khoảng thời gian đó.
 
