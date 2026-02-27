@@ -36,7 +36,8 @@ import {
     DialogContent,
     DialogActions,
     Alert,
-    Switch
+    Switch,
+    Tooltip
 } from '@mui/material'
 import { styled } from '@mui/material/styles'
 import { format } from 'date-fns'
@@ -1123,9 +1124,17 @@ const AttendanceView = () => {
                                                         >
                                                             {schedule.className} {schedule.teacherName ? `- ${schedule.teacherName}` : ''}
                                                         </Typography>
-                                                        <Typography variant="caption" color="text.secondary">
+                                                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
                                                             {schedule.courseName}
                                                         </Typography>
+                                                        {schedule.scheduleInfoNote && (
+                                                            <Tooltip title="Ghi chú ca học" arrow placement="top">
+                                                                <Typography variant="caption" sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mt: 0.5, color: '#ef6c00', bgcolor: '#fff3e0', p: 0.5, borderRadius: 1, border: '1px solid', borderColor: '#ffcc80' }}>
+                                                                    <i className="ri-information-line" style={{ marginTop: '1px', fontSize: '14px' }} />
+                                                                    {schedule.scheduleInfoNote}
+                                                                </Typography>
+                                                            </Tooltip>
+                                                        )}
                                                     </Box>
                                                 </TableCell>
                                                 <TableCell>
