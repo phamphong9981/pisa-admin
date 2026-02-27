@@ -1101,7 +1101,7 @@ const AttendanceView = () => {
                                                             {schedule.profileFullname}
                                                         </Typography>
                                                         <Typography variant="caption" color="text.secondary">
-                                                            {schedule.profileEmail}
+                                                            {schedule.profilePhone}
                                                         </Typography>
                                                     </Box>
                                                 </TableCell>

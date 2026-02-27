@@ -771,6 +771,7 @@ export interface SearchScheduleResponseDto {
     scheduleInfoTeacherNote?: string
     scheduleDate?: string
     courseRegion?: number
+    profilePhone?: string
 }
 
 export interface SearchSchedulePaginationResponseDto {
