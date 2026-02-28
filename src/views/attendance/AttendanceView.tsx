@@ -221,11 +221,11 @@ const AttendanceView = () => {
     const courseClasses = useMemo(() => {
         return (courseInfo?.classes || []).map(cls => ({
             id: cls.id,
-            name: cls.name,
+            name: cls?.name,
             teacherId: cls.teacherId,
             teacher: {
                 id: cls.teacherId,
-                name: cls.teacher.name,
+                name: cls.teacher?.name,
                 skills: cls.teacher?.skills || []
             }
         }))
