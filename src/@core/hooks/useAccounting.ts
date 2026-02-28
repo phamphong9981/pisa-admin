@@ -30,6 +30,8 @@ export interface TotalStudyHoursPaginatedResponse {
 export interface TotalStudyHoursParams {
     search?: string
     weekId?: string
+    startDate?: string
+    endDate?: string
     page?: number
     limit?: number
 }

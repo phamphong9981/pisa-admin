@@ -2,7 +2,7 @@
 
 ## Tổng quan
 
-API tính toán và xuất báo cáo tổng giờ học thực tế của học sinh dựa trên điểm danh. Hệ thống chỉ tính các buổi học có trạng thái điểm danh là `attending`, `trial`, hoặc `retake`. API hỗ trợ tìm kiếm, lọc theo week, phân trang và xuất file Excel.
+API tính toán và xuất báo cáo tổng giờ học thực tế của học sinh dựa trên điểm danh. Hệ thống chỉ tính các buổi học có trạng thái điểm danh là `attending`, `trial`, hoặc `retake`. API hỗ trợ tìm kiếm, lọc theo tuần (weekId), khoảng thời gian (startDate, endDate), phân trang và xuất file Excel.
 
 ## Base URL
 
@@ -61,6 +61,8 @@ Lấy danh sách tổng giờ học thực tế của học sinh với hỗ tr�
 |-----------|------|----------|---------|-------------|
 | `search` | string | No | - | Từ khóa tìm kiếm (username hoặc course name). Không phân biệt hoa thường. |
 | `weekId` | UUID | No | - | Week ID để lọc theo week cụ thể. |
+| `startDate` | ISO Date String | No | - | Ngày bắt đầu để lọc theo khoảng thời gian (VD: `2024-01-01`). |
+| `endDate` | ISO Date String | No | - | Ngày kết thúc để lọc theo khoảng thời gian (VD: `2024-01-31`). |
 | `page` | number | No | 1 | Số trang (min: 1). |
 | `limit` | number | No | 10 | Số items mỗi trang (min: 1, max: 100). |
 
@@ -79,6 +81,7 @@ Lấy danh sách tổng giờ học thực tế của học sinh với hỗ tr�
   - `trial` - Học thử
   - `retake` - Học lại
 - **Week Filter**: Nếu có `weekId`, chỉ tính schedule của week đó
+- **Date Filter**: Nếu có `startDate` và/hoặc `endDate`, chỉ tính schedule có `schedule_date` nằm trong khoảng thời gian này
 - **Grouping**: Dữ liệu được nhóm theo (username, fullname, email, course_name, class_name, teacher_name)
 
 **Sorting:**
@@ -153,11 +156,18 @@ curl -X GET \
   "http://localhost:3000/total-study-hours?weekId=550e8400-e29b-41d4-a716-446655440000"
 ```
 
+### Lọc theo khoảng thời gian
+
+```bash
+curl -X GET \
+  "http://localhost:3000/total-study-hours?startDate=2024-01-01&endDate=2024-01-31"
+```
+
 ### Kết hợp tất cả filters
 
 ```bash
 curl -X GET \
-  "http://localhost:3000/total-study-hours?search=John&weekId=550e8400-e29b-41d4-a716-446655440000&page=1&limit=25"
+  "http://localhost:3000/total-study-hours?search=John&startDate=2024-01-01&endDate=2024-01-31&page=1&limit=25"
 ```
 
 ---
@@ -174,11 +184,13 @@ Xuất toàn bộ dữ liệu tổng giờ học thực tế ra file Excel. API 
 |-----------|------|----------|-------------|
 | `search` | string | No | Từ khóa tìm kiếm (username hoặc course name). Không phân biệt hoa thường. |
 | `weekId` | UUID | No | Week ID để lọc theo week cụ thể. |
+| `startDate` | ISO Date String | No | Ngày bắt đầu để lọc theo khoảng thời gian. |
+| `endDate` | ISO Date String | No | Ngày kết thúc để lọc theo khoảng thời gian. |
 
 **Lưu ý quan trọng:**
 
 - **Không có pagination**: API này xuất **toàn bộ** dữ liệu thỏa mãn điều kiện, không giới hạn số lượng
-- **Cùng filters**: Sử dụng cùng logic filter như endpoint GET (search, weekId)
+- **Cùng filters**: Sử dụng cùng logic filter như endpoint GET (search, weekId, startDate, endDate)
 - **Excel format**: File Excel được tạo bằng thư viện `exceljs` với formatting đẹp
 
 **Excel File Format:**
@@ -206,12 +218,13 @@ Xuất toàn bộ dữ liệu tổng giờ học thực tế ra file Excel. API 
 
 Tên file được tạo tự động theo format:
 ```
-actual_study_hours_YYYY-MM-DD[_week_xxxx][_searchterm].xlsx
+actual_study_hours_YYYY-MM-DD[_week_xxxx][_startDate_to_endDate][_searchterm].xlsx
 ```
 
 Ví dụ:
 - `actual_study_hours_2024-01-15.xlsx` - Export tất cả
 - `actual_study_hours_2024-01-15_week_550e8400.xlsx` - Export với week filter
+- `actual_study_hours_2024-01-15_2024-01-01_to_2024-01-31.xlsx` - Export với date filter
 - `actual_study_hours_2024-01-15_IELTS.xlsx` - Export với search
 - `actual_study_hours_2024-01-15_week_550e8400_IELTS.xlsx` - Export với cả week và search
 
@@ -261,6 +274,22 @@ curl -X GET \
   --output actual_study_hours_filtered.xlsx
 ```
 
+### Export theo khoảng thời gian
+
+```bash
+curl -X GET \
+  "http://localhost:3000/total-study-hours/export?startDate=2024-01-01&endDate=2024-01-31" \
+  --output actual_study_hours_january.xlsx
+```
+
+### Export với cả date filter và search
+
+```bash
+curl -X GET \
+  "http://localhost:3000/total-study-hours/export?startDate=2024-01-01&endDate=2024-01-31&search=John" \
+  --output actual_study_hours_filtered.xlsx
+```
+
 **Browser Usage:**
 
 Trong browser, chỉ cần truy cập URL và file sẽ tự động download:
@@ -277,7 +306,7 @@ http://localhost:3000/total-study-hours/export?weekId=550e8400-e29b-41d4-a716-44
 
 - Tính bằng cách `SUM(s.total_time)` của tất cả schedule có:
   - `rollcall_status` IN (`attending`, `trial`, `retake`)
-  - Thỏa mãn các điều kiện filter (weekId, search)
+  - Thỏa mãn các điều kiện filter (weekId, startDate, endDate, search)
 - Đơn vị: Giờ (hours), làm tròn 1 chữ số thập phân
 - Ví dụ: `45.5` giờ = 45 giờ 30 phút
 
@@ -285,7 +314,7 @@ http://localhost:3000/total-study-hours/export?weekId=550e8400-e29b-41d4-a716-44
 
 - Tính bằng cách `COUNT(s.id)` của tất cả schedule có:
   - `rollcall_status` IN (`attending`, `trial`, `retake`)
-  - Thỏa mãn các điều kiện filter (weekId, search)
+  - Thỏa mãn các điều kiện filter (weekId, startDate, endDate, search)
 - Đơn vị: Số buổi (sessions)
 
 ### Grouping
@@ -381,7 +410,7 @@ GET /total-study-hours/export?search=IELTS Foundation
    - `s.lesson = si.lesson`
    - `s.schedule_time = si.schedule_time`
 
-5. **Export Performance**: Khi export, API sẽ query toàn bộ dữ liệu không có LIMIT. Với dữ liệu lớn, có thể mất thời gian. Nên sử dụng filters (weekId, search) để giới hạn dữ liệu.
+5. **Export Performance**: Khi export, API sẽ query toàn bộ dữ liệu không có LIMIT. Với dữ liệu lớn, có thể mất thời gian. Nên sử dụng filters (weekId, startDate, endDate, search) để giới hạn dữ liệu.
 
 6. **Pagination Limits**: 
    - `page`: Minimum 1
@@ -390,7 +419,7 @@ GET /total-study-hours/export?search=IELTS Foundation
 
 7. **Search Pattern**: Tìm kiếm sử dụng `ILIKE` với pattern `%searchTerm%`, có nghĩa là tìm kiếm partial match, không phân biệt hoa thường.
 
-8. **Week Filter**: Nếu không có `weekId`, API sẽ tính tất cả các week. Nếu có `weekId`, chỉ tính schedule của week đó.
+8. **Week and Date Filters**: Cả hai loại filter có thể dùng độc lập. `startDate` và `endDate` để lọc theo ngày của `schedule_date` thuộc về bản ghi Schedule. Nếu có `weekId`, API chỉ tính schedule của tuần đó.
 
 ---
 
@@ -426,6 +455,7 @@ API này không trả về lỗi cụ thể cho các trường hợp:
 3. **Indexes**: Đảm bảo có indexes trên:
    - `schedule.rollcall_status`
    - `schedule.week_id`
+   - `schedule.schedule_date`
    - `schedule.profile_lesson_class_id`
    - `schedule.class_id`, `schedule.week_id`, `schedule.lesson`, `schedule.schedule_time` (composite index cho join với schedule_info)
 
@@ -460,7 +490,17 @@ GET /total-study-hours?search=IELTS Foundation&page=1&limit=50
 GET /total-study-hours/export?search=IELTS Foundation
 ```
 
-### 4. So sánh giữa các week
+### 4. Báo cáo theo tháng cụ thể
+
+```bash
+# Tháng 1 năm 2024
+GET /total-study-hours?startDate=2024-01-01&endDate=2024-01-31
+
+# Export báo cáo tháng
+GET /total-study-hours/export?startDate=2024-01-01&endDate=2024-01-31
+```
+
+### 5. So sánh giữa các week
 
 ```bash
 # Week 1

@@ -15,7 +15,9 @@ const AccountingStatisticsPage = () => {
     page: 1,
     limit: 10,
     search: undefined,
-    weekId: undefined
+    weekId: undefined,
+    startDate: undefined,
+    endDate: undefined
   })
 
   const { data: studyHoursData, isFetching } = useGetTotalStudyHours(params)
@@ -70,6 +72,14 @@ const AccountingStatisticsPage = () => {
     setParams(prev => ({ ...prev, weekId: weekId === 'all' ? undefined : weekId, page: 1 }))
   }
 
+  const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setParams(prev => ({ ...prev, startDate: e.target.value || undefined, page: 1 }))
+  }
+
+  const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setParams(prev => ({ ...prev, endDate: e.target.value || undefined, page: 1 }))
+  }
+
   const handlePageChange = (event: unknown, newPage: number) => {
     setParams(prev => ({ ...prev, page: newPage + 1 }))
   }
@@ -81,7 +91,9 @@ const AccountingStatisticsPage = () => {
   const handleExport = () => {
     exportReport({
       search: params.search,
-      weekId: params.weekId
+      weekId: params.weekId,
+      startDate: params.startDate,
+      endDate: params.endDate
     }, {
       onSuccess: (data) => {
         const blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
@@ -89,7 +101,7 @@ const AccountingStatisticsPage = () => {
         const link = document.createElement('a')
         link.href = url
         const dateStr = new Date().toISOString().split('T')[0]
-        link.download = `actual_study_hours_${dateStr}${params.weekId ? `_week` : ''}${params.search ? `_${params.search}` : ''}.xlsx`
+        link.download = `actual_study_hours_${dateStr}${params.weekId ? `_week` : ''}${params.startDate ? `_${params.startDate}_to_${params.endDate}` : ''}${params.search ? `_${params.search}` : ''}.xlsx`
         document.body.appendChild(link)
         link.click()
         link.remove()
@@ -188,6 +200,26 @@ const AccountingStatisticsPage = () => {
                     })}
                   </Select>
                 </FormControl>
+
+                <TextField
+                  size='small'
+                  type='date'
+                  label='Từ ngày'
+                  InputLabelProps={{ shrink: true }}
+                  value={params.startDate ?? ''}
+                  onChange={handleStartDateChange}
+                  sx={{ minWidth: 150 }}
+                />
+
+                <TextField
+                  size='small'
+                  type='date'
+                  label='Đến ngày'
+                  InputLabelProps={{ shrink: true }}
+                  value={params.endDate ?? ''}
+                  onChange={handleEndDateChange}
+                  sx={{ minWidth: 150 }}
+                />
               </Box>
 
               <Box display='flex' gap={2}>
