@@ -142,6 +142,7 @@ const AttendanceView = () => {
     const [selectedWeekId, setSelectedWeekId] = useState<string>('')
     const [selectedScheduleTimes, setSelectedScheduleTimes] = useState<number[]>([])
     const [selectedRollcallStatus, setSelectedRollcallStatus] = useState<string>('')
+    const [selectedIsMasked, setSelectedIsMasked] = useState<string>('')
     const [page, setPage] = useState(0)
     const [rowsPerPage, setRowsPerPage] = useState(50)
 
@@ -237,7 +238,7 @@ const AttendanceView = () => {
     // Clear local updates when search params (filters/page) change
     useEffect(() => {
         setLocalUpdates({})
-    }, [selectedWeekId, selectedScheduleTimes, selectedRollcallStatus, selectedTeacherId, selectedRegion, startDate, endDate, searchTerm, selectedStudent, page])
+    }, [selectedWeekId, selectedScheduleTimes, selectedRollcallStatus, selectedIsMasked, selectedTeacherId, selectedRegion, startDate, endDate, searchTerm, selectedStudent, page])
 
     // Build search params
     const searchParams = useMemo((): SearchScheduleParams => {
@@ -279,8 +280,13 @@ const AttendanceView = () => {
             params.region = selectedRegion
         }
 
+        // Masked status filter
+        if (selectedIsMasked !== '') {
+            params.isMasked = selectedIsMasked === 'true'
+        }
+
         return params
-    }, [filterMode, selectedStudent, searchTerm, selectedWeekId, selectedScheduleTimes, startDate, endDate, selectedRollcallStatus, selectedTeacherId, selectedRegion, page, rowsPerPage])
+    }, [filterMode, selectedStudent, searchTerm, selectedWeekId, selectedScheduleTimes, startDate, endDate, selectedRollcallStatus, selectedIsMasked, selectedTeacherId, selectedRegion, page, rowsPerPage])
 
     // Check if search is enabled
     const isSearchEnabled = useMemo(() => {
@@ -336,6 +342,7 @@ const AttendanceView = () => {
         setEndDate('')
         setDateRange(undefined)
         setSelectedRollcallStatus('')
+        setSelectedIsMasked('')
         setPage(0)
         setSelectedSchedules(new Set())
         setBatchStatus('')
@@ -434,6 +441,19 @@ const AttendanceView = () => {
                 delete next[scheduleId]
                 return next
             })
+        }
+    }
+
+    const handleMaskChange = async (scheduleId: string, currentStatus: RollcallStatus, newMasked: boolean) => {
+        try {
+            await updateRollcallMutation.mutateAsync([{
+                scheduleId,
+                rollcallStatus: currentStatus,
+                isMasked: newMasked
+            }])
+            refetchSearch()
+        } catch (error) {
+            console.error('Error updating mask status:', error)
         }
     }
 
@@ -778,6 +798,24 @@ const AttendanceView = () => {
                         </FormControl>
                     </Grid>
 
+                    {/* Masked Status Filter */}
+                    <Grid item xs={12} md={3}>
+                        <FormControl fullWidth>
+                            <InputLabel>Đánh dấu kiểm tra</InputLabel>
+                            <Select
+                                value={selectedIsMasked}
+                                label="Đánh dấu kiểm tra"
+                                onChange={(e) => {
+                                    setSelectedIsMasked(e.target.value)
+                                    setPage(0)
+                                }}
+                            >
+                                <MenuItem value=''>Tất cả</MenuItem>
+                                <MenuItem value='true'>Đã đánh dấu</MenuItem>
+                            </Select>
+                        </FormControl>
+                    </Grid>
+
                     {/* Region Filter */}
                     <Grid item xs={12} md={3}>
                         <Autocomplete
@@ -1080,6 +1118,7 @@ const AttendanceView = () => {
                                         <StyledTableCell>Thời gian</StyledTableCell>
                                         <StyledTableCell align="center">Điểm danh</StyledTableCell>
                                         <StyledTableCell>Lý do</StyledTableCell>
+                                        <StyledTableCell align="center">Kiểm tra</StyledTableCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
@@ -1261,6 +1300,16 @@ const AttendanceView = () => {
                                                             sx: { fontSize: '0.875rem', bgcolor: '#f5f5f5', borderRadius: 2 }
                                                         }}
                                                     />
+                                                </TableCell>
+                                                <TableCell align="center">
+                                                    <Tooltip title={schedule.isMasked ? "Bỏ đánh dấu kiểm tra" : "Đánh dấu kiểm tra lại"}>
+                                                        <Checkbox
+                                                            checked={schedule.isMasked || false}
+                                                            onChange={(e) => handleMaskChange(schedule.scheduleId, schedule.rollcallStatus as RollcallStatus, e.target.checked)}
+                                                            icon={<i className="ri-flag-line" style={{ color: '#bdbdbd' }} />}
+                                                            checkedIcon={<i className="ri-flag-fill" style={{ color: '#d32f2f' }} />}
+                                                        />
+                                                    </Tooltip>
                                                 </TableCell>
                                             </TableRow>
                                         )

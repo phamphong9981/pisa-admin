@@ -441,7 +441,8 @@ export const useGetScheduleDetail = (classId: string, lesson: number, weekId: st
 const updateRollcallStatus = async (rollcalls: {
     scheduleId: string,
     rollcallStatus: RollcallStatus,
-    reason?: string
+    reason?: string,
+    isMasked?: boolean
 }[]) => {
     const { data } = await apiClient.put('/rollcall-schedule', {
         rollcalls
@@ -457,7 +458,8 @@ export const useUpdateRollcallStatus = () => {
         mutationFn: (rollcalls: {
             scheduleId: string,
             rollcallStatus: RollcallStatus,
-            reason?: string
+            reason?: string,
+            isMasked?: boolean
         }[]) => updateRollcallStatus(rollcalls),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['schedule-detail'] })
@@ -772,6 +774,7 @@ export interface SearchScheduleResponseDto {
     scheduleDate?: string
     courseRegion?: number
     profilePhone?: string
+    isMasked?: boolean
 }
 
 export interface SearchSchedulePaginationResponseDto {
@@ -795,6 +798,7 @@ export interface SearchScheduleParams {
     region?: number
     page?: number
     limit?: number
+    isMasked?: boolean
 }
 
 const searchSchedule = async (params: SearchScheduleParams): Promise<SearchSchedulePaginationResponseDto> => {
@@ -809,7 +813,8 @@ const searchSchedule = async (params: SearchScheduleParams): Promise<SearchSched
         rollcallStatus: params.rollcallStatus,
         region: params.region,
         page: params.page || 1,
-        limit: params.limit || 50
+        limit: params.limit || 50,
+        isMasked: params.isMasked
     }
 
     // Use scheduleTimes if provided, otherwise fall back to scheduleTime for backward compatibility
@@ -850,6 +855,7 @@ export const useExportSearchSchedule = () => {
                 endDate: params.endDate,
                 rollcallStatus: params.rollcallStatus,
                 region: params.region,
+                isMasked: params.isMasked
                 // No pagination for export
             }
 
