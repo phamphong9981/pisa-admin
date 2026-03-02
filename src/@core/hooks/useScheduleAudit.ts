@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { apiClient } from './apiClient'
 
 // Types based on API documentation
-export type AuditOperation = 'INSERT' | 'UPDATE' | 'DELETE'
+export type AuditOperation = 'INSERT' | 'UPDATE' | 'DELETE' | 'INCREASE' | 'ROLLCALL'
 
 export interface ScheduleValues {
   id: string

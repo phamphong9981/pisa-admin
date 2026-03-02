@@ -56,13 +56,17 @@ const OperationChip = styled(Chip)<{ operation: AuditOperation }>(({ operation }
   const colors = {
     INSERT: { bg: '#c8e6c9', color: '#2e7d32', border: '#81c784' },
     UPDATE: { bg: '#fff9c4', color: '#f57f17', border: '#fff176' },
-    DELETE: { bg: '#ffcdd2', color: '#c62828', border: '#ef9a9a' }
+    DELETE: { bg: '#ffcdd2', color: '#c62828', border: '#ef9a9a' },
+    INCREASE: { bg: '#bbdefb', color: '#1565c0', border: '#64b5f6' },
+    ROLLCALL: { bg: '#ffe0b2', color: '#e65100', border: '#ffb74d' }
   }
 
+  const selectedColor = colors[operation] || { bg: '#f5f5f5', color: '#616161', border: '#e0e0e0' }
+
   return {
-    backgroundColor: colors[operation].bg,
-    color: colors[operation].color,
-    border: `1px solid ${colors[operation].border}`,
+    backgroundColor: selectedColor.bg,
+    color: selectedColor.color,
+    border: `1px solid ${selectedColor.border}`,
     fontWeight: 600,
     fontSize: '0.75rem'
   }

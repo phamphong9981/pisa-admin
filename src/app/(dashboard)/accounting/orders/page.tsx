@@ -13,6 +13,7 @@ import {
   Card,
   CardContent,
   CardHeader,
+  Checkbox,
   Chip,
   CircularProgress,
   Dialog,
@@ -46,6 +47,7 @@ import {
   useCreateOrder,
   useUpdateOrder,
   useDeleteOrder,
+  useDeleteOrdersBulk,
   useExportFeeReceipt,
   getBillTypeName,
   formatCurrency,
@@ -140,10 +142,12 @@ const OrdersPage = () => {
   const [openCreateDialog, setOpenCreateDialog] = React.useState(false)
   const [openEditDialog, setOpenEditDialog] = React.useState(false)
   const [openDeleteDialog, setOpenDeleteDialog] = React.useState(false)
+  const [openDeleteBulkDialog, setOpenDeleteBulkDialog] = React.useState(false)
   const [openImportDialog, setOpenImportDialog] = React.useState(false)
   const [openExportDialog, setOpenExportDialog] = React.useState(false)
   const [openProfileSearchDialog, setOpenProfileSearchDialog] = React.useState(false)
   const [selectedOrder, setSelectedOrder] = React.useState<Order | null>(null)
+  const [selectedOrderIds, setSelectedOrderIds] = React.useState<string[]>([])
 
   // Notification state
   const [notification, setNotification] = React.useState<{
@@ -183,6 +187,7 @@ const OrdersPage = () => {
   const createOrderMutation = useCreateOrder()
   const updateOrderMutation = useUpdateOrder()
   const deleteOrderMutation = useDeleteOrder()
+  const deleteOrdersBulkMutation = useDeleteOrdersBulk()
   const exportFeeReceiptMutation = useExportFeeReceipt()
 
   // Export dialog state
@@ -287,6 +292,7 @@ const OrdersPage = () => {
     setOpenCreateDialog(false)
     setOpenEditDialog(false)
     setOpenDeleteDialog(false)
+    setOpenDeleteBulkDialog(false)
     setOpenExportDialog(false)
     setSelectedOrder(null)
     setDialogSearch('')
@@ -392,6 +398,29 @@ const OrdersPage = () => {
       setNotification({
         open: true,
         message: 'Có lỗi xảy ra khi xóa hóa đơn',
+        severity: 'error'
+      })
+    }
+  }
+
+  const handleDeleteOrdersBulk = async () => {
+    if (selectedOrderIds.length === 0) return
+
+    try {
+      await deleteOrdersBulkMutation.mutateAsync(selectedOrderIds)
+      setNotification({
+        open: true,
+        message: 'Xóa các hóa đơn thành công!',
+        severity: 'success'
+      })
+      setSelectedOrderIds([])
+      handleCloseDialogs()
+      refetch()
+    } catch (error) {
+      console.error('Delete orders bulk error:', error)
+      setNotification({
+        open: true,
+        message: 'Có lỗi xảy ra khi xóa các hóa đơn',
         severity: 'error'
       })
     }
@@ -647,7 +676,18 @@ const OrdersPage = () => {
                 )}
               />
 
-              <Box flex={1} />
+              <Box flex={1}>
+                {selectedOrderIds.length > 0 && (
+                  <Button
+                    variant='outlined'
+                    color='error'
+                    startIcon={<i className='ri-delete-bin-line' />}
+                    onClick={() => setOpenDeleteBulkDialog(true)}
+                  >
+                    Xóa ({selectedOrderIds.length})
+                  </Button>
+                )}
+              </Box>
 
               <Button
                 variant='outlined'
@@ -705,6 +745,21 @@ const OrdersPage = () => {
                   <Table>
                     <TableHead>
                       <TableRow>
+                        <StyledTableCell padding="checkbox">
+                          <Checkbox
+                            color="primary"
+                            indeterminate={selectedOrderIds.length > 0 && selectedOrderIds.length < (ordersData?.data?.length || 0)}
+                            checked={(ordersData?.data?.length || 0) > 0 && selectedOrderIds.length === (ordersData?.data?.length || 0)}
+                            onChange={(e) => {
+                              if (e.target.checked && ordersData?.data) {
+                                setSelectedOrderIds(ordersData.data.map(n => n.id))
+                              } else {
+                                setSelectedOrderIds([])
+                              }
+                            }}
+                            sx={{ color: 'white', '&.Mui-checked': { color: 'white' }, '&.MuiCheckbox-indeterminate': { color: 'white' } }}
+                          />
+                        </StyledTableCell>
                         <StyledTableCell>Loại</StyledTableCell>
                         <StyledTableCell>Học sinh</StyledTableCell>
                         <StyledTableCell>Danh mục</StyledTableCell>
@@ -717,68 +772,86 @@ const OrdersPage = () => {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {ordersData?.data?.map((order) => (
-                        <TableRow key={order.id} hover>
-                          <TableCell>
-                            <Chip
-                              label={getBillTypeName(order.billType)}
-                              color={order.billType === BillType.RECEIPT ? 'success' : 'error'}
-                              size='small'
-                              variant='outlined'
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Typography variant='body2' fontWeight={500}>
-                              {order.profile?.fullname || '—'}
-                            </Typography>
-                            <Typography variant='caption' color='text.secondary'>
-                              {order.profile?.email || '—'}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>
-                            <Typography variant='body2'>{order.billCategoryName}</Typography>
-                          </TableCell>
-                          <TableCell align='right'>
-                            <Typography variant='body2' fontWeight={600}>
-                              {formatCurrency(order.totalAmount)}
-                            </Typography>
-                          </TableCell>
-                          <TableCell align='right'>
-                            <Typography variant='body2'>
-                              {formatCurrency(order.paidAmount)}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>{getStatusChip(order)}</TableCell>
-                          <TableCell>
-                            {order.deadline
-                              ? format(new Date(order.deadline), 'dd/MM/yyyy')
-                              : '—'}
-                          </TableCell>
-                          <TableCell>
-                            {format(new Date(order.createdAt), 'dd/MM/yyyy HH:mm')}
-                          </TableCell>
-                          <TableCell align='center'>
-                            <Tooltip title='Sửa'>
-                              <IconButton
+                      {ordersData?.data?.map((order) => {
+                        const isItemSelected = selectedOrderIds.includes(order.id)
+                        return (
+                          <TableRow
+                            key={order.id}
+                            hover
+                            role="checkbox"
+                            aria-checked={isItemSelected}
+                            selected={isItemSelected}
+                          >
+                            <TableCell padding="checkbox">
+                              <Checkbox
+                                color="primary"
+                                checked={isItemSelected}
+                                onChange={() => setSelectedOrderIds(prev =>
+                                  prev.includes(order.id) ? prev.filter(id => id !== order.id) : [...prev, order.id]
+                                )}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Chip
+                                label={getBillTypeName(order.billType)}
+                                color={order.billType === BillType.RECEIPT ? 'success' : 'error'}
                                 size='small'
-                                color='primary'
-                                onClick={() => handleOpenEditDialog(order)}
-                              >
-                                <i className='ri-edit-line' />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title='Xóa'>
-                              <IconButton
-                                size='small'
-                                color='error'
-                                onClick={() => handleOpenDeleteDialog(order)}
-                              >
-                                <i className='ri-delete-bin-line' />
-                              </IconButton>
-                            </Tooltip>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                                variant='outlined'
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant='body2' fontWeight={500}>
+                                {order.profile?.fullname || '—'}
+                              </Typography>
+                              <Typography variant='caption' color='text.secondary'>
+                                {order.profile?.email || '—'}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant='body2'>{order.billCategoryName}</Typography>
+                            </TableCell>
+                            <TableCell align='right'>
+                              <Typography variant='body2' fontWeight={600}>
+                                {formatCurrency(order.totalAmount)}
+                              </Typography>
+                            </TableCell>
+                            <TableCell align='right'>
+                              <Typography variant='body2'>
+                                {formatCurrency(order.paidAmount)}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>{getStatusChip(order)}</TableCell>
+                            <TableCell>
+                              {order.deadline
+                                ? format(new Date(order.deadline), 'dd/MM/yyyy')
+                                : '—'}
+                            </TableCell>
+                            <TableCell>
+                              {format(new Date(order.createdAt), 'dd/MM/yyyy HH:mm')}
+                            </TableCell>
+                            <TableCell align='center'>
+                              <Tooltip title='Sửa'>
+                                <IconButton
+                                  size='small'
+                                  color='primary'
+                                  onClick={() => handleOpenEditDialog(order)}
+                                >
+                                  <i className='ri-edit-line' />
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title='Xóa'>
+                                <IconButton
+                                  size='small'
+                                  color='error'
+                                  onClick={() => handleOpenDeleteDialog(order)}
+                                >
+                                  <i className='ri-delete-bin-line' />
+                                </IconButton>
+                              </Tooltip>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
                     </TableBody>
                   </Table>
                 </TableContainer>
@@ -998,6 +1071,37 @@ const OrdersPage = () => {
             disabled={deleteOrderMutation.isPending}
             startIcon={
               deleteOrderMutation.isPending && <CircularProgress size={16} color='inherit' />
+            }
+          >
+            Xóa
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Bulk Confirmation Dialog */}
+      <Dialog open={openDeleteBulkDialog} onClose={handleCloseDialogs} maxWidth='xs' fullWidth>
+        <DialogTitle>
+          <Box display='flex' alignItems='center' gap={1}>
+            <i className='ri-error-warning-line' style={{ color: '#f44336' }} />
+            <Typography variant='h6'>Xác nhận xóa hàng loạt</Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Typography>
+            Bạn có chắc chắn muốn xóa {selectedOrderIds.length} hóa đơn đã chọn? Hành động này không thể hoàn tác.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={handleCloseDialogs} color='inherit'>
+            Hủy
+          </Button>
+          <Button
+            variant='contained'
+            color='error'
+            onClick={handleDeleteOrdersBulk}
+            disabled={deleteOrdersBulkMutation.isPending}
+            startIcon={
+              deleteOrdersBulkMutation.isPending && <CircularProgress size={16} color='inherit' />
             }
           >
             Xóa

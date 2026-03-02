@@ -52,6 +52,7 @@ export const RECEIPT_CATEGORIES = [
     { id: 1187, name: 'Lệ phí thi IELTS được hoàn' },
     { id: 1333, name: 'Chi phí đi thi IELTS' },
     { id: 1186, name: 'Học phí tháng trước chưa hoàn thành' },
+    { id: 1189, name: 'Chi phí đi lại' },
 ];
 
 export const PAYMENT_CATEGORIES = [
@@ -65,6 +66,7 @@ export const PAYMENT_CATEGORIES = [
     { id: 1187, name: 'Lệ phí thi IELTS được hoàn' },
     { id: 1333, name: 'Chi phí đi thi IELTS' },
     { id: 1186, name: 'Học phí tháng trước chưa hoàn thành' },
+    { id: 1189, name: 'Chi phí đi lại' },
     { id: 325, name: 'Các khoản giảm trừ doanh thu' },
     { id: 314, name: 'Doanh thu bán hàng và cung cấp dịch vụ' },
     { id: 79, name: 'Học phí' },
@@ -198,6 +200,11 @@ const ordersApi = {
         return data?.data;
     },
 
+    deleteOrdersBulk: async (orderIds: string[]): Promise<{ message: string; deleted: number }> => {
+        const { data } = await apiClient.delete('/orders', { data: { orderIds } });
+        return data?.data;
+    },
+
     exportFeeReceipt: async (dto: ExportFeeReceiptDto): Promise<Blob> => {
         const response = await apiClient.post('/orders/export/fee-receipt', dto, {
             responseType: 'blob'
@@ -256,6 +263,16 @@ export const useDeleteOrder = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: ordersApi.deleteOrder,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['orders'] });
+        },
+    });
+};
+
+export const useDeleteOrdersBulk = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ordersApi.deleteOrdersBulk,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['orders'] });
         },
