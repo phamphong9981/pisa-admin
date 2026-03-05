@@ -1,8 +1,9 @@
-export class GetScheduleInfoByFieldDto {
+export interface GetScheduleInfoByFieldDto {
     weekId?: string
     classId?: string
     teacherNote?: boolean
     region?: number
+    isMasked?: boolean
 }
 
 export interface ScheduleInfoByFieldResponseDto {
@@ -17,8 +18,31 @@ export interface ScheduleInfoByFieldResponseDto {
     teacherId?: string
     rollcallNote?: string
     teacherNote: string
+    isMasked?: boolean
     // Joined fields
     className?: string
     courseName?: string
     teacherName?: string
+}
+
+export interface UpdateScheduleInfoDto {
+    classId: string
+    weekId: string
+    lesson: number
+    scheduleTime?: number
+    note?: string
+    startTime?: string
+    endTime?: string
+    teacherId?: string
+    rollcallNote?: string
+    isMasked?: boolean
+}
+
+export interface UpdateTeacherNoteDto {
+    classId: string
+    weekId: string
+    lesson: number
+    scheduleTime?: number
+    teacherNote?: string
+    teacherNoteStudents?: string
 }

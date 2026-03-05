@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { apiClient } from './apiClient'
-import { GetScheduleInfoByFieldDto, ScheduleInfoByFieldResponseDto } from './interface/schedule-info.interface'
+import { GetScheduleInfoByFieldDto, ScheduleInfoByFieldResponseDto, UpdateScheduleInfoDto, UpdateTeacherNoteDto } from './interface/schedule-info.interface'
 
 export enum ScheduleStatus {
     ACTIVE = 'active',
@@ -738,11 +738,61 @@ export const useGetScheduleInfoByField = (query: GetScheduleInfoByFieldDto) => {
     return useQuery({
         queryKey: ['schedule-info-by-field', query],
         queryFn: () => getScheduleInfoByField(query),
-        enabled: !!query.teacherNote || !!query.weekId || !!query.classId,
+        enabled: !!query.teacherNote || !!query.weekId || !!query.classId || query.isMasked !== undefined,
         staleTime: 5 * 60 * 1000, // 5 phút
         gcTime: 10 * 60 * 1000, // 10 phút
         retry: 1,
         retryDelay: (attemptIndex) => Math.min(1000 * 1 ** attemptIndex, 30000),
+    })
+}
+
+export const updateScheduleInfo = async (dto: UpdateScheduleInfoDto): Promise<ScheduleInfoByFieldResponseDto> => {
+    const { classId, weekId, lesson, scheduleTime, ...body } = dto
+
+    const { data } = await apiClient.put('/schedule-info', body, {
+        params: {
+            classId,
+            weekId,
+            lesson,
+            ...(scheduleTime !== undefined ? { scheduleTime } : {})
+        }
+    })
+    return data.data || data
+}
+
+export const useUpdateScheduleInfo = () => {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: updateScheduleInfo,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['schedule-info-by-field'] })
+            queryClient.invalidateQueries({ queryKey: ['search-schedule'] })
+        }
+    })
+}
+
+export const updateTeacherNote = async (dto: UpdateTeacherNoteDto): Promise<ScheduleInfoByFieldResponseDto> => {
+    const { classId, weekId, lesson, scheduleTime, ...body } = dto
+
+    const { data } = await apiClient.put('/schedule-info/teacher-note', body, {
+        params: {
+            classId,
+            weekId,
+            lesson,
+            ...(scheduleTime !== undefined ? { scheduleTime } : {})
+        }
+    })
+    return data.data || data
+}
+
+export const useUpdateTeacherNote = () => {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: updateTeacherNote,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['schedule-info-by-field'] })
+            queryClient.invalidateQueries({ queryKey: ['search-schedule'] })
+        }
     })
 }
 
