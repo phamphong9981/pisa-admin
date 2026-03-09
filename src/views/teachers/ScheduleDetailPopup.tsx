@@ -32,12 +32,14 @@ import {
   TableRow,
   Tabs,
   TextField,
-  Typography
+  Tooltip,
+  Typography,
+  FormControlLabel
 } from '@mui/material'
 import { styled } from '@mui/material/styles'
 
 import type { StudentScheduleDetailDto } from '@/@core/hooks/useSchedule';
-import { RollcallStatus, SCHEDULE_TIME, useGetScheduleDetail, useUpdateRollcallStatus, useUpdateUserSchedule, useUpdateLessonSchedule } from '@/@core/hooks/useSchedule'
+import { RollcallStatus, SCHEDULE_TIME, useGetScheduleDetail, useUpdateRollcallStatus, useUpdateUserSchedule, useUpdateLessonSchedule, useUpdateScheduleInfo } from '@/@core/hooks/useSchedule'
 import useAuth from '@/@core/hooks/useAuth'
 import { useClass } from '@/@core/hooks/useClass'
 import { useCourseInfo } from '@/@core/hooks/useCourse'
@@ -275,6 +277,37 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
   const updateRollcallMutation = useUpdateRollcallStatus()
   const updateUserScheduleMutation = useUpdateUserSchedule()
   const updateLessonScheduleMutation = useUpdateLessonSchedule()
+  const updateScheduleInfoMutation = useUpdateScheduleInfo()
+
+  const handleClassMaskChange = async (checked: boolean) => {
+    if (!scheduleDetail) return
+    try {
+      await updateScheduleInfoMutation.mutateAsync({
+        classId: classId,
+        weekId: scheduleDetail.classInfo.weekId,
+        lesson: lesson,
+        scheduleTime: scheduleTime,
+        isMasked: checked
+      })
+      scheduleDetailQuery.refetch()
+    } catch (error) {
+      console.error('Lỗi khi cập nhật trạng thái kiểm tra:', error)
+    }
+  }
+
+  const handleStudentMaskChange = async (studentId: string, currentStatus: RollcallStatus, scheduleId: string | undefined, checked: boolean) => {
+    if (!scheduleId) return
+    try {
+      await updateRollcallMutation.mutateAsync([{
+        scheduleId: scheduleId,
+        rollcallStatus: currentStatus,
+        isMasked: checked
+      }])
+      scheduleDetailQuery.refetch()
+    } catch (error) {
+      console.error('Error updating mask status:', error)
+    }
+  }
 
   const { data: classData } = useClass(classId)
   const { data: courseInfo } = useCourseInfo(classData?.courseId || '', weekId)
@@ -778,6 +811,27 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                       </Typography>
                     </Box>
                   </Box>
+
+                  <Box display="flex" alignItems="center" gap={1.5}>
+                    <Box sx={{ width: 32, height: 32, borderRadius: '8px', bgcolor: 'warning.light', color: 'warning.main', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <i className="ri-flag-line" style={{ fontSize: '18px' }} />
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" display="block">Đánh dấu ca học</Typography>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={scheduleDetail?.scheduleInfo?.isMasked || false}
+                            onChange={(e) => handleClassMaskChange(e.target.checked)}
+                            icon={<i className="ri-flag-line" style={{ color: '#bdbdbd', fontSize: '20px' }} />}
+                            checkedIcon={<i className="ri-flag-fill" style={{ color: '#d32f2f', fontSize: '20px' }} />}
+                            size="small"
+                          />
+                        }
+                        label={<Typography variant="body2" fontWeight={600}>{scheduleDetail?.scheduleInfo?.isMasked ? 'Đã kiểm tra' : 'Chưa kiểm tra'}</Typography>}
+                      />
+                    </Box>
+                  </Box>
                 </Box>
               </Grid>
 
@@ -909,6 +963,7 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                     <StyledTableCell>Thời gian</StyledTableCell>
                     <StyledTableCell>Người điểm danh</StyledTableCell>
                     <StyledTableCell>Ghi chú</StyledTableCell>
+                    <StyledTableCell align="center">Đã K.Tra</StyledTableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -1070,6 +1125,16 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                             </Typography>
                           )}
                         </StudentTableCell>
+                        <StudentTableCell align="center">
+                          <Tooltip title={student.isMasked ? "Bỏ đánh dấu" : "Đánh dấu đã kiểm tra"}>
+                            <Checkbox
+                              checked={student.isMasked || false}
+                              onChange={(e) => handleStudentMaskChange(student.profileId, student.rollcallStatus, student.scheduleId, e.target.checked)}
+                              icon={<i className="ri-flag-line" style={{ color: '#bdbdbd', fontSize: '20px' }} />}
+                              checkedIcon={<i className="ri-flag-fill" style={{ color: '#d32f2f', fontSize: '20px' }} />}
+                            />
+                          </Tooltip>
+                        </StudentTableCell>
                       </TableRow>
                     )
                   })}
@@ -1091,6 +1156,7 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                     <StyledTableCell>Người điểm danh</StyledTableCell>
                     <StyledTableCell>Lý do</StyledTableCell>
                     <StyledTableCell>Ghi chú</StyledTableCell>
+                    <StyledTableCell align="center">Đã K.Tra</StyledTableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -1165,6 +1231,16 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                           </Typography>
                         )}
                       </StudentTableCell>
+                      <StudentTableCell align="center">
+                        <Tooltip title={student.isMasked ? "Bỏ đánh dấu" : "Đánh dấu đã kiểm tra"}>
+                          <Checkbox
+                            checked={student.isMasked || false}
+                            onChange={(e) => handleStudentMaskChange(student.profileId, student.rollcallStatus, student.scheduleId, e.target.checked)}
+                            icon={<i className="ri-flag-line" style={{ color: '#bdbdbd', fontSize: '20px' }} />}
+                            checkedIcon={<i className="ri-flag-fill" style={{ color: '#d32f2f', fontSize: '20px' }} />}
+                          />
+                        </Tooltip>
+                      </StudentTableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -1185,6 +1261,7 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                     <StyledTableCell>Lịch bận</StyledTableCell>
                     <StyledTableCell>Người điểm danh</StyledTableCell>
                     <StyledTableCell>Ghi chú</StyledTableCell>
+                    <StyledTableCell align="center">Đã K.Tra</StyledTableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -1274,6 +1351,16 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
                             —
                           </Typography>
                         )}
+                      </StudentTableCell>
+                      <StudentTableCell align="center">
+                        <Tooltip title={student.isMasked ? "Bỏ đánh dấu" : "Đánh dấu đã kiểm tra"}>
+                          <Checkbox
+                            checked={student.isMasked || false}
+                            onChange={(e) => handleStudentMaskChange(student.profileId, student.rollcallStatus, student.scheduleId, e.target.checked)}
+                            icon={<i className="ri-flag-line" style={{ color: '#bdbdbd', fontSize: '20px' }} />}
+                            checkedIcon={<i className="ri-flag-fill" style={{ color: '#d32f2f', fontSize: '20px' }} />}
+                          />
+                        </Tooltip>
                       </StudentTableCell>
                     </TableRow>
                   ))}

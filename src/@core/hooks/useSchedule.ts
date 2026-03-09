@@ -378,6 +378,7 @@ export interface StudentScheduleDetailDto {
     note?: string,
     courseName: string
     rollcallUsername?: string
+    isMasked?: boolean
 }
 
 export interface ClassScheduleDetailDto {
@@ -406,6 +407,7 @@ export interface ScheduleDetailResponseDto {
         endTime?: string
         rollcallNote?: string
         teacherNote?: string
+        isMasked?: boolean
     }
 }
 
