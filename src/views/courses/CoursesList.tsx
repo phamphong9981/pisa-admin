@@ -38,6 +38,7 @@ import { styled } from '@mui/material/styles'
 
 // Hook Imports
 import { useCourseList, useUpdateCourse, CourseStatus, RegionId, RegionLabel } from '@/@core/hooks/useCourse'
+import { useTeacherList } from '@/@core/hooks/useTeacher'
 
 // Component Imports
 import CreateCourseForm from './CreateCourseForm'
@@ -116,18 +117,23 @@ const CoursesList = () => {
     type: string
     status: CourseStatus
     region: number
+    teacherId: string | null
   } | null>(null)
   const [editForm, setEditForm] = useState<{
     name: string
     type: string
     status: CourseStatus
     region: number
+    teacherId: string | null
   }>({
     name: '',
     type: '',
     status: CourseStatus.ACTIVE,
-    region: 1
+    region: 1,
+    teacherId: null
   })
+
+  const { data: teachers } = useTeacherList()
 
   const { data: courses, isLoading, error } = useCourseList(selectedRegion === 'all' ? undefined : selectedRegion)
   const updateCourseMutation = useUpdateCourse()
@@ -355,13 +361,15 @@ const CoursesList = () => {
                                 name: course.name,
                                 type: course.type,
                                 status: course.status,
-                                region: course.region
+                                region: course.region,
+                                teacherId: course.teacherId || null
                               })
                               setEditForm({
                                 name: course.name,
                                 type: course.type,
                                 status: course.status,
-                                region: course.region
+                                region: course.region,
+                                teacherId: course.teacherId || null
                               })
                               setOpenEditDialog(true)
                             }}
@@ -450,6 +458,23 @@ const CoursesList = () => {
               </Select>
             </FormControl>
             <FormControl fullWidth>
+              <InputLabel>Giáo viên chủ nhiệm</InputLabel>
+              <Select
+                value={editForm.teacherId || ''}
+                label="Giáo viên chủ nhiệm"
+                onChange={(e) => setEditForm(prev => ({ ...prev, teacherId: e.target.value as string }))}
+              >
+                <MenuItem value="">
+                  <em>Chưa phân công</em>
+                </MenuItem>
+                {teachers?.map((teacher) => (
+                  <MenuItem key={teacher.id} value={teacher.id}>
+                    {teacher.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl fullWidth>
               <InputLabel>Khu vực</InputLabel>
               <Select
                 value={editForm.region}
@@ -478,7 +503,8 @@ const CoursesList = () => {
                       name: editForm.name,
                       type: editForm.type,
                       status: editForm.status,
-                      region: editForm.region
+                      region: editForm.region,
+                      ...(editForm.teacherId ? { teacherId: editForm.teacherId } : { teacherId: null as any })
                     }
                   }, {
                     onSuccess: () => {

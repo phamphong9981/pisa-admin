@@ -18,9 +18,10 @@ interface CourseListResponse {
     name: string,
     status: CourseStatus,
     type: string,
-    teacher: {
+    teacherId?: string,
+    teacher?: {
         name: string
-    },
+    } | null,
     classes: {
         id: string,
         startTime: string | null,
@@ -205,7 +206,7 @@ export interface UpdateCourseRequest {
     name?: string
     // Accept backend type string directly for flexibility
     type?: string | CourseType
-    teacherId?: string
+    teacherId?: string | null
     region?: number
     status?: CourseStatus
 }
