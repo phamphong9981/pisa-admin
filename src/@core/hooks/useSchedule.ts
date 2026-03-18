@@ -794,6 +794,7 @@ export const useUpdateTeacherNote = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['schedule-info-by-field'] })
             queryClient.invalidateQueries({ queryKey: ['search-schedule'] })
+            queryClient.invalidateQueries({ queryKey: ['schedule-detail'] })
         }
     })
 }

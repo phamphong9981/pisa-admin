@@ -39,7 +39,7 @@ import {
 import { styled } from '@mui/material/styles'
 
 import type { StudentScheduleDetailDto } from '@/@core/hooks/useSchedule';
-import { RollcallStatus, SCHEDULE_TIME, useGetScheduleDetail, useUpdateRollcallStatus, useUpdateUserSchedule, useUpdateLessonSchedule, useUpdateScheduleInfo } from '@/@core/hooks/useSchedule'
+import { RollcallStatus, SCHEDULE_TIME, useGetScheduleDetail, useUpdateRollcallStatus, useUpdateUserSchedule, useUpdateLessonSchedule, useUpdateScheduleInfo, useUpdateTeacherNote } from '@/@core/hooks/useSchedule'
 import useAuth from '@/@core/hooks/useAuth'
 import { useClass } from '@/@core/hooks/useClass'
 import { useCourseInfo } from '@/@core/hooks/useCourse'
@@ -278,6 +278,7 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
   const updateUserScheduleMutation = useUpdateUserSchedule()
   const updateLessonScheduleMutation = useUpdateLessonSchedule()
   const updateScheduleInfoMutation = useUpdateScheduleInfo()
+  const updateTeacherNoteMutation = useUpdateTeacherNote()
 
   const handleClassMaskChange = async (checked: boolean) => {
     if (!scheduleDetail) return
@@ -567,12 +568,11 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
     if (!scheduleDetail) return
 
     try {
-      await updateLessonScheduleMutation.mutateAsync({
+      await updateTeacherNoteMutation.mutateAsync({
         weekId: scheduleDetail.classInfo.weekId,
         classId: classId,
         lesson: lesson,
         scheduleTime: scheduleTime,
-        action: 'update',
         teacherNote: teacherNoteText.trim()
       })
       setShowTeacherNoteSuccess(true)
@@ -1736,10 +1736,10 @@ const ScheduleDetailPopup: React.FC<ScheduleDetailPopupProps> = ({
             onClick={handleSaveTeacherNote}
             variant="contained"
             color="primary"
-            disabled={updateLessonScheduleMutation.isPending}
-            startIcon={updateLessonScheduleMutation.isPending ? <CircularProgress size={16} color="inherit" /> : undefined}
+            disabled={updateTeacherNoteMutation.isPending}
+            startIcon={updateTeacherNoteMutation.isPending ? <CircularProgress size={16} color="inherit" /> : undefined}
           >
-            {updateLessonScheduleMutation.isPending ? 'Đang lưu...' : 'Lưu'}
+            {updateTeacherNoteMutation.isPending ? 'Đang lưu...' : 'Lưu'}
           </Button>
         </DialogActions>
       </Dialog>
